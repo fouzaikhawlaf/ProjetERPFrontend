@@ -14,7 +14,7 @@ Coded by www.creative-tim.com
 */
 import React from 'react';
 import { useState, useEffect, useMemo } from "react";
-
+import { ChakraProvider } from '@chakra-ui/react';
 // react-router components
 import { Routes, Route, Navigate, useLocation, BrowserRouter as Router } from "react-router-dom";
 import 'react-toastify/dist/ReactToastify.css';
@@ -295,7 +295,8 @@ export default function App() {
         <Route path="/signin" element={<SignInPage />} />
      </Routes>
     </ThemeProvider>
+    
    
-  );
+   );
 
 }

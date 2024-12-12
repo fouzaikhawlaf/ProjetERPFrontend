@@ -1,10 +1,8 @@
-// Chakra imports
-import { Flex, Icon, Link, Text, useColorMode , Avatar } from "@chakra-ui/react";
 import React from "react";
+import PropTypes from "prop-types";
 import { FaFacebook, FaInstagram, FaTwitter } from "react-icons/fa";
-import PropTypes from 'prop-types'; // Importer PropTypes
-import { Card } from 'react-bootstrap'; // Importer Card de react-bootstrap
-//import { useColorMode } from '@chakra-ui/react';
+import { Avatar, Box, Typography, IconButton, Grid, Divider, Button } from "@mui/material";
+
 const ProfileInformation = ({
   title,
   description,
@@ -12,94 +10,172 @@ const ProfileInformation = ({
   mobile,
   email,
   location,
-  avatarUrl, // Nouveau : ajout de l'avatar
+  avatarUrl,
+  onManageProfileClick, // Ajout de la fonction pour gérer le clic
 }) => {
-  // Chakra color mode
-  const textColor = useColorModeValue("gray.700", "white");
-  const secondaryTextColor = useColorModeValue("gray.500", "gray.400");
+  // Colors for styling
+  const textColor = "#4A5568"; // Dark gray
+  const secondaryTextColor = "#A0AEC0"; // Light gray
+  const accentColor = "#00796b"; // Accent color for links/icons
 
   return (
-    <Card p='16px' my={{ sm: "24px", xl: "0px" }}>
-      {/* Header avec le titre et l'avatar */}
-      <div style={{ padding: '12px 5px', marginBottom: '12px', display: "flex", alignItems: "center" }}>
-        {/* Avatar de l'utilisateur */}
-        <Avatar src={avatarUrl} name={name} size="lg" mr="12px" />
-        <Text fontSize='lg' color={textColor} fontWeight='bold'>
+    <Box padding={3} marginBottom={4} boxShadow={5} borderRadius={2} bgcolor="#fff">
+      {/* Header with title and avatar */}
+      <Box display="flex" alignItems="center" marginBottom={3}>
+        <Avatar
+          src={avatarUrl}
+          alt={name}
+          sx={{ width: 72, height: 72, marginRight: 2 }}
+        />
+        <Typography variant="h5" color={textColor} fontWeight="600">
           {title}
-        </Text>
-      </div>
-      
-      <div style={{ padding: '5px' }}>
-        <Flex direction='column'>
-          {/* Description du profil */}
-          <Text fontSize='md' color={secondaryTextColor} fontWeight='400' mb='30px'>
+        </Typography>
+      </Box>
+
+      {/* Profile Information */}
+      <Box>
+        <Grid container direction="column">
+          {/* Description */}
+          <Typography
+            variant="body1"
+            color={secondaryTextColor}
+            fontWeight="400"
+            marginBottom={4}
+          >
             {description}
-          </Text>
-          
-          {/* Nom complet */}
-          <Flex align='center' mb='18px'>
-            <Text fontSize='md' color={textColor} fontWeight='bold' me='10px'>
-              Full Name:{" "}
-            </Text>
-            <Text fontSize='md' color={secondaryTextColor} fontWeight='400'>
+          </Typography>
+
+          {/* Full Name */}
+          <Grid item container alignItems="center" marginBottom={2}>
+            <Typography
+              variant="body2"
+              color={textColor}
+              fontWeight="600"
+              marginRight={2}
+            >
+              Full Name:
+            </Typography>
+            <Typography variant="body2" color={secondaryTextColor}>
               {name}
-            </Text>
-          </Flex>
+            </Typography>
+          </Grid>
 
-          {/* Numéro de téléphone */}
-          <Flex align='center' mb='18px'>
-            <Text fontSize='md' color={textColor} fontWeight='bold' me='10px'>
-              Mobile:{" "}
-            </Text>
-            <Text fontSize='md' color={secondaryTextColor} fontWeight='400'>
+          {/* Mobile */}
+          <Grid item container alignItems="center" marginBottom={2}>
+            <Typography
+              variant="body2"
+              color={textColor}
+              fontWeight="600"
+              marginRight={2}
+            >
+              Mobile:
+            </Typography>
+            <Typography variant="body2" color={secondaryTextColor}>
               {mobile}
-            </Text>
-          </Flex>
+            </Typography>
+          </Grid>
 
-          {/* Adresse e-mail */}
-          <Flex align='center' mb='18px'>
-            <Text fontSize='md' color={textColor} fontWeight='bold' me='10px'>
-              Email:{" "}
-            </Text>
-            <Text fontSize='md' color={secondaryTextColor} fontWeight='400'>
+          {/* Email */}
+          <Grid item container alignItems="center" marginBottom={2}>
+            <Typography
+              variant="body2"
+              color={textColor}
+              fontWeight="600"
+              marginRight={2}
+            >
+              Email:
+            </Typography>
+            <Typography variant="body2" color={secondaryTextColor}>
               {email}
-            </Text>
-          </Flex>
+            </Typography>
+          </Grid>
 
-          {/* Localisation */}
-          <Flex align='center' mb='18px'>
-            <Text fontSize='md' color={textColor} fontWeight='bold' me='10px'>
-              Location:{" "}
-            </Text>
-            <Text fontSize='md' color={secondaryTextColor} fontWeight='400'>
+          {/* Location */}
+          <Grid item container alignItems="center" marginBottom={2}>
+            <Typography
+              variant="body2"
+              color={textColor}
+              fontWeight="600"
+              marginRight={2}
+            >
+              Location:
+            </Typography>
+            <Typography variant="body2" color={secondaryTextColor}>
               {location}
-            </Text>
-          </Flex>
+            </Typography>
+          </Grid>
 
-          {/* Réseaux sociaux */}
-          <Flex align='center' mb='18px'>
-            <Text fontSize='md' color={textColor} fontWeight='bold' me='10px'>
-              Social Media:{" "}
-            </Text>
-            <Flex>
-              <Link href='#' color='teal.300' fontSize='lg' me='10px' _hover={{ color: "teal.400" }}>
-                <Icon as={FaFacebook} />
-              </Link>
-              <Link href='#' color='teal.300' fontSize='lg' me='10px' _hover={{ color: "teal.400" }}>
-                <Icon as={FaInstagram} />
-              </Link>
-              <Link href='#' color='teal.300' fontSize='lg' me='10px' _hover={{ color: "teal.400" }}>
-                <Icon as={FaTwitter} />
-              </Link>
-            </Flex>
-          </Flex>
-        </Flex>
-      </div>
-    </Card>
+          {/* Divider */}
+          <Divider sx={{ margin: "16px 0", bgcolor: "#e0e0e0" }} />
+
+          {/* Social Media */}
+          <Grid item container alignItems="center" marginBottom={2}>
+            <Typography
+              variant="body2"
+              color={textColor}
+              fontWeight="600"
+              marginRight={2}
+            >
+              Social Media:
+            </Typography>
+            <Box>
+              <IconButton
+                href="#"
+                color="primary"
+                sx={{
+                  marginRight: 2,
+                  "&:hover": { backgroundColor: "#f0f0f0", borderRadius: "50%" },
+                }}
+              >
+                <FaFacebook />
+              </IconButton>
+              <IconButton
+                href="#"
+                color="primary"
+                sx={{
+                  marginRight: 2,
+                  "&:hover": { backgroundColor: "#f0f0f0", borderRadius: "50%" },
+                }}
+              >
+                <FaInstagram />
+              </IconButton>
+              <IconButton
+                href="#"
+                color="primary"
+                sx={{
+                  marginRight: 2,
+                  "&:hover": { backgroundColor: "#f0f0f0", borderRadius: "50%" },
+                }}
+              >
+                <FaTwitter />
+              </IconButton>
+            </Box>
+          </Grid>
+
+          {/* Manage Profile Button */}
+          <Grid item container justifyContent="flex-end" marginTop={2}>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={onManageProfileClick}  // Fonction pour gérer le clic
+              sx={{
+                padding: "8px 16px",
+                borderRadius: "20px",
+                fontWeight: "600",
+                textTransform: "uppercase",
+                "&:hover": { backgroundColor: "#00796b" },
+              }}
+            >
+              Manage Profile
+            </Button>
+          </Grid>
+        </Grid>
+      </Box>
+    </Box>
   );
 };
 
-// Validation des props
+// Prop validation
 ProfileInformation.propTypes = {
   title: PropTypes.string.isRequired,
   description: PropTypes.string.isRequired,
@@ -108,6 +184,7 @@ ProfileInformation.propTypes = {
   email: PropTypes.string.isRequired,
   location: PropTypes.string.isRequired,
   avatarUrl: PropTypes.string.isRequired,
+  onManageProfileClick: PropTypes.func.isRequired, // Validation de la fonction pour gérer le clic
 };
 
 export default ProfileInformation;

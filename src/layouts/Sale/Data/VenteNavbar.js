@@ -1,93 +1,51 @@
-// src/layouts/Sale/Data/VenteNavbar.js
-import React, { useState } from 'react';
 import PropTypes from 'prop-types';
-import { Navbar, Nav, Button, Dropdown, Container } from 'react-bootstrap';
-import { FaPlus, FaUserCircle, FaCog } from 'react-icons/fa';
-import SaleProcess from './SaleProcess'; // Import the SaleProcess component
 
-// Dropdown Menu for User Settings (reusable)
-const UserMenu = ({ onLogout }) => (
-  <Dropdown align="end">
-    <Dropdown.Toggle variant="light" id="dropdown-basic">
-      <FaUserCircle size={20} className="me-2" /> User
-    </Dropdown.Toggle>
+const VenteProgressBar = ({ steps = [], activeStep = 0 }) => {
+  if (!Array.isArray(steps) || steps.length === 0) {
+    return <p>No steps defined</p>; // Affiche un message si steps est vide ou invalide
+  }
 
-    <Dropdown.Menu>
-      <Dropdown.Item href="#settings"><FaCog className="me-2" />Settings</Dropdown.Item>
-      <Dropdown.Item onClick={onLogout}>Logout</Dropdown.Item>
-    </Dropdown.Menu>
-  </Dropdown>
-);
-
-UserMenu.propTypes = {
-  onLogout: PropTypes.func.isRequired, // Validate onLogout as required function
-};
-
-// Main VenteNavbar component
-const VenteNavbar = ({ onOrderDialogOpen, onInvoiceOpen, onDeliveryNoteOpen, onLogout }) => {
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [showSaleProcess, setShowSaleProcess] = useState(false); // State to show/hide SaleProcess
-
-  // Toggle SaleProcess
-  const handleNewSale = () => {
-    setShowSaleProcess(true); // Show the SaleProcess component when the button is clicked
+  const containerStyle = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    margin: '20px 0',
   };
 
-  const handleCloseSaleProcess = () => {
-    setShowSaleProcess(false); // Hide the SaleProcess component
+  const stepStyle = {
+    flex: 1,
+    padding: '10px',
+    textAlign: 'center',
+    backgroundColor: '#f0f0f0',
+    border: '1px solid #ccc',
+    borderRadius: '5px',
+    marginRight: '10px',
+    transition: 'background-color 0.3s ease, color 0.3s ease',
+  };
+
+  const activeStepStyle = {
+    ...stepStyle,
+    backgroundColor: '#007bff',
+    color: '#fff',
+    fontWeight: 'bold',
   };
 
   return (
-    <Navbar bg="light" expand="lg" className="border-bottom">
-      <Container>
-        <Navbar.Brand href="#home" className="fw-bold">Sales Dashboard</Navbar.Brand>
-        <Navbar.Toggle aria-controls="navbar-nav" />
-        <Navbar.Collapse id="navbar-nav">
-         
-          {/* Action Buttons */}
-          <Nav className="ms-auto">
-            {/* Button for New Sale */}
-            <Button variant="primary" className="me-3" onClick={handleNewSale}>
-              <FaPlus className="me-2" /> New Sale
-            </Button>
-
-            {/* Button for New Order */}
-            <Button variant="outline-primary" className="me-3" onClick={onOrderDialogOpen}>
-              <FaPlus className="me-2" /> New Order
-            </Button>
-
-            {/* Button for New Invoice */}
-            <Button variant="outline-primary" className="me-3" onClick={onInvoiceOpen}>
-              <FaPlus className="me-2" /> New Invoice
-            </Button>
-
-            {/* Button for New Delivery Note */}
-            <Button variant="outline-primary" className="me-3" onClick={onDeliveryNoteOpen}>
-              <FaPlus className="me-2" /> New Delivery Note
-            </Button>
-
-            {/* User Dropdown Menu */}
-            <UserMenu onLogout={onLogout} />
-          </Nav>
-        </Navbar.Collapse>
-      </Container>
-
-      {/* SaleProcess Dialog */}
-      {showSaleProcess && (
-        <SaleProcess
-          onClose={handleCloseSaleProcess} // You can pass custom props like this
-        />
-      )}
-    </Navbar>
+    <div style={containerStyle}>
+      {steps.map((step, index) => (
+        <div
+          key={index}
+          style={index === activeStep ? activeStepStyle : stepStyle}
+        >
+          {step}
+        </div>
+      ))}
+    </div>
   );
 };
 
-// PropTypes validation for VenteNavbar
-VenteNavbar.propTypes = {
-  onOrderDialogOpen: PropTypes.func.isRequired,
-  onInvoiceOpen: PropTypes.func.isRequired,
-  onDeliveryNoteOpen: PropTypes.func.isRequired,
-  onLogout: PropTypes.func.isRequired,
+VenteProgressBar.propTypes = {
+  steps: PropTypes.arrayOf(PropTypes.string), // Les étapes doivent être un tableau de chaînes
+  activeStep: PropTypes.number, // L'étape active doit être un entier
 };
 
-export default VenteNavbar;
+export default VenteProgressBar;
