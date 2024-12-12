@@ -41,7 +41,7 @@ const InscriptionPage = () => {
 
   return (
     <DashboardLayout>
-      <DashboardNavbar />
+
       <Box sx={{ flexGrow: 1, padding: theme.spacing(4) }}>
         <Grid container justifyContent="center" style={{ minHeight: '100vh' }}>
           <Grid item xs={12} md={8}>

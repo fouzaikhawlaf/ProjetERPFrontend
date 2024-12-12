@@ -186,7 +186,7 @@ const routes = [
     noCollapse: true,
     //show: userRole === 'admin' || userRole === 'HR',  // يظهر كان لل-admin أو HR
   },
-  {
+  /* {
     type: "collapse",
     name: "Login",  // Changed from Sign In to Login
     key: "login",
@@ -195,7 +195,7 @@ const routes = [
     component: <SignIn />,  // Keep the component that handles login
     noCollapse: true,
     
-  },
+  }, */
   {
     type: "collapse",
     name: "Logout",  // Changed from Sign Up to Logout
