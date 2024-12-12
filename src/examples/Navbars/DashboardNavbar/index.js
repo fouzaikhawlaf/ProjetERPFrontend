@@ -153,7 +153,7 @@ function DashboardNavbar({ absolute, light, isMini }) {
                 icon={{ component: "search", direction: "left" }}
               />
             </SoftBox>
-            <SoftBox color={light ? "white" : "inherit"}>
+            {/* <SoftBox color={light ? "white" : "inherit"}>
               <Link to="/authentication/sign-in">
                 <IconButton sx={navbarIconButton} size="small">
                   <Icon
@@ -202,7 +202,7 @@ function DashboardNavbar({ absolute, light, isMini }) {
                 <Icon className={light ? "text-white" : "text-dark"}>notifications</Icon>
               </IconButton>
               {renderMenu()}
-            </SoftBox>
+            </SoftBox> */}
           </SoftBox>
         )}
       </Toolbar>

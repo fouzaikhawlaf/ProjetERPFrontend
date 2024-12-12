@@ -1,17 +1,3 @@
-/**
-=========================================================
-* Soft UI Dashboard React - v4.0.1
-=========================================================
-
-* Product Page: https://www.creative-tim.com/product/soft-ui-dashboard-react
-* Copyright 2023 Creative Tim (https://www.creative-tim.com)
-
-Coded by www.creative-tim.com
-
- =========================================================
-
-* The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-*/
 import React from 'react';
 import { useState, useEffect, useMemo } from "react";
 import { ChakraProvider } from '@chakra-ui/react';
@@ -101,37 +87,33 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css'; // Assurez-vous que les styles sont inclus
 import ProductListWrapper from './layouts/Product/components/ProductListWrapper'; // Your wrapper component
 import SignInPage from "./layouts/authentication/sign-up";
-
-
-
+import SignIn from "./layouts/authentication/sign-in";
 
 export default function App() {
   const [controller, dispatch] = useSoftUIController();
   const { miniSidenav, direction, layout, openConfigurator, sidenavColor } = controller;
   const [onMouseEnter, setOnMouseEnter] = useState(false);
   const [rtlCache, setRtlCache] = useState(null);
-  const { pathname } = useLocation();
-  const { t } = useTranslation(); // Hook for accessing translations
- // const allRoutes = routes();  // Ceci doit être un tableau
+  const { pathname } = useLocation();  // Get the current pathname
+  const { t } = useTranslation(); // Hook for translations
 
   useEffect(() => {
     const savedLanguage = localStorage.getItem('language');
     if (savedLanguage) {
-      i18n.changeLanguage(savedLanguage); // Apply saved language at app initialization
+      i18n.changeLanguage(savedLanguage); // Apply saved language
     }
   }, []);
 
-  // Cache for the rtl
+  // Cache for RTL
   useMemo(() => {
     const cacheRtl = createCache({
       key: "rtl",
       stylisPlugins: [rtlPlugin],
     });
-
     setRtlCache(cacheRtl);
   }, []);
 
-  // Open sidenav when mouse enter on mini sidenav
+  // Open sidenav when mouse enters mini sidenav
   const handleOnMouseEnter = () => {
     if (miniSidenav && !onMouseEnter) {
       setMiniSidenav(dispatch, false);
@@ -139,7 +121,7 @@ export default function App() {
     }
   };
 
-  // Close sidenav when mouse leave mini sidenav
+  // Close sidenav when mouse leaves mini sidenav
   const handleOnMouseLeave = () => {
     if (onMouseEnter) {
       setMiniSidenav(dispatch, true);
@@ -147,15 +129,15 @@ export default function App() {
     }
   };
 
-  // Change the openConfigurator state
+  // Handle the configuration settings open/close
   const handleConfiguratorOpen = () => setOpenConfigurator(dispatch, !openConfigurator);
 
-  // Setting the dir attribute for the body element
+  // Set the direction of the page for RTL or LTR
   useEffect(() => {
     document.body.setAttribute("dir", direction);
   }, [direction]);
 
-  // Setting page scroll to 0 when changing the route
+  // Scroll to top when the route changes
   useEffect(() => {
     document.documentElement.scrollTop = 0;
     document.scrollingElement.scrollTop = 0;
@@ -166,95 +148,65 @@ export default function App() {
       if (route.collapse) {
         return getRoutes(route.collapse);
       }
-
       if (route.route) {
-        return <Route exact path={route.route} element={route.component} key={route.key} />;
+        return <Route path={route.route} element={route.component} key={route.key} />;
       }
-
       return null;
     });
 
-  const configsButton = (
-    <SoftBox
-      display="flex"
-      justifyContent="center"
-      alignItems="center"
-      width="3.5rem"
-      height="3.5rem"
-      bgColor="white"
-      shadow="sm"
-      borderRadius="50%"
-      position="fixed"
-      right="2rem"
-      bottom="2rem"
-      zIndex={99}
-      color="dark"
-      sx={{ cursor: "pointer" }}
-      onClick={handleConfiguratorOpen}
-    >
-      <Icon fontSize="default" color="inherit">
-        settings
-      </Icon>
-    </SoftBox>
-  );
+  // Check if the current path is signin or sign-in
+  const showSidebar = !(pathname === "/signin" || pathname === "/authentication/sign-in");
 
   return direction === "rtl" ? (
-   
     <CacheProvider value={rtlCache}>
       <ThemeProvider theme={themeRTL}>
         <CssBaseline />
-        {layout === "dashboard" && (
+        {layout === "dashboard" && showSidebar && (
           <>
             <Sidenav
               color={sidenavColor}
-              brand={brand}
+              brand={logo}
               brandName="Soft UI Dashboard"
               routes={routes}
               onMouseEnter={handleOnMouseEnter}
               onMouseLeave={handleOnMouseLeave}
             />
-         
             <Configurator />
-            {configsButton}
+            {/* Your configsButton logic here */}
           </>
         )}
         {layout === "vr" && <Configurator />}
-   
-        <Sidebars routes={routes} /> {/* Render the Sidebar component here */}
-          <Routes>
-            {getRoutes(routes)}
-            <Route path="**" element={<Dashboard />} />
-     
-          </Routes>
-     
+        <Sidebars routes={routes} />
+        <Routes>
+          {getRoutes(routes)}
+          <Route path="*" element={<Dashboard />} />
+        </Routes>
       </ThemeProvider>
     </CacheProvider>
-  
   ) : (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      {layout === "dashboard" && (
+      {layout === "dashboard" && showSidebar && (
         <>
           <Sidenav
             color={sidenavColor}
-            brand={brand}
+            brand={logo}
             brandName="Soft UI Dashboard"
             routes={routes}
             onMouseEnter={handleOnMouseEnter}
             onMouseLeave={handleOnMouseLeave}
           />
           <Configurator />
-
-          {configsButton}
-          <ToastContainer />
+          {/* Your configsButton logic here */}
         </>
       )}
       {layout === "vr" && <Configurator />}
- 
-      <Sidebars routes={routes} />{/* Render the Sidebar component here */}
-        <Routes>
-          {getRoutes(routes)}
-          <Route path="/dashboard" element={<Dashboard />} />
+      <Sidebars routes={routes} />
+      <Routes>
+        {getRoutes(routes)}
+        <Route path="/signin" element={<SignInPage />} />
+        <Route path="/authentication/sign-in" element={<SignIn />} />
+        <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/AddsSortie" element={<AddsSortie />} />
         
           <Route path="/CommandeFournisseur" element={<CommandeFournisseur/>}/>
@@ -292,11 +244,8 @@ export default function App() {
         <Route path = "/SupplierForm" element ={<SupplierFormStepsDb/>}/>
         <Route path="/success" element={<SuccessPage/>} />
         <Route path="/products" element={<ProductListWrapper />} />
-        <Route path="/signin" element={<SignInPage />} />
-     </Routes>
+        
+      </Routes>
     </ThemeProvider>
-    
-   
-   );
-
+  );
 }
