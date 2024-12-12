@@ -206,7 +206,45 @@ export default function App() {
         {getRoutes(routes)}
         <Route path="/signin" element={<SignInPage />} />
         <Route path="/authentication/sign-in" element={<SignIn />} />
-        {/* Your other routes here */}
+        <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/AddsSortie" element={<AddsSortie />} />
+        
+          <Route path="/CommandeFournisseur" element={<CommandeFournisseur/>}/>
+          <Route path="/BonDeReceptions" element={<CreateBonDeReceptionDialog/>}/>
+          <Route path="/pdfVersionReception" element={<PdfBonDeReception/>}/>
+         
+          <Route path="/transaction" element={<Transaction />} />
+          <Route path="/Depense" element={<ExpenseDialog/>} />
+          <Route path="/lisEmplyee" element={<EmployeeList />} />
+       
+   
+       
+          <Route path ="addSale" element= {<AddSale/>} />
+          <Route path = "/workflow" element ={<WorkflowDashboard/>} />
+          <Route path="/commercial" component={CommercialDashboard} />
+          <Route path="/client-orders" element={<ClientOrders/>} />
+        <Route path="/rh" component={RhDashboard} />
+        <Route path="/employee" component={EmployeeDashboard} />
+        <Route path="/create-order" element={<CreateOrderForm />}/>
+        <Route path="/recptionTable" element={<ClientBonDeSortie />}/>
+        <Route path ="/dashboardBank" element = { <BankAccountDashboard/>} />
+        <Route path = "/accountinformation" element = { <AccountInformation/>} />
+        <Route path="/client-form-steps" element={<ClientFormSteps/>} />
+        <Route path="/supplier-form-steps" element={<SupplierFormSteps/>} />
+        <Route path="/product-form-steps" element={<ProductFormSteps/>} />
+        <Route path="/invoiceTable" element={<InvoiceTable/>} /> 
+        <Route path="/invoiceTable" element={<PurchaseOrdersTable/>} /> 
+        <Route path="/SupplierInvoicesTable" element={<SupplierInvoicesTable/>} />  
+        <Route path="/BonDeReceptionTable" element={<BonDeReceptionTable/>} />  
+        <Route path="/purchase-orders" element={<PurchaseOrdersPage />} />
+        <Route path="/bon-de-reception" element={<BonDeReceptionPage />} />
+        <Route path="/supplier-invoices" element={<SupplierInvoicesPage />} />
+        <Route path="/Client-step" element={< MultiStepForm/>}/>
+        <Route path = "/Produit" element ={<ProductFormStepsPD/>}/>
+        <Route path = "/SupplierForm" element ={<SupplierFormStepsDb/>}/>
+        <Route path="/success" element={<SuccessPage/>} />
+        <Route path="/products" element={<ProductListWrapper />} />
+        
       </Routes>
     </ThemeProvider>
   );
