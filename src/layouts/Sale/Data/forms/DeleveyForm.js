@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import PropTypes from 'prop-types';
+import PropTypes from 'prop-types'; // Import PropTypes
 import {
   Dialog, DialogActions, DialogContent, DialogTitle, Button, TextField, Paper, IconButton, Grid, Divider, Typography, Tooltip
 } from '@mui/material';
@@ -14,7 +14,7 @@ const Input = styled('input')({
   display: 'none',
 });
 
-const CreateOrderDialog = ({ open, handleClose }) => {
+const DeliveryForm = ({ open, handleClose }) => {
   const [client, setClient] = useState('');
   const [document, setDocument] = useState('');
   const [project, setProject] = useState('');
@@ -295,10 +295,6 @@ const CreateOrderDialog = ({ open, handleClose }) => {
   );
 };
 
-CreateOrderDialog.propTypes = {
-  open: PropTypes.bool.isRequired,
-  handleClose: PropTypes.func.isRequired,
-};
 
 const styles = {
   dialogTitle: {
@@ -330,5 +326,8 @@ const styles = {
     backgroundColor: '#f5f5f5',
   },
 };
-
-export default CreateOrderDialog;
+DeliveryForm.propTypes = {
+    open: PropTypes.bool.isRequired,    // Validate that 'open' is a boolean
+    handleClose: PropTypes.func.isRequired, // Validate that 'handleClose' is a function
+  };
+export default DeliveryForm;

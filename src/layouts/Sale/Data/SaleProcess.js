@@ -1,114 +1,74 @@
-// src/layouts/Sale/Data/SaleProcess.js
-import React, { useState } from 'react';
-import PropTypes from 'prop-types';
-import {
-  Dialog, DialogActions, DialogContent, DialogTitle, Button, Typography, Slide,
-} from '@mui/material';
-import ReceiptIcon from '@mui/icons-material/Receipt';
-import CreateOrderDialog from './CreateOrderForm'; // Import your existing dialog component
+import React, { useState } from "react";
+import { Steps } from "antd";
+import { SolutionOutlined, CarryOutOutlined, LoadingOutlined, FileDoneOutlined } from "@ant-design/icons";
+import DevisForm from "./forms/devisForm";
+import OrderForm from "./forms/devisForm";
+import DeliveryForm from "./forms/DeleveyForm";
+import FactureForm from "./forms/FactureForm";
 
-// Transition component for the Dialog (Slide from bottom)
-const Transition = React.forwardRef(function Transition(props, ref) {
-  return <Slide direction="up" ref={ref} {...props} />;
-});
+const SaleProcess = () => {
+  // State to keep track of the current step
+  const [current, setCurrent] = useState(0);
 
-const SaleProcess = ({ onClose }) => {
-  const [openDevis, setOpenDevis] = useState(false);
-  const [devisCompleted, setDevisCompleted] = useState(false);
-  const [commandeClientConfirmed, setCommandeClientConfirmed] = useState(false);
-  const [bonDeLivraisonConfirmed, setBonDeLivraisonConfirmed] = useState(false);
-  const [openInvoice, setOpenInvoice] = useState(false);
-
-  // Handlers for each dialog state
-  const handleOpenDevis = () => setOpenDevis(true);
-  const handleCloseDevis = () => setOpenDevis(false);
-  const handleCompleteDevis = () => {
-    setDevisCompleted(true);
-    handleCloseDevis();
+  // Handle form submission for the current step
+  const handleFormSubmit = () => {
+    next(); // Move to the next step on form submission
   };
 
-  const handleConfirmCommandeClient = () => {
-    setCommandeClientConfirmed(true);
+  // Function to get the appropriate form based on the current step
+  const getStepContent = (step) => {
+  
+    switch (step) {
+      case 0:
+        console.log("hello steps")
+        return <DevisForm onSubmit={handleFormSubmit} />;
+      case 1:
+        return <OrderForm onSubmit={handleFormSubmit} />;
+      case 2:
+        return <DeliveryForm onSubmit={handleFormSubmit} />;
+      case 3:
+        return <FactureForm onSubmit={handleFormSubmit} />;
+      default:
+        return <p>No content for this step.</p>;
+    }
   };
 
-  const handleConfirmBonDeLivraison = () => {
-    setBonDeLivraisonConfirmed(true);
+  // Function to go to the next step
+  const next = () => {
+    setCurrent((prev) => Math.min(prev + 1, 3)); // Prevent going beyond the last step
   };
 
-  const handleGenerateInvoice = () => {
-    setOpenInvoice(true);
-  };
-
-  const handleCloseInvoice = () => {
-    setOpenInvoice(false);
-  };
-
-  const handleConfirmInvoice = () => {
-    console.log('Invoice Confirmed');
-    handleCloseInvoice();
+  // Function to go to the previous step
+  const prev = () => {
+    setCurrent((prev) => Math.max(prev - 1, 0)); // Prevent going below the first step
   };
 
   return (
     <div>
-      {/* Step 1: Start with Devis */}
-      {!devisCompleted ? (
-        <Button variant="contained" color="primary" onClick={handleOpenDevis}>
-          New Sale (Start with Devis)
-        </Button>
-      ) : null}
+      {/* Step indicator */}
+      <Steps current={current}>
+        <Steps.Step title="Devis" icon={<SolutionOutlined />} />
+        <Steps.Step title="Order Client" icon={<CarryOutOutlined />} />
+        <Steps.Step title="Delivery" icon={<LoadingOutlined />} />
+        <Steps.Step title="Facture" icon={<FileDoneOutlined />} />
+      </Steps>
 
-      <CreateOrderDialog
-        open={openDevis}
-        handleClose={handleCloseDevis}
-        handleSubmit={handleCompleteDevis} // Pass submit handler
-      />
+      {/* Display the form for the current step using getStepContent */}
+      <div style={{ marginTop: 20 }}>
+        {getStepContent(current)}
+      </div>
 
-      {/* Step 2: Commande Client */}
-      {devisCompleted && !commandeClientConfirmed && (
-        <Button variant="contained" color="secondary" onClick={handleConfirmCommandeClient}>
-          Confirm Commande Client
-        </Button>
-      )}
-
-      {/* Step 3: Bon de Livraison */}
-      {commandeClientConfirmed && !bonDeLivraisonConfirmed && (
-        <Button variant="contained" color="success" onClick={handleConfirmBonDeLivraison}>
-          Create Bon de Livraison
-        </Button>
-      )}
-
-      {/* Step 4: Generate Invoice */}
-      {bonDeLivraisonConfirmed && (
-        <Button variant="contained" startIcon={<ReceiptIcon />} onClick={handleGenerateInvoice}>
-          Generate Invoice
-        </Button>
-      )}
-
-      {/* Invoice Dialog with Slide Transition */}
-      <Dialog
-        open={openInvoice}
-        TransitionComponent={Transition}  // Apply the Slide transition here
-        keepMounted
-        onClose={handleCloseInvoice}
-        aria-labelledby="invoice-dialog-title"
-      >
-        <DialogTitle id="invoice-dialog-title">Invoice Preview</DialogTitle>
-        <DialogContent>
-          <Typography>Preview the invoice details here.</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseInvoice}>Cancel</Button>
-          <Button onClick={handleConfirmInvoice} variant="contained">
-            Confirm Invoice
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* Navigation buttons */}
+      <div style={{ marginTop: 20 }}>
+        <button onClick={prev} disabled={current === 0}>
+          Previous
+        </button>
+        <button onClick={next} disabled={current === 3}>
+          Next
+        </button>
+      </div>
     </div>
   );
-};
-
-SaleProcess.propTypes = {
-  onClose: PropTypes.func.isRequired, // onClose prop to close the SaleProcess if passed from parent component
 };
 
 export default SaleProcess;

@@ -1,51 +1,41 @@
-import PropTypes from 'prop-types';
+import React from "react";
+import PropTypes from "prop-types";
+import { Navbar, Nav, Button } from "react-bootstrap";
+import { FaShoppingCart, FaFileInvoice, FaTruck, FaChartLine } from "react-icons/fa";
+import { Link } from "react-router-dom"; // Import Link for routing
 
-const VenteProgressBar = ({ steps = [], activeStep = 0 }) => {
-  if (!Array.isArray(steps) || steps.length === 0) {
-    return <p>No steps defined</p>; // Affiche un message si steps est vide ou invalide
-  }
-
-  const containerStyle = {
-    display: 'flex',
-    justifyContent: 'space-between',
-    margin: '20px 0',
-  };
-
-  const stepStyle = {
-    flex: 1,
-    padding: '10px',
-    textAlign: 'center',
-    backgroundColor: '#f0f0f0',
-    border: '1px solid #ccc',
-    borderRadius: '5px',
-    marginRight: '10px',
-    transition: 'background-color 0.3s ease, color 0.3s ease',
-  };
-
-  const activeStepStyle = {
-    ...stepStyle,
-    backgroundColor: '#007bff',
-    color: '#fff',
-    fontWeight: 'bold',
-  };
-
+const VenteNavbar = ({ onNewSale }) => {
   return (
-    <div style={containerStyle}>
-      {steps.map((step, index) => (
-        <div
-          key={index}
-          style={index === activeStep ? activeStepStyle : stepStyle}
-        >
-          {step}
-        </div>
-      ))}
-    </div>
+    <Navbar bg="dark" variant="dark" expand="lg" className="mb-4 shadow-sm">
+      <Navbar.Brand href="#" className="fw-bold">
+        <FaChartLine className="me-2" /> Sales Dashboard
+      </Navbar.Brand>
+      <Navbar.Toggle aria-controls="basic-navbar-nav" />
+      <Navbar.Collapse id="basic-navbar-nav">
+        <Nav className="me-auto">
+          <Nav.Link as={Link} to="/orders" className="text-light">
+            <FaShoppingCart className="me-2" /> Orders
+          </Nav.Link>
+          <Nav.Link as={Link} to="/devis" className="text-light">
+            <FaFileInvoice className="me-2" /> Devis
+          </Nav.Link>
+          <Nav.Link as={Link} to="/deliveries" className="text-light">
+            <FaTruck className="me-2" /> Deliveries
+          </Nav.Link>
+          <Nav.Link as={Link} to="/factures" className="text-light">
+            <FaFileInvoice className="me-2" /> Factures
+          </Nav.Link>
+        </Nav>
+        <Button variant="outline-light" onClick={onNewSale} className="fw-bold">
+          + New Sale
+        </Button>
+      </Navbar.Collapse>
+    </Navbar>
   );
 };
 
-VenteProgressBar.propTypes = {
-  steps: PropTypes.arrayOf(PropTypes.string), // Les étapes doivent être un tableau de chaînes
-  activeStep: PropTypes.number, // L'étape active doit être un entier
+VenteNavbar.propTypes = {
+  onNewSale: PropTypes.func.isRequired, // Function to handle "New Sale"
 };
 
-export default VenteProgressBar;
+export default VenteNavbar;

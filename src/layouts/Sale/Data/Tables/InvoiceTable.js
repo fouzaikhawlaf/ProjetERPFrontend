@@ -1,10 +1,9 @@
-// src/InvoiceTable.js
-
 import React, { useState } from 'react';
-import { Table, Badge, Button, Modal, Form } from 'react-bootstrap';
+import { Table, Badge, Button, Modal, Form, Tooltip, OverlayTrigger } from 'react-bootstrap';
 import { FaPrint, FaTrashAlt, FaEdit } from 'react-icons/fa';
-import DashboardLayout from '../../../examples/LayoutContainers/DashboardLayout';
-
+import DashboardLayout from '../../../../examples/LayoutContainers/DashboardLayout';
+import StatusFilters from './StatusFilter';
+import './InvoiceTable.css'; // Assuming custom styles are in this file
 
 const InvoiceTable = () => {
   const initialInvoices = [
@@ -20,20 +19,17 @@ const InvoiceTable = () => {
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [activeFilter, setActiveFilter] = useState("Tous");
+  const [showAddForm, setShowAddForm] = useState(false);
 
   const renderStatusBadge = (status) => {
-    switch (status) {
-      case 'Paid':
-        return <Badge bg="success">Paid</Badge>;
-      case 'Pending':
-        return <Badge bg="warning">Pending</Badge>;
-      case 'Overdue':
-        return <Badge bg="danger">Overdue</Badge>;
-      case 'Due By 1 Day':
-        return <Badge bg="info">Due By 1 Day</Badge>;
-      default:
-        return <Badge bg="secondary">{status}</Badge>;
-    }
+    const statusColors = {
+      'Paid': 'success',
+      'Pending': 'warning',
+      'Overdue': 'danger',
+      'Due By 1 Day': 'info',
+    };
+    return <Badge bg={statusColors[status] || 'secondary'}>{status}</Badge>;
   };
 
   const handleEdit = (invoice) => {
@@ -61,10 +57,24 @@ const InvoiceTable = () => {
     setShowModal(false);
   };
 
+  const handleFilterClick = (filter) => {
+    setActiveFilter(filter);
+  };
+
+  const handleCreateClick = () => {
+    setShowAddForm(true);
+  };
+
   return (
     <DashboardLayout>
       <div className="container mt-4">
-        <Button className="mb-3" variant="primary">Create Invoice</Button>
+        <h2 className="text-center mb-4">Factures</h2>
+        <StatusFilters
+          activeFilter={activeFilter}
+          handleFilterClick={handleFilterClick}
+          handleCreateClick={handleCreateClick}
+          showAddForm={showAddForm}
+        />
         <Table striped bordered hover responsive className="shadow-sm">
           <thead className="bg-light">
             <tr>
@@ -82,10 +92,10 @@ const InvoiceTable = () => {
               <tr key={index} className="align-middle">
                 <td>
                   <div className="d-flex align-items-center">
-                    <img src={`https://i.pravatar.cc/30?img=${index}`} alt="avatar" className="rounded-circle me-2" />
+                    <img src={`https://i.pravatar.cc/40?img=${index}`} alt="avatar" className="rounded-circle me-2" />
                     <div>
-                      <div>{invoice.client}</div>
-                      <small className="text-muted">{invoice.email}</small>
+                      <strong>{invoice.client}</strong>
+                      <small className="text-muted d-block">{invoice.email}</small>
                     </div>
                   </div>
                 </td>
@@ -96,15 +106,21 @@ const InvoiceTable = () => {
                 <td>{invoice.dueDate}</td>
                 <td>
                   <div className="d-flex">
-                    <Button variant="outline-primary" size="sm" className="me-2">
-                      <FaPrint />
-                    </Button>
-                    <Button variant="outline-success" size="sm" className="me-2" onClick={() => handleEdit(invoice)}>
-                      <FaEdit />
-                    </Button>
-                    <Button variant="outline-danger" size="sm" onClick={() => handleDelete(invoice)}>
-                      <FaTrashAlt />
-                    </Button>
+                    <OverlayTrigger placement="top" overlay={<Tooltip>Print</Tooltip>}>
+                      <Button variant="outline-primary" size="sm" className="me-2">
+                        <FaPrint />
+                      </Button>
+                    </OverlayTrigger>
+                    <OverlayTrigger placement="top" overlay={<Tooltip>Edit</Tooltip>}>
+                      <Button variant="outline-success" size="sm" className="me-2" onClick={() => handleEdit(invoice)}>
+                        <FaEdit />
+                      </Button>
+                    </OverlayTrigger>
+                    <OverlayTrigger placement="top" overlay={<Tooltip>Delete</Tooltip>}>
+                      <Button variant="outline-danger" size="sm" onClick={() => handleDelete(invoice)}>
+                        <FaTrashAlt />
+                      </Button>
+                    </OverlayTrigger>
                   </div>
                 </td>
               </tr>
@@ -154,13 +170,14 @@ const InvoiceTable = () => {
           </Modal.Footer>
         </Modal>
 
-        {/* Delete Confirmation Modal */}
+        {/* Delete Invoice Modal */}
         <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
           <Modal.Header closeButton>
-            <Modal.Title>Confirm Delete</Modal.Title>
+            <Modal.Title>Delete Invoice</Modal.Title>
           </Modal.Header>
           <Modal.Body>
-            Are you sure you want to delete invoice {selectedInvoice?.invoiceId} for {selectedInvoice?.client}?
+            <p>Are you sure you want to delete this invoice?</p>
+            <p><strong>{selectedInvoice?.invoiceId}</strong> - {selectedInvoice?.client}</p>
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
@@ -171,6 +188,48 @@ const InvoiceTable = () => {
             </Button>
           </Modal.Footer>
         </Modal>
+
+        {/* Add Invoice Form */}
+        {showAddForm && (
+          <Modal show={showAddForm} onHide={() => setShowAddForm(false)}>
+            <Modal.Header closeButton>
+              <Modal.Title>Create New Invoice</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              <Form>
+                <Form.Group className="mb-3">
+                  <Form.Label>Client</Form.Label>
+                  <Form.Control type="text" name="client" placeholder="Enter client name" />
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>Amount</Form.Label>
+                  <Form.Control type="text" name="amount" placeholder="Enter amount" />
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>Status</Form.Label>
+                  <Form.Select name="status">
+                    <option value="Paid">Paid</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Overdue">Overdue</option>
+                    <option value="Due By 1 Day">Due By 1 Day</option>
+                  </Form.Select>
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>Due Date</Form.Label>
+                  <Form.Control type="text" name="dueDate" placeholder="Enter due date" />
+                </Form.Group>
+              </Form>
+            </Modal.Body>
+            <Modal.Footer>
+              <Button variant="secondary" onClick={() => setShowAddForm(false)}>
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={() => setShowAddForm(false)}>
+                Save Invoice
+              </Button>
+            </Modal.Footer>
+          </Modal>
+        )}
       </div>
     </DashboardLayout>
   );

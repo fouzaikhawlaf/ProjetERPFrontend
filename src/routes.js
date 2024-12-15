@@ -182,7 +182,7 @@ const routes = [
     key: "profile",
     route: "/profile",
     icon: <CustomerSupport size="12px" />,
-    component: <RolesDashboard />,
+    component: <ProfileDashboard />,
     noCollapse: true,
     //show: userRole === 'admin' || userRole === 'HR',  // يظهر كان لل-admin أو HR
   },
@@ -222,7 +222,7 @@ const routes = [
     key: "admin-dashboard",
     route: "/admin-dashboard",
     icon: <Settings size="12px" />,
-    component: <ProfileDashboard />,
+    component: <AdminProfilePage />,
     noCollapse: true,
     
   }
