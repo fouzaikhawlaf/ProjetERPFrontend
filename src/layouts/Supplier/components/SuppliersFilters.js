@@ -1,23 +1,32 @@
-import React from 'react';
+import React , { useState } from "react";
 import Card from '@mui/material/Card';
 import InputAdornment from '@mui/material/InputAdornment';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import { MagnifyingGlass as MagnifyingGlassIcon } from '@phosphor-icons/react';
+import StatusFilters from "layouts/tables/components/SatutFilter";
 
-export function SuppliersFilters() {
+export function SuppliersFilters(){
+  const [activeFilter, setActiveFilter] = useState("Tous");
+  const [showAddForm, setShowAddForm] = useState(false);
+
+
+  const handleFilterClick = (filter) => {
+    setActiveFilter(filter);
+    console.log(`Filter clicked: ${filter}`);
+  };
+  
+  const handleCreateClick = () => {
+    setShowAddForm(true);
+    console.log("Create button clicked");
+  };
   return (
     <Card sx={{ p: 2 }}>
-      <OutlinedInput
-        defaultValue=""
-        fullWidth
-        placeholder="Search customer"
-        startAdornment={
-          <InputAdornment position="start">
-            <MagnifyingGlassIcon fontSize="var(--icon-fontSize-md)" />
-          </InputAdornment>
-        }
-        sx={{ maxWidth: '500px' }}
-      />
+    <StatusFilters
+    activeFilter={activeFilter}
+    handleFilterClick={handleFilterClick}
+    handleCreateClick={handleCreateClick}
+    showAddForm={showAddForm}
+  />
     </Card>
   );
-}
+  }

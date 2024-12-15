@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import {
-  Dialog, DialogActions, DialogContent, DialogTitle, Button, TextField, Paper, IconButton, Grid, Divider, Typography, Tooltip
+  Button, TextField, Paper, IconButton, Grid, Divider, Typography, Tooltip
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -14,17 +14,13 @@ const Input = styled('input')({
   display: 'none',
 });
 
-const FactureForm = ({ open, handleClose }) => {
+const FactureForm = ({ handleSubmit }) => {
   const [client, setClient] = useState('');
   const [document, setDocument] = useState('');
   const [project, setProject] = useState('');
   const [note, setNote] = useState('');
-  const [image, setImage] = useState(null); // Image upload state
-  const [items, setItems] = useState([
-    { designation: '', quantity: 0, priceHT: 0.00, vat: 0.00, totalHT: 0.00 },
-  ]);
-
-  const [showConfirmOverlay, setShowConfirmOverlay] = useState(false);
+  const [image, setImage] = useState(null);
+  const [items, setItems] = useState([{ designation: '', quantity: 0, priceHT: 0.00, vat: 0.00, totalHT: 0.00 }]);
 
   const handleAddItem = () => {
     setItems([...items, { designation: '', quantity: 0, priceHT: 0.00, vat: 0.00, totalHT: 0.00 }]);
@@ -43,6 +39,12 @@ const FactureForm = ({ open, handleClose }) => {
     setItems(newItems);
   };
 
+  const handleImageChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setImage(URL.createObjectURL(e.target.files[0]));
+    }
+  };
+
   const calculateTotalHT = () => {
     return items.reduce((total, item) => total + item.totalHT, 0).toFixed(2);
   };
@@ -51,76 +53,51 @@ const FactureForm = ({ open, handleClose }) => {
     return items.reduce((total, item) => total + (item.totalHT * (item.vat / 100)), 0).toFixed(2);
   };
 
-  const handleImageChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setImage(URL.createObjectURL(e.target.files[0]));
-    }
-  };
-
-  const handleSubmit = () => {
-    console.log({ client, document, project, note, items, image });
-    handleClose();
-  };
-
-  const handleApproveClick = () => {
-    setShowConfirmOverlay(true);
-  };
-
-  const handleConfirmApprove = () => {
-    console.log("Order approved");
-    setShowConfirmOverlay(false);
-    handleSubmit();
-  };
-
-  const handleCancelApprove = () => {
-    setShowConfirmOverlay(false);
-  };
-
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="xl" fullWidth>
-      <DialogTitle style={styles.dialogTitle}>Nouvelle commande</DialogTitle>
-      <DialogContent>
-        <Grid container spacing={3} style={{ marginBottom: '20px' }}>
-          {/* Client and Document Info */}
+    <Paper elevation={3} style={{ padding: '20px', margin: '20px auto', maxWidth: '1200px' }}>
+      <Typography variant="h5" gutterBottom>Nouvelle Commande</Typography>
+      <Divider style={{ marginBottom: '20px' }} />
+
+      <form onSubmit={(e) => {
+        e.preventDefault();
+        handleSubmit({ client, document, project, note, items, image });
+      }}>
+        {/* Client & Document Inputs */}
+        <Grid container spacing={3}>
           <Grid item xs={12} md={6}>
             <TextField
-              margin="dense"
               label="Client"
               type="text"
               fullWidth
               value={client}
               onChange={(e) => setClient(e.target.value)}
               variant="outlined"
-              style={styles.inputField}
+              required
             />
           </Grid>
           <Grid item xs={12} md={6}>
             <TextField
-              margin="dense"
               label="Document"
               type="text"
               fullWidth
               value={document}
               onChange={(e) => setDocument(e.target.value)}
               variant="outlined"
-              style={styles.inputField}
+              required
             />
           </Grid>
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12}>
             <TextField
-              margin="dense"
               label="Projet"
               type="text"
               fullWidth
               value={project}
               onChange={(e) => setProject(e.target.value)}
               variant="outlined"
-              style={styles.inputField}
             />
           </Grid>
           <Grid item xs={12}>
             <TextField
-              margin="dense"
               label="Note"
               multiline
               rows={3}
@@ -128,13 +105,12 @@ const FactureForm = ({ open, handleClose }) => {
               value={note}
               onChange={(e) => setNote(e.target.value)}
               variant="outlined"
-              style={styles.inputField}
             />
           </Grid>
         </Grid>
 
-        {/* Action Buttons */}
-        <Grid container spacing={2} style={{ marginBottom: '20px' }}>
+        {/* Buttons */}
+        <Grid container spacing={2} style={{ marginTop: '20px' }}>
           <Grid item>
             <label htmlFor="icon-button-file">
               <Input accept="image/*" id="icon-button-file" type="file" onChange={handleImageChange} />
@@ -146,189 +122,107 @@ const FactureForm = ({ open, handleClose }) => {
             </label>
           </Grid>
           <Grid item>
-            <Button
-              startIcon={<SubtotalIcon />}
-              variant="contained"
-              style={styles.actionButton}
-            >
+            <Button startIcon={<SubtotalIcon />} variant="contained">
               Ajouter un sous-total
             </Button>
           </Grid>
           <Grid item>
-            <Button
-              startIcon={<AddIcon />}
-              onClick={handleAddItem}
-              variant="contained"
-              style={styles.actionButton}
-            >
+            <Button startIcon={<AddIcon />} onClick={handleAddItem} variant="contained">
               Ajouter un article
             </Button>
           </Grid>
         </Grid>
 
-        {/* Uploaded Image Preview */}
+        {/* Uploaded Image */}
         {image && (
-          <Paper elevation={3} style={styles.imagePreview}>
-            <img src={image} alt="Uploaded" style={{ width: '100%', height: 'auto' }} />
+          <Paper elevation={3} style={{ marginTop: '20px', padding: '10px' }}>
+            <img src={image} alt="Preview" style={{ width: '100%' }} />
           </Paper>
         )}
 
-        {/* Refactored Table */}
-        <div style={{ ...styles.tableContainer, overflowX: 'hidden' }}>
-          <table style={styles.table}>
-            <thead style={styles.tableHeader}>
-              <tr>
-                <th style={{ width: '20%' }} align="left">Désignation</th>
-                <th style={{ width: '15%' }} align="left">Quantité</th>
-                <th style={{ width: '15%' }} align="left">Prix HT</th>
-                <th style={{ width: '15%' }} align="left">TVA</th>
-                <th style={{ width: '20%' }} align="left">Total HT</th>
-                <th style={{ width: '15%' }} align="left">Action</th>
+        {/* Items Table */}
+        <table style={{ width: '100%', marginTop: '20px', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th>Désignation</th>
+              <th>Quantité</th>
+              <th>Prix HT</th>
+              <th>TVA</th>
+              <th>Total HT</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item, index) => (
+              <tr key={index}>
+                <td>
+                  <TextField
+                    value={item.designation}
+                    onChange={(e) => handleItemChange(index, 'designation', e.target.value)}
+                    variant="outlined"
+                  />
+                </td>
+                <td>
+                  <TextField
+                    type="number"
+                    value={item.quantity}
+                    onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value))}
+                    variant="outlined"
+                  />
+                </td>
+                <td>
+                  <TextField
+                    type="number"
+                    value={item.priceHT}
+                    onChange={(e) => handleItemChange(index, 'priceHT', parseFloat(e.target.value))}
+                    variant="outlined"
+                  />
+                </td>
+                <td>
+                  <TextField
+                    type="number"
+                    value={item.vat}
+                    onChange={(e) => handleItemChange(index, 'vat', parseFloat(e.target.value))}
+                    variant="outlined"
+                  />
+                </td>
+                <td>
+                  <Typography>{item.totalHT.toFixed(2)} TND</Typography>
+                </td>
+                <td>
+                  <IconButton onClick={() => handleDeleteItem(index)} color="error">
+                    <DeleteIcon />
+                  </IconButton>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {items.map((item, index) => (
-                <tr key={index}>
-                  <td style={{ width: '20%' }}>
-                    <TextField
-                      value={item.designation}
-                      onChange={(e) => handleItemChange(index, 'designation', e.target.value)}
-                      variant="outlined"
-                      fullWidth
-                    />
-                  </td>
-                  <td style={{ width: '15%' }}>
-                    <TextField
-                      type="number"
-                      value={item.quantity}
-                      onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value))}
-                      variant="outlined"
-                      fullWidth
-                    />
-                  </td>
-                  <td style={{ width: '15%' }}>
-                    <TextField
-                      type="number"
-                      value={item.priceHT}
-                      onChange={(e) => handleItemChange(index, 'priceHT', parseFloat(e.target.value))}
-                      variant="outlined"
-                      fullWidth
-                    />
-                  </td>
-                  <td style={{ width: '15%' }}>
-                    <TextField
-                      type="number"
-                      value={item.vat}
-                      onChange={(e) => handleItemChange(index, 'vat', parseFloat(e.target.value))}
-                      variant="outlined"
-                      fullWidth
-                    />
-                  </td>
-                  <td style={{ width: '20%' }}>
-                    <Typography variant="body2">
-                      {item.totalHT.toFixed(2)} TND
-                    </Typography>
-                  </td>
-                  <td style={{ width: '15%' }}>
-                    <IconButton onClick={() => handleDeleteItem(index)} style={styles.deleteIcon}>
-                      <DeleteIcon />
-                    </IconButton>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
 
-        <Divider style={{ marginTop: '20px' }} />
-        <Typography variant="h6" style={{ marginTop: '10px' }}>Résumé</Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={6}>
-            <Typography>Total HT: {calculateTotalHT()} TND</Typography>
-          </Grid>
-          <Grid item xs={6}>
-            <Typography>Total TVA: {calculateTotalVAT()} TND</Typography>
-          </Grid>
-          <Grid item xs={6}>
-            <Typography>Total TTC: {(parseFloat(calculateTotalHT()) + parseFloat(calculateTotalVAT())).toFixed(2)} TND</Typography>
-          </Grid>
-          <Grid item xs={6}>
-            <Typography>Timbre fiscal: 1.000 TND</Typography>
-          </Grid>
-          <Grid item xs={6}>
-            <Typography>Net à payer: {(parseFloat(calculateTotalHT()) + parseFloat(calculateTotalVAT()) + 1).toFixed(2)} TND</Typography>
-          </Grid>
-        </Grid>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClose} color="primary">
-          Annuler
-        </Button>
+        {/* Summary */}
+        <Divider style={{ marginTop: '20px', marginBottom: '10px' }} />
+        <Typography>Total HT: {calculateTotalHT()} TND</Typography>
+        <Typography>Total TVA: {calculateTotalVAT()} TND</Typography>
+        <Typography>Total TTC: {(parseFloat(calculateTotalHT()) + parseFloat(calculateTotalVAT())).toFixed(2)} TND</Typography>
+        <Typography>Net à payer: {(parseFloat(calculateTotalHT()) + parseFloat(calculateTotalVAT()) + 1).toFixed(2)} TND</Typography>
+
+        {/* Submit Button */}
         <Button
-          onClick={handleApproveClick}
-          color="primary"
+          type="submit"
           variant="contained"
+          color="primary"
           startIcon={<ApproveIcon />}
+          style={{ marginTop: '20px' }}
         >
-          Approuver
+          Soumettre
         </Button>
-      </DialogActions>
-
-      {/* Confirmation Overlay */}
-      {showConfirmOverlay && (
-        <Dialog open={showConfirmOverlay} onClose={() => setShowConfirmOverlay(false)}>
-          <DialogTitle>Confirmer approbation</DialogTitle>
-          <DialogContent>
-            <Typography>Êtes-vous sûr de vouloir approuver cette commande ?</Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCancelApprove} color="primary">
-              Annuler
-            </Button>
-            <Button onClick={handleConfirmApprove} color="primary" variant="contained">
-              Confirmer
-            </Button>
-          </DialogActions>
-        </Dialog>
-      )}
-    </Dialog>
+      </form>
+    </Paper>
   );
 };
 
 FactureForm.propTypes = {
-    open: PropTypes.bool.isRequired, // 'open' should be a boolean and is required
-    handleClose: PropTypes.func.isRequired, // 'handleClose' should be a function and is required
-  }
-
-const styles = {
-  dialogTitle: {
-    backgroundColor: '#f5f5f5',
-  },
-  inputField: {
-    marginBottom: '10px',
-  },
-  actionButton: {
-    margin: '5px',
-  },
-  tableContainer: {
-    marginTop: '20px',
-  },
-  tableHeader: {
-    backgroundColor: '#f5f5f5',
-  },
-  table: {
-    width: '100%',
-    marginTop: '10px',
-    borderCollapse: 'collapse',
-  },
-  deleteIcon: {
-    color: 'red',
-  },
-  imagePreview: {
-    marginTop: '20px',
-    padding: '10px',
-    backgroundColor: '#f5f5f5',
-  },
+  handleSubmit: PropTypes.func.isRequired,
 };
 
 export default FactureForm;
