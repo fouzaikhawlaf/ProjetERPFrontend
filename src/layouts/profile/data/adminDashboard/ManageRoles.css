@@ -1,0 +1,19 @@
+/* Custom styles for ManageRoles */
+.table th,
+.table td {
+  vertical-align: middle;
+  text-align: center;
+}
+
+.table th {
+  font-weight: bold;
+}
+
+.btn i {
+  pointer-events: none;
+}
+
+.btn-outline-primary i,
+.btn-outline-danger i {
+  font-size: 1.1rem;
+}

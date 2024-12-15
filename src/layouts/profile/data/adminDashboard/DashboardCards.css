@@ -1,0 +1,38 @@
+/* DashboardCards.css */
+
+/* Styles des cartes */
+.dashboard-card {
+    border: none;
+    border-radius: 10px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    background-color: #ffffff;
+  }
+  
+  .dashboard-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  }
+  
+  .dashboard-card .icon-container {
+    color: #4a90e2;
+    background: #f4f7ff;
+    border-radius: 50%;
+    padding: 15px;
+    display: inline-block;
+  }
+  
+  .dashboard-card i {
+    color: #4a90e2;
+  }
+  
+  .dashboard-card .text-muted {
+    font-size: 0.9rem;
+  }
+  
+  /* Ajustement global pour le conteneur */
+  .container-fluid {
+    background-color: #f8f9fc;
+    padding: 30px;
+    border-radius: 10px;
+  }
+  

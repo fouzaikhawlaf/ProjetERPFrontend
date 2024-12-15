@@ -91,6 +91,10 @@ import SignIn from "./layouts/authentication/sign-in";
 import OrdersTable from 'layouts/Sale/Data/Tables/OrdersTable';
 import DevisTable from 'layouts/Sale/Data/Tables/DevisTable';
 import DeliveriesTable from 'layouts/Sale/Data/Tables/DeliveriesTable';
+import DashboardCards from 'layouts/profile/data/adminDashboard/DashboardCards';
+import RoleManagement from 'layouts/profile/data/adminDashboard/RoleManagement ';
+import UserManagement from 'layouts/profile/data/adminDashboard/UserManagement';
+import ProjectDashboard from 'layouts/Projects/components/ProjectDashboard';
 
 export default function App() {
   const [controller, dispatch] = useSoftUIController();
@@ -252,6 +256,10 @@ export default function App() {
         <Route path="/devis" element={<DevisTable />} />
         <Route path="/deliveries" element={<DeliveriesTable />} />
         <Route path="/factures" element={<InvoiceTable />} />
+        <Route path="/admin-card" element={<DashboardCards />} />
+        <Route path="/role-management" element={<RoleManagement />} />
+        <Route path="/user-management" element={<UserManagement />} />
+        <Route path="/ProjectManagment" element={<ProjectDashboard />} />
       </Routes>
     </ThemeProvider>
   );

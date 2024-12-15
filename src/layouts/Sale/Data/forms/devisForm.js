@@ -120,58 +120,74 @@ const DevisForm = ({ handleSubmit }) => {
       )}
 
       {/* Items Table */}
-      <Table sx={{ mt: 2 }}>
-        <TableHead>
-          <TableRow>
-            <TableCell>Désignation</TableCell>
-            <TableCell>Quantité</TableCell>
-            <TableCell>Prix HT</TableCell>
-            <TableCell>TVA</TableCell>
-            <TableCell>Total HT</TableCell>
-            <TableCell>Action</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {items.map((item, index) => (
-            <TableRow key={index}>
-              <TableCell>
-                <TextField
-                  value={item.designation}
-                  onChange={(e) => handleItemChange(index, 'designation', e.target.value)}
-                  fullWidth
-                />
-              </TableCell>
-              <TableCell>
-                <TextField
-                  type="number"
-                  value={item.quantity}
-                  onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value))}
-                />
-              </TableCell>
-              <TableCell>
-                <TextField
-                  type="number"
-                  value={item.priceHT}
-                  onChange={(e) => handleItemChange(index, 'priceHT', parseFloat(e.target.value))}
-                />
-              </TableCell>
-              <TableCell>
-                <TextField
-                  type="number"
-                  value={item.vat}
-                  onChange={(e) => handleItemChange(index, 'vat', parseFloat(e.target.value))}
-                />
-              </TableCell>
-              <TableCell>{item.totalHT.toFixed(2)} TND</TableCell>
-              <TableCell>
-                <IconButton onClick={() => handleDeleteItem(index)} color="error">
-                  <DeleteIcon />
-                </IconButton>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+<table className="table mt-2">
+  <thead>
+    <tr>
+      <th scope="col">Désignation</th>
+      <th scope="col">Quantité</th>
+      <th scope="col">Prix HT</th>
+      <th scope="col">TVA</th>
+      <th scope="col">Total HT</th>
+      <th scope="col">Action</th>
+    </tr>
+  </thead>
+  <tbody>
+    {items.map((item, index) => (
+      <tr key={index}>
+        <td>
+          <input
+            type="text"
+            className="form-control"
+            value={item.designation}
+            onChange={(e) =>
+              handleItemChange(index, "designation", e.target.value)
+            }
+          />
+        </td>
+        <td>
+          <input
+            type="number"
+            className="form-control"
+            value={item.quantity}
+            onChange={(e) =>
+              handleItemChange(index, "quantity", parseFloat(e.target.value))
+            }
+          />
+        </td>
+        <td>
+          <input
+            type="number"
+            className="form-control"
+            value={item.priceHT}
+            onChange={(e) =>
+              handleItemChange(index, "priceHT", parseFloat(e.target.value))
+            }
+          />
+        </td>
+        <td>
+          <input
+            type="number"
+            className="form-control"
+            value={item.vat}
+            onChange={(e) =>
+              handleItemChange(index, "vat", parseFloat(e.target.value))
+            }
+          />
+        </td>
+        <td>{item.totalHT.toFixed(2)} TND</td>
+        <td>
+          <button
+            className="btn btn-danger"
+            onClick={() => handleDeleteItem(index)}
+          >
+            <i className="fa fa-trash"></i>
+          </button>
+        </td>
+      </tr>
+    ))}
+  </tbody>
+</table>
+
 
       {/* Totals */}
       <Divider sx={{ my: 2 }} />
