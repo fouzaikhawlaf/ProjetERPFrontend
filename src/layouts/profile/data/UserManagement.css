@@ -1,0 +1,44 @@
+/* UserManagement.css */
+
+/* Style pour les cartes et titres */
+.card-title {
+    font-weight: bold;
+    color: #344767;
+  }
+  
+  .table th {
+    background-color: #344767;
+    color: white;
+    text-transform: uppercase;
+  }
+  
+  .table td {
+    vertical-align: middle;
+  }
+  
+  .table-hover tbody tr:hover {
+    background-color: #f0f2f5;
+  }
+  
+  /* Boutons d'action */
+  .btn-outline-warning,
+  .btn-outline-danger {
+    transition: all 0.3s ease;
+  }
+  
+  .btn-outline-warning:hover {
+    background-color: #ffc107;
+    color: white;
+  }
+  
+  .btn-outline-danger:hover {
+    background-color: #dc3545;
+    color: white;
+  }
+  
+  /* Modale */
+  .modal-title {
+    color: #344767;
+    font-weight: bold;
+  }
+  

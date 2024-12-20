@@ -62,7 +62,7 @@ import WorkflowDashboard from "./layouts/Workflow/data/index.js";
 import CommercialDashboard from "./layouts/profile/components/CommercialDashboard";
 import RhDashboard from "./layouts/profile/components/rh";
 import EmployeeDashboard from "./layouts/profile/components/employer";
-import CreateOrderForm from "./layouts/Sale/Data/CreateOrderForm";
+import CreateOrderForm from "./layouts/Sale/Data/forms/OrderForm";
 import ClientOrders from "./layouts/Sale/Data/ClientOrders";
 import ClientBonDeSortie from "./layouts/Sale/Data/ClientBonDeSortie";
 import BankAccountDashboard from "./layouts/billing/components/BankAccountDashboard";
@@ -72,7 +72,7 @@ import ClientFormSteps from "./layouts/tables/components/ClientFormSteps";
 import SupplierFormSteps from "./layouts/Supplier/components/SupplierFormSteps";
 import ProductFormSteps from "./layouts/Product/components/ProductFormSteps";
 import VenteDashboard from "./layouts/Sale/Data/VenteDashboard";
-import InvoiceTable from "./layouts/Sale/Data/InvoiceTable";
+import InvoiceTable from "./layouts/Sale/Data/Tables/InvoiceTable";
 import PurchaseOrdersTable from "./layouts/Achat/componants/PurchaseOrdersTable";
 import BonDeReceptionTable from "./layouts/Achat/componants/BonDeReceptionTable";
 import SupplierInvoicesTable from "./layouts/Achat/componants/SupplierInvoicesTable";
@@ -88,6 +88,15 @@ import 'react-toastify/dist/ReactToastify.css'; // Assurez-vous que les styles s
 import ProductListWrapper from './layouts/Product/components/ProductListWrapper'; // Your wrapper component
 import SignInPage from "./layouts/authentication/sign-up";
 import SignIn from "./layouts/authentication/sign-in";
+import OrdersTable from 'layouts/Sale/Data/Tables/OrdersTable';
+import DevisTable from 'layouts/Sale/Data/Tables/DevisTable';
+import DeliveriesTable from 'layouts/Sale/Data/Tables/DeliveriesTable';
+import DashboardCards from 'layouts/profile/data/adminDashboard/DashboardCards';
+import RoleManagement from 'layouts/profile/data/adminDashboard/RoleManagement ';
+import UserManagement from 'layouts/profile/data/adminDashboard/UserManagement';
+import ProjectDashboard from 'layouts/Projects/components/ProjectDashboard';
+import CreateProject from './layouts/Projects/components/CreateProject';
+import ProjectList from './layouts/Projects/components/ProjectList';
 
 export default function App() {
   const [controller, dispatch] = useSoftUIController();
@@ -204,6 +213,7 @@ export default function App() {
       <Sidebars routes={routes} />
       <Routes>
         {getRoutes(routes)}
+        <Route path="*" element={<Dashboard />} />
         <Route path="/signin" element={<SignInPage />} />
         <Route path="/authentication/sign-in" element={<SignIn />} />
         <Route path="/dashboard" element={<Dashboard />} />
@@ -244,7 +254,16 @@ export default function App() {
         <Route path = "/SupplierForm" element ={<SupplierFormStepsDb/>}/>
         <Route path="/success" element={<SuccessPage/>} />
         <Route path="/products" element={<ProductListWrapper />} />
-        
+        <Route path="/orders" element={<OrdersTable />} />
+        <Route path="/devis" element={<DevisTable />} />
+        <Route path="/deliveries" element={<DeliveriesTable />} />
+        <Route path="/factures" element={<InvoiceTable />} />
+        <Route path="/admin-card" element={<DashboardCards />} />
+        <Route path="/role-management" element={<RoleManagement />} />
+        <Route path="/user-management" element={<UserManagement />} />
+        <Route path="/ProjectManagment" element={<ProjectDashboard />} />
+        <Route path="/create-project" element={<CreateProject />} />
+        <Route path="/projects" element={<ProjectList />} />
       </Routes>
     </ThemeProvider>
   );

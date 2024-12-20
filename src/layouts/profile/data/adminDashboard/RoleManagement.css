@@ -1,0 +1,13 @@
+h2 {
+    font-weight: bold;
+  }
+  
+  .table-dark th {
+    background-color: #343a40;
+    color: white;
+  }
+  
+  button i {
+    margin-right: 5px;
+  }
+  

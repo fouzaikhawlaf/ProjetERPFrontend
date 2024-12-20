@@ -1,0 +1,14 @@
+.table th, .table td {
+    vertical-align: middle;
+  }
+  
+  .modal-title {
+    font-weight: bold;
+    color: #0056b3;
+  }
+  
+  .pagination .active a {
+    background-color: #007bff !important;
+    color: white !important;
+  }
+  

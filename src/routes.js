@@ -77,6 +77,9 @@ import ManagerProfilePage from "./layouts/profile/data/ManagerProfilePage";
 import AdminProfilePage from "./layouts/profile/data/AdminProfilePage";
 import ProfileDashboard from "./layouts/profile/data/UserForm";
 import ProductListWrapper from './layouts/Product/components/ProductListWrapper';
+import DashboardCards from "layouts/profile/data/adminDashboard/DashboardCards";
+import ProjectDashboard from "layouts/Projects/components/ProjectDashboard";
+import ProjectList from "./layouts/Projects/components/ProjectList";
 
 
 
@@ -155,11 +158,11 @@ const routes = [
 
   {
     type: "collapse",
-    name: "Facture",
-    key: "facture",
-    route: "/Facture",
+    name: "ProjectManagment",
+    key: "ProjectManagment",
+    route: "/ProjectManagment",
     icon: <Settings size="12px" />,
-    component: <Dashboardlayout />,
+    component: <ProjectList />,
     
     
   },
@@ -182,7 +185,7 @@ const routes = [
     key: "profile",
     route: "/profile",
     icon: <CustomerSupport size="12px" />,
-    component: <RolesDashboard />,
+    component: <ProfileDashboard />,
     noCollapse: true,
     //show: userRole === 'admin' || userRole === 'HR',  // يظهر كان لل-admin أو HR
   },
@@ -220,9 +223,9 @@ const routes = [
     type: "collapse",
     name: "Admin Dashboard",
     key: "admin-dashboard",
-    route: "/admin-dashboard",
+    route: "/admin-card",
     icon: <Settings size="12px" />,
-    component: <ProfileDashboard />,
+    component: <DashboardCards />,
     noCollapse: true,
     
   }
