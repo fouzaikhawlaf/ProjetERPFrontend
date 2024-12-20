@@ -79,6 +79,7 @@ import ProfileDashboard from "./layouts/profile/data/UserForm";
 import ProductListWrapper from './layouts/Product/components/ProductListWrapper';
 import DashboardCards from "layouts/profile/data/adminDashboard/DashboardCards";
 import ProjectDashboard from "layouts/Projects/components/ProjectDashboard";
+import ProjectList from "./layouts/Projects/components/ProjectList";
 
 
 
@@ -161,7 +162,7 @@ const routes = [
     key: "ProjectManagment",
     route: "/ProjectManagment",
     icon: <Settings size="12px" />,
-    component: <ProjectDashboard />,
+    component: <ProjectList />,
     
     
   },

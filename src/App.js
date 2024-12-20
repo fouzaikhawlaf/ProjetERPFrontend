@@ -95,6 +95,8 @@ import DashboardCards from 'layouts/profile/data/adminDashboard/DashboardCards';
 import RoleManagement from 'layouts/profile/data/adminDashboard/RoleManagement ';
 import UserManagement from 'layouts/profile/data/adminDashboard/UserManagement';
 import ProjectDashboard from 'layouts/Projects/components/ProjectDashboard';
+import CreateProject from './layouts/Projects/components/CreateProject';
+import ProjectList from './layouts/Projects/components/ProjectList';
 
 export default function App() {
   const [controller, dispatch] = useSoftUIController();
@@ -260,6 +262,8 @@ export default function App() {
         <Route path="/role-management" element={<RoleManagement />} />
         <Route path="/user-management" element={<UserManagement />} />
         <Route path="/ProjectManagment" element={<ProjectDashboard />} />
+        <Route path="/create-project" element={<CreateProject />} />
+        <Route path="/projects" element={<ProjectList />} />
       </Routes>
     </ThemeProvider>
   );
