@@ -97,6 +97,8 @@ import UserManagement from 'layouts/profile/data/adminDashboard/UserManagement';
 import ProjectDashboard from 'layouts/Projects/components/ProjectDashboard';
 import CreateProject from './layouts/Projects/components/CreateProject';
 import ProjectList from './layouts/Projects/components/ProjectList';
+import TaskList from 'layouts/Projects/TaskProject/TaskList';
+import TaskCreate from 'layouts/Projects/TaskProject/TaskCreate';
 
 export default function App() {
   const [controller, dispatch] = useSoftUIController();
@@ -263,7 +265,8 @@ export default function App() {
         <Route path="/user-management" element={<UserManagement />} />
         <Route path="/ProjectManagment" element={<ProjectDashboard />} />
         <Route path="/create-project" element={<CreateProject />} />
-        <Route path="/projects" element={<ProjectList />} />
+       
+        <Route path="/create-task/:projectId" element={<TaskCreate />} />
       </Routes>
     </ThemeProvider>
   );

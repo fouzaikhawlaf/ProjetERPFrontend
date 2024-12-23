@@ -41,6 +41,11 @@ const ProjectList = () => {
     }
   };
 
+  // Handle adding task to project
+  const handleAddTask = (projectId) => {
+    navigate(`/create-task/${projectId}`); // Navigate to create task page with projectId
+  };
+
   return (
     <DashboardLayout>
       <Container className="mt-5">
@@ -73,6 +78,7 @@ const ProjectList = () => {
                     <th>Start Date</th>
                     <th>End Date</th>
                     <th>Actions</th>
+                    <th>Tasks</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -90,6 +96,22 @@ const ProjectList = () => {
                           onClick={() => handleDelete(project.id)}
                         >
                           Delete
+                        </Button>
+                      </td>
+                      <td>
+                        <Button
+                          variant="info"
+                          size="sm"
+                          onClick={() => handleAddTask(project.id)} // Add task to project
+                        >
+                          Add Task
+                        </Button>
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => navigate(`/tasks/${project.id}`)} // View tasks for project
+                        >
+                          View Tasks
                         </Button>
                       </td>
                     </tr>
