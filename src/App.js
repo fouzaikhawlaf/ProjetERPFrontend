@@ -267,6 +267,7 @@ export default function App() {
         <Route path="/create-project" element={<CreateProject />} />
        
         <Route path="/create-task/:projectId" element={<TaskCreate />} />
+        <Route path = "/tasks/:projectId" element = {<TaskList/>} />
       </Routes>
     </ThemeProvider>
   );

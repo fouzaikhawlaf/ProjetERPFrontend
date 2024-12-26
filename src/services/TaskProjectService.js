@@ -16,8 +16,8 @@ const createTask = async (taskData) => {
 const getAllTasks = async () => {
   try {
     const response = await apiErp.get('/Task');
-    console.log('Tasks fetched:', response.data);
-    return response.data; // Return the list of tasks
+    console.log('Tasks fetched:', response.data.$values);
+    return response.data.$values; // Return the list of tasks
   } catch (error) {
     console.error('Error fetching tasks:', error.response?.data || error.message);
     throw error; // Rethrow the error for handling later
@@ -28,10 +28,10 @@ const getAllTasks = async () => {
 const getTaskById = async (id) => {
   try {
     const response = await apiErp.get(`/Task/${id}`);
-    console.log(`Task with ID ${id} fetched:`, response.data);
-    return response.data; // Return the task data
+    console.log(`Task with ID ${id} fetched:`, response.data.$values);
+    return response.data.$values; // Return the task data
   } catch (error) {
-    console.error(`Error fetching task with ID ${id}:`, error.response?.data || error.message);
+    console.error(`Error fetching task with ID ${id}:`, error.response?.data.$values || error.message);
     throw error;
   }
 };
@@ -81,6 +81,33 @@ const completeTask = async (taskId) => {
   }
 };
 
+// Récupérer les tâches par ID du projet
+const getTasksByProjectId = async (projectId) => {
+  try {
+    const response = await apiErp.get(`/Task/project/${projectId}`);
+    console.log("Raw response from API:", response.data); // Log des données brutes
+    // Si la réponse contient un tableau sous la clé $values, le retourner, sinon retourner un tableau vide
+    return response.data.$values || [];
+  } catch (error) {
+    console.error("Erreur lors de la récupération des tâches par projectId:", error.response?.data || error.message);
+    throw error; // Propager l'erreur
+  }
+};
+
+// Get tasks by employee ID
+const getTasksByEmployeeId = async (employeeId) => {
+  try {
+    const response = await apiErp.get(`/Task/employee/${employeeId}`);
+    console.log(`Tasks for employee ID ${employeeId} fetched:`, response.data);
+    return response.data; // Return the list of tasks
+  } catch (error) {
+    console.error(`Error fetching tasks for employee ID ${employeeId}:`, error.response?.data || error.message);
+    throw error;
+  }
+};
+
+
+
 export {
   createTask,
   getAllTasks,
@@ -89,4 +116,6 @@ export {
   deleteTask,
   assignTaskToEmployee,
   completeTask,
+  getTasksByProjectId, // Newly added
+  getTasksByEmployeeId, // Newly added
 };
