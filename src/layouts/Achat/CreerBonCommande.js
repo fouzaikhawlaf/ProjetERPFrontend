@@ -26,7 +26,7 @@ const Input = styled("input")({
   display: "none",
 });
 
-const CreerDevisAchat = ({ handleSubmit }) => {
+const CreerBonCommande = ({ handleSubmit }) => {
   const [client, setClient] = useState("");
   const [document, setDocument] = useState("");
   const [project, setProject] = useState("");
@@ -266,8 +266,8 @@ const CreerDevisAchat = ({ handleSubmit }) => {
   );
 };
 
-CreerDevisAchat.propTypes = {
+CreerBonCommande.propTypes = {
   handleSubmit: PropTypes.func.isRequired,
 };
 
-export default CreerDevisAchat;
+export default CreerBonCommande;
