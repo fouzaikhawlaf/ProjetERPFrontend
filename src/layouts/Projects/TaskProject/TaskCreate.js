@@ -2,20 +2,21 @@ import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
 import React, { useState, useEffect } from "react";
 import { Container, Form, Button, Card } from "react-bootstrap";
 import { useParams, useNavigate } from "react-router-dom";
-import { createTask } from "services/TaskProjectService"; // Service function to create task
-import { getAllEmployees } from "services/EmployeeService"; // Service function to fetch employees
+import { createTask } from "services/TaskProjectService";
+import { getAllEmployees } from "services/EmployeeService";
 
 const TaskCreate = () => {
-  const { projectId } = useParams(); // Get projectId from the URL
+  const { projectId } = useParams(); // Get projectId from URL
   const [taskData, setTaskData] = useState({
     name: "",
     description: "",
-    status: "0", // Default status
-    startDate: "", // Default start date
-    endDate: "", // Default end date
-    assignedEmployees: [], // New field for assigned employees
+    startDate: "",
+    endDate: "",
+    assignedEmployees: [], // Multiple employees can be assigned
+    status: "0", // Default status is "Pending"
   });
   const [employees, setEmployees] = useState([]); // List of employees
+  const [departmentId, setDepartmentId] = useState(null); // Simulate department logic
   const navigate = useNavigate();
 
   // Fetch employees on component mount
@@ -23,16 +24,22 @@ const TaskCreate = () => {
     const fetchEmployees = async () => {
       try {
         const response = await getAllEmployees();
-        // Ensure response is an array or extract it correctly
         const employeeList = Array.isArray(response) ? response : response?.data?.$values || [];
         setEmployees(employeeList);
+
+        // Simulating setting a department ID for filtering
+        if (employeeList.length > 0) {
+          setDepartmentId(employeeList[0].departmentId); // Example: Set to the first employee's department
+        }
       } catch (error) {
         console.error("Error fetching employees:", error);
-        setEmployees([]); // Default to empty if there's an error
+        setEmployees([]);
       }
     };
+
     fetchEmployees();
   }, []);
+
   // Handle form input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -42,7 +49,7 @@ const TaskCreate = () => {
     });
   };
 
-  // Handle employee selection changes
+  // Handle employee selection (allow multiple employees within the same department)
   const handleEmployeeSelection = (e) => {
     const selectedOptions = Array.from(e.target.selectedOptions).map((option) => option.value);
     setTaskData({
@@ -53,36 +60,32 @@ const TaskCreate = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
+
     // Validate required fields
-    if (!taskData.name || !taskData.startDate || !taskData.endDate || !taskData.assignedEmployees[0]) {
-      alert("Please fill in all required fields, including assigning the task to at least one employee.");
+    if (!taskData.name || !taskData.startDate || !taskData.endDate || taskData.assignedEmployees.length === 0) {
+      alert("Please fill in all required fields and assign the task to at least one employee.");
       return;
     }
-  
+
     const payload = {
       name: taskData.name.trim(),
       description: taskData.description.trim(),
-      status: parseInt(taskData.status, 10), // Ensure status is an integer
-      startDate: new Date(taskData.startDate).toISOString(), // Convert to ISO format
+      status: parseInt(taskData.status, 10), // "Pending" status (non-editable)
+      startDate: new Date(taskData.startDate).toISOString(),
       endDate: new Date(taskData.endDate).toISOString(),
-      projectId: projectId, // Convert projectId to integer
-      assignedToId: taskData.assignedEmployees[0], // Take the first selected employee as the assignedToId
+      projectId: projectId,
+      assignedToIds: taskData.assignedEmployees, // Array of selected employee IDs
     };
-  
-    console.log("Payload being sent:", payload);
-  
+
     try {
       const response = await createTask(payload);
       console.log("Task created successfully:", response);
-      navigate(`/tasks/${projectId}`); // Redirect to tasks page
+      navigate(`/tasks/${projectId}`);
     } catch (error) {
       console.error("Error creating task:", error.response?.data || error.message);
       alert("Failed to create task: " + JSON.stringify(error.response?.data.errors || {}));
     }
   };
-  
-  
 
   return (
     <DashboardLayout>
@@ -117,15 +120,11 @@ const TaskCreate = () => {
               <Form.Group controlId="taskStatus" className="mb-3">
                 <Form.Label>Status</Form.Label>
                 <Form.Control
-                  as="select"
-                  name="status"
-                  value={taskData.status}
-                  onChange={handleChange}
-                >
-                  <option value="0">Pending</option>
-                  <option value="1">In Progress</option>
-                  <option value="2">Completed</option>
-                </Form.Control>
+                  type="text"
+                  value="Pending" // Non-editable
+                  readOnly
+                  disabled
+                />
               </Form.Group>
 
               <Form.Group controlId="taskStartDate" className="mb-3">
@@ -147,26 +146,25 @@ const TaskCreate = () => {
                   onChange={handleChange}
                 />
               </Form.Group>
+
               <Form.Group controlId="assignedEmployees" className="mb-3">
-       <Form.Label>Assign to Employee</Form.Label>
-  <Form.Control
-    as="select"
-    value={taskData.assignedEmployees[0] || ""}
-    onChange={(e) => {
-      setTaskData({
-        ...taskData,
-        assignedEmployees: [e.target.value], // Store the selected employee ID as an array with one item
-      });
-    }}
-  >
-    <option value="">Select an employee</option>
-    {employees.map((employee) => (
-      <option key={employee.id} value={employee.id}>
-        {employee.firstName} {employee.lastName}
-      </option>
-    ))}
-  </Form.Control>
-</Form.Group>
+                <Form.Label>Assign to Employees (same department only)</Form.Label>
+                <Form.Control
+                  as="select"
+                  multiple
+                  value={taskData.assignedEmployees}
+                  onChange={handleEmployeeSelection}
+                >
+                  {employees
+                    .filter((emp) => emp.departmentId === departmentId) // Filter by department
+                    .map((employee) => (
+                      <option key={employee.id} value={employee.id}>
+                        {employee.firstName} {employee.lastName}
+                      </option>
+                    ))}
+                </Form.Control>
+              </Form.Group>
+
               <Button variant="primary" type="submit">
                 Create Task
               </Button>

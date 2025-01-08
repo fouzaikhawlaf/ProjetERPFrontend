@@ -2,76 +2,65 @@ import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
 import React, { useState, useEffect } from "react";
 import { Container, Table, Button, Card } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router-dom";
-import { getTasksByProjectId } from "services/TaskProjectService";
+import { getTasksByProjectId, deleteTask } from "services/TaskProjectService";
 import { getEmployeeById } from "services/EmployeeService";
+import { FaTrashAlt, FaEdit, FaEye } from "react-icons/fa";
 
 const TaskList = () => {
-  const { projectId } = useParams(); // Récupérer l'ID du projet depuis l'URL
-  const [tasks, setTasks] = useState([]); // État pour stocker les tâches
-  const [loading, setLoading] = useState(true); // État pour le chargement
-  const [error, setError] = useState(null); // État pour gérer les erreurs
-  const navigate = useNavigate(); // Hook pour la navigation
+  const { projectId } = useParams();
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchTasks = async () => {
       try {
-        console.log("Fetching tasks for projectId:", projectId);
-  
-        // Récupérer les tâches du projet
         const tasks = await getTasksByProjectId(projectId);
-        console.log("API response:", tasks);
-  
-        // Vérification si les données sont valides
         if (!Array.isArray(tasks)) {
-          console.error("L'API n'a pas renvoyé un tableau. Reçu:", tasks);
           setError("Format de données invalide provenant de l'API.");
           return;
         }
-  
         if (tasks.length === 0) {
           setError("Aucune tâche disponible pour ce projet.");
-          setTasks([]); // Clear tasks si aucun n'est trouvé
+          setTasks([]);
           return;
         }
-  
-        // Enrichir chaque tâche avec les détails de l'employé assigné
         const enrichedTasks = await Promise.all(
           tasks.map(async (task) => {
             if (task.employeeId) {
               try {
                 const employee = await getEmployeeById(task.employeeId);
-                return {
-                  ...task,
-                  assignedEmployee: employee, // Ajout des détails de l'employé
-                };
-              } catch (err) {
-                console.warn(`Erreur lors de la récupération de l'employé ${task.employeeId}:`, err);
-                return {
-                  ...task,
-                  assignedEmployee: { name: "Inconnu" }, // Valeur par défaut en cas d'erreur
-                };
+                return { ...task, assignedEmployee: employee };
+              } catch {
+                return { ...task, assignedEmployee: { name: "Inconnu" } };
               }
             }
-            return task; // Pas d'employé assigné
+            return task;
           })
         );
-  
-        console.log("Enriched tasks:", enrichedTasks);
-        setTasks(enrichedTasks); // Mise à jour de l'état avec les tâches enrichies
+        setTasks(enrichedTasks);
       } catch (err) {
-        console.error("Erreur lors de la récupération des tâches:", err);
         setError("Échec de la récupération des tâches.");
       } finally {
-        setLoading(false); // Arrêter le chargement
+        setLoading(false);
       }
     };
-  
-    fetchTasks(); // Appel de la fonction pour récupérer les tâches
+    fetchTasks();
   }, [projectId]);
-  
 
-  
- 
+  // Fonction pour supprimer une tâche
+  const handleDelete = async (taskId) => {
+    if (window.confirm("Êtes-vous sûr de vouloir supprimer cette tâche ?")) {
+      try {
+        await deleteTask(taskId); // Appel API pour supprimer
+        setTasks(tasks.filter((task) => task.id !== taskId)); // Mise à jour de l'état
+      } catch (err) {
+        alert("Erreur lors de la suppression de la tâche.");
+      }
+    }
+  };
+
   return (
     <DashboardLayout>
       <Container className="mt-5">
@@ -81,17 +70,16 @@ const TaskList = () => {
             <Button
               variant="success"
               className="mb-3"
-              onClick={() => navigate(`/create-task/${projectId}`)} // Naviguer vers la page de création de tâche
+              onClick={() => navigate(`/create-task/${projectId}`)}
             >
               + Créer une nouvelle tâche
             </Button>
-
             {loading ? (
               <p>Chargement des tâches...</p>
             ) : error ? (
-              <p>{error}</p> // Afficher l'erreur si elle existe
+              <p>{error}</p>
             ) : tasks.length === 0 ? (
-              <p>Aucune tâche disponible pour ce projet.</p> // Si aucune tâche n'est trouvée
+              <p>Aucune tâche disponible pour ce projet.</p>
             ) : (
               <Table striped bordered hover>
                 <thead>
@@ -100,7 +88,7 @@ const TaskList = () => {
                     <th>Nom de la tâche</th>
                     <th>Description</th>
                     <th>Status</th>
-                    <th>Employé Assigné</th> {/* Colonne pour afficher l'employé assigné */}
+                    <th>Employé Assigné</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -120,20 +108,31 @@ const TaskList = () => {
                           : "Inconnue"}
                       </td>
                       <td>
-                        {/* Afficher le nom de l'employé assigné à la tâche */}
-                        {task.assignedTo?.fullName||
-                         "Aucun employé assigné"}
+                        {task.assignedTo?.fullName || "Aucun employé assigné"}
                       </td>
                       <td>
-                        <Button 
-                          variant="primary" 
-                          size="sm" 
-                          onClick={() => navigate(`/edit-task/${task.id}`)} // Navigation vers la page de modification
+                        <Button
+                          variant="info"
+                          size="sm"
+                          className="me-2"
+                          onClick={() => navigate(`/view-task/${task.id}`)}
                         >
-                          Modifier
+                          <FaEye /> 
                         </Button>
-                        <Button variant="danger" size="sm" className="ms-2">
-                          Supprimer
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          className="me-2"
+                          onClick={() => navigate(`/edit-task/${task.id}`)}
+                        >
+                          <FaEdit /> 
+                        </Button>
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={() => handleDelete(task.id)}
+                        >
+                          <FaTrashAlt /> 
                         </Button>
                       </td>
                     </tr>

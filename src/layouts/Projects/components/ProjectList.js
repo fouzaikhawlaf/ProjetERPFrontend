@@ -2,29 +2,29 @@ import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
 import React, { useState, useEffect } from "react";
 import { Container, Table, Button, Card } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import { getProjects, deleteProject } from "services/ProjectService";  // Import the service functions
+import { getProjects, deleteProject } from "services/ProjectService"; // Import service functions
+import { FaTrashAlt, FaTasks, FaPlus } from "react-icons/fa"; // Import icons
 
 const ProjectList = () => {
   const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);  // To handle loading state
-  const [error, setError] = useState(null);  // To handle errors from the API
+  const [loading, setLoading] = useState(true); // Handle loading state
+  const [error, setError] = useState(null); // Handle API errors
   const navigate = useNavigate();
 
-  // Load projects on component mount
+  // Fetch projects on component mount
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const data = await getProjects(); // Fetch projects from the backend
-        // Check if the data is an array
+        const data = await getProjects(); // Fetch projects from the API
         if (Array.isArray(data)) {
-          setProjects(data); // Only set state if it's an array
+          setProjects(data); // Update state if data is an array
         } else {
-          setError("Fetched data is not in the expected format.");
+          setError("Invalid data format received.");
         }
       } catch (error) {
         setError("Failed to fetch projects.");
       } finally {
-        setLoading(false); // Set loading to false after fetching is done
+        setLoading(false); // Stop loading once fetching is complete
       }
     };
 
@@ -33,17 +33,19 @@ const ProjectList = () => {
 
   // Handle project deletion
   const handleDelete = async (projectId) => {
-    try {
-      await deleteProject(projectId); // Call the API to delete the project
-      setProjects(projects.filter((project) => project.id !== projectId)); // Update state to remove the deleted project
-    } catch (error) {
-      setError("Failed to delete project.");
+    if (window.confirm("Are you sure you want to delete this project?")) {
+      try {
+        await deleteProject(projectId); // Call API to delete project
+        setProjects(projects.filter((project) => project.id !== projectId)); // Update state
+      } catch (error) {
+        alert("Failed to delete project.");
+      }
     }
   };
 
-  // Handle adding task to project
+  // Navigate to add task for a specific project
   const handleAddTask = (projectId) => {
-    navigate(`/create-task/${projectId}`); // Navigate to create task page with projectId
+    navigate(`/create-task/${projectId}`); // Navigate to task creation page
   };
 
   return (
@@ -59,7 +61,8 @@ const ProjectList = () => {
               className="mb-3"
               onClick={() => navigate("/create-project")}
             >
-              + Create New Project
+              <FaPlus className="me-2" />
+              Create New Project
             </Button>
 
             {loading ? (
@@ -78,41 +81,40 @@ const ProjectList = () => {
                     <th>Start Date</th>
                     <th>End Date</th>
                     <th>Actions</th>
-                    <th>Tasks</th>
                   </tr>
                 </thead>
                 <tbody>
                   {projects.map((project, index) => (
-                    <tr key={index}>
+                    <tr key={project.id || index}>
                       <td>{index + 1}</td>
                       <td>{project.name}</td>
                       <td>{project.description || "N/A"}</td>
                       <td>{project.startDate}</td>
                       <td>{project.endDate}</td>
                       <td>
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          onClick={() => handleDelete(project.id)}
-                        >
-                          Delete
-                        </Button>
-                      </td>
-                      <td>
-                        <Button
-                          variant="info"
-                          size="sm"
-                          onClick={() => handleAddTask(project.id)} // Add task to project
-                        >
-                          Add Task
-                        </Button>
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          onClick={() => navigate(`/tasks/${project.id}`)} // View tasks for project
-                        >
-                          View Tasks
-                        </Button>
+                        <div className="d-flex gap-2">
+                          <Button
+                            variant="info"
+                            size="sm"
+                            onClick={() => handleAddTask(project.id)}
+                          >
+                            <FaPlus /> 
+                          </Button>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => navigate(`/tasks/${project.id}`)}
+                          >
+                            <FaTasks /> 
+                          </Button>
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={() => handleDelete(project.id)}
+                          >
+                            <FaTrashAlt /> 
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}

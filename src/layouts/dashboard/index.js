@@ -10,7 +10,7 @@ const Dashboard = () => {
     { title: 'Customers', description: 'Manage customer data...', icon: 'fa-users', link: '/customers' },
     { title: 'Invoices', description: 'Track and manage invoices...', icon: 'fa-file-invoice-dollar', link: '/invoices' },
     { title: 'Supplier Portal', description: 'Manage supplier relationships...', icon: 'fa-truck', link: '/suppliers' },
-    { title: 'Projects', description: 'Track project progress...', icon: 'fa-tasks', link: '/projects' },
+    { title: 'Projects', description: 'Track project progress...', icon: 'fa-tasks', link: '/ProjectManagment' },
     { title: 'HR', description: 'Handle HR tasks and requests...', icon: 'fa-user-tie', link: '/hr' },
     { title: 'Reports', description: 'Generate and view reports...', icon: 'fa-chart-line', link: '/reports' },
     { title: 'Settings', description: 'Manage application settings...', icon: 'fa-cogs', link: '/settings' },

@@ -24,24 +24,36 @@ const getAllTasks = async () => {
   }
 };
 
-// Get a task by ID
-const getTaskById = async (id) => {
+ const getTaskById = async (id) => {
   try {
-    const response = await apiErp.get(`/Task/${id}`);
-    console.log(`Task with ID ${id} fetched:`, response.data.$values);
-    return response.data.$values; // Return the task data
+    const response = await fetch(`https://localhost:7298/api/Task/${id}`, {
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+
+    // Check if response is ok (status 200)
+    if (!response.ok) {
+      throw new Error(`Error fetching task: ${response.statusText}`);
+    }
+
+    // Parse response as JSON
+    const taskData = await response.json();
+    console.log('Task fetched:', taskData);
+    return taskData;
   } catch (error) {
-    console.error(`Error fetching task with ID ${id}:`, error.response?.data.$values || error.message);
+    console.error('Error fetching task:', error);
     throw error;
   }
 };
+
 
 // Update a task
 const updateTask = async (id, taskUpdateData) => {
   try {
     const response = await apiErp.put(`/Task/${id}`, taskUpdateData);
-    console.log(`Task with ID ${id} updated:`, response.data);
-    return response.data; // Return the updated task
+    console.log(`Task with ID ${id} updated:`, response.data.$values);
+    return response.data.$values; // Return the updated task
   } catch (error) {
     console.error(`Error updating task with ID ${id}:`, error.response?.data || error.message);
     throw error;

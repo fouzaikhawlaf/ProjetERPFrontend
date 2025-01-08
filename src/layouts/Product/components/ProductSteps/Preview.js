@@ -10,7 +10,7 @@ import {
 } from '@mui/material';
 import { Edit } from '@mui/icons-material'; // Import edit icon
 import PropTypes from 'prop-types';
-import { createProduct } from 'services/productService'; // Assurez-vous du bon chemin d'import
+import { createProduct } from 'services/ProductApi'; // Assurez-vous du bon chemin 
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';

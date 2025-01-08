@@ -1,60 +1,155 @@
 import React from "react";
-import PropTypes from "prop-types";
-import { Navbar, Nav, Button, Container } from "react-bootstrap";
-import { FaShoppingCart, FaFileInvoice, FaTruck, FaChartLine } from "react-icons/fa";
-import { Link } from "react-router-dom";
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  Button,
+  IconButton,
+  Box,
+  Breadcrumbs,
+  Link,
+  Tabs,
+  Tab,
+  Divider,
+} from "@mui/material";
+import {
+  Home as HomeIcon,
+  Email as EmailIcon,
+  Settings as SettingsIcon,
+  Person as PersonIcon,
+  Add as AddIcon,
+  CheckCircleOutline as ConfirmIcon,
+  Visibility as PreviewIcon,
+} from "@mui/icons-material";
 
-const VenteNavbar = ({ onNewSale }) => {
+const VenteInterface = () => {
   return (
-    <Navbar bg="white" variant="light" expand="lg" className="shadow-sm py-2">
-      <Container>
-        {/* Brand Logo */}
-        <Navbar.Brand as={Link} to="/" className="fw-bold text-primary d-flex align-items-center">
-          <FaChartLine size={28} className="me-2" />
-          <span className="fs-5">Sales Dashboard</span>
-        </Navbar.Brand>
-
-        {/* Toggler for mobile */}
-        <Navbar.Toggle aria-controls="basic-navbar-nav" />
-
-        <Navbar.Collapse id="basic-navbar-nav">
-          {/* Navigation Links */}
-          <Nav className="me-auto ms-4 d-flex align-items-center">
-            <Nav.Link as={Link} to="/orders" className="text-dark mx-2 d-flex align-items-center">
-              <FaShoppingCart size={20} className="me-1" />
-              <span className="d-none d-lg-block">Orders</span>
-            </Nav.Link>
-            <Nav.Link as={Link} to="/devis" className="text-dark mx-2 d-flex align-items-center">
-              <FaFileInvoice size={20} className="me-1" />
-              <span className="d-none d-lg-block">Devis</span>
-            </Nav.Link>
-            <Nav.Link as={Link} to="/deliveries" className="text-dark mx-2 d-flex align-items-center">
-              <FaTruck size={20} className="me-1" />
-              <span className="d-none d-lg-block">Deliveries</span>
-            </Nav.Link>
-            <Nav.Link as={Link} to="/factures" className="text-dark mx-2 d-flex align-items-center">
-              <FaFileInvoice size={20} className="me-1" />
-              <span className="d-none d-lg-block">Factures</span>
-            </Nav.Link>
-          </Nav>
-
-          {/* Action Button */}
-          <Button
-            variant="primary"
-            onClick={onNewSale}
-            className="fw-bold px-4 py-2"
-            style={{ borderRadius: "50px" }}
+    <div>
+      {/* Navigation principale */}
+      <AppBar position="static" color="primary" elevation={2}>
+        <Toolbar>
+          {/* Logo ERP */}
+          <Typography
+            variant="h6"
+            component="div"
+            sx={{ flexGrow: 1, display: "flex", alignItems: "center" }}
           >
-            + New Sale
+            <HomeIcon fontSize="large" sx={{ marginRight: 1 }} />
+            ERP Vente
+          </Typography>
+
+          {/* Menus principaux */}
+          <Tabs value={false} textColor="inherit" indicatorColor="secondary">
+            <Tab label="Ventes" />
+            <Tab label="Commandes" />
+            <Tab label="À Facturer" />
+            <Tab label="Produits" />
+            <Tab label="Analyse" />
+            <Tab label="Configuration" />
+          </Tabs>
+
+          {/* Actions utilisateur */}
+          <Box display="flex" alignItems="center">
+            <IconButton color="inherit" aria-label="notifications">
+              <EmailIcon />
+            </IconButton>
+            <IconButton color="inherit" aria-label="settings">
+              <SettingsIcon />
+            </IconButton>
+            <IconButton color="inherit" aria-label="profile">
+              <PersonIcon />
+            </IconButton>
+          </Box>
+        </Toolbar>
+      </AppBar>
+
+      {/* Barre secondaire : Actions spécifiques */}
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        padding="15px 24px"
+        sx={{ backgroundColor: "#f8f9fa" }}
+      >
+        {/* Breadcrumb pour navigation */}
+        <Breadcrumbs aria-label="breadcrumb">
+          <Link underline="hover" color="inherit" href="#">
+            Devis
+          </Link>
+          <Typography color="text.primary">Nouveau</Typography>
+        </Breadcrumbs>
+
+        {/* Boutons d'actions principales */}
+        <Box display="flex" gap={2}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            sx={{
+              backgroundColor: "#4caf50",
+              color: "#fff",
+              "&:hover": { backgroundColor: "#43a047" },
+            }}
+          >
+            Nouveau
           </Button>
-        </Navbar.Collapse>
-      </Container>
-    </Navbar>
+          <Button
+            variant="contained"
+            startIcon={<ConfirmIcon />}
+            sx={{
+              backgroundColor: "#2196f3",
+              color: "#fff",
+              "&:hover": { backgroundColor: "#1e88e5" },
+            }}
+          >
+            Confirmer
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<PreviewIcon />}
+            sx={{
+              color: "#555",
+              borderColor: "#ddd",
+              "&:hover": { borderColor: "#bbb" },
+            }}
+          >
+            Aperçu
+          </Button>
+        </Box>
+      </Box>
+
+      {/* Contenu principal */}
+      <Box padding="20px 24px">
+        <Typography variant="h5" gutterBottom>
+          Gestion des Devis
+        </Typography>
+        <Typography variant="body1" color="textSecondary">
+          Créez, modifiez et gérez vos devis clients facilement depuis cette interface.
+        </Typography>
+        <Divider sx={{ marginY: 2 }} />
+        <Box
+          display="flex"
+          justifyContent="space-between"
+          alignItems="center"
+          sx={{
+            backgroundColor: "#ffffff",
+            padding: "15px",
+            borderRadius: "8px",
+            boxShadow: "0 2px 6px rgba(0, 0, 0, 0.1)",
+          }}
+        >
+          <Typography variant="h6">Liste des Devis</Typography>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
+            sx={{ borderRadius: "20px" }}
+          >
+            Ajouter un Devis
+          </Button>
+        </Box>
+      </Box>
+    </div>
   );
 };
 
-VenteNavbar.propTypes = {
-  onNewSale: PropTypes.func.isRequired,
-};
-
-export default VenteNavbar;
+export default VenteInterface;

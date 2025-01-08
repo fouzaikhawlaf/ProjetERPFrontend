@@ -99,6 +99,11 @@ import CreateProject from './layouts/Projects/components/CreateProject';
 import ProjectList from './layouts/Projects/components/ProjectList';
 import TaskList from 'layouts/Projects/TaskProject/TaskList';
 import TaskCreate from 'layouts/Projects/TaskProject/TaskCreate';
+import EditTask from 'layouts/Projects/TaskProject/EditTask';
+
+import DevisForm from 'layouts/Sale/Data/forms/devisForm';
+
+import CreerDevisAchat from 'layouts/Achat/CreerBonCommande';
 
 export default function App() {
   const [controller, dispatch] = useSoftUIController();
@@ -265,9 +270,11 @@ export default function App() {
         <Route path="/user-management" element={<UserManagement />} />
         <Route path="/ProjectManagment" element={<ProjectDashboard />} />
         <Route path="/create-project" element={<CreateProject />} />
-       
+        <Route path="/ventes/nouveau" element={<DevisForm />} />
         <Route path="/create-task/:projectId" element={<TaskCreate />} />
         <Route path = "/tasks/:projectId" element = {<TaskList/>} />
+        <Route path="/edit-task/:taskId" element={<EditTask />} />
+        <Route path="/achats/nouveau" element={<CreerDevisAchat />} />
       </Routes>
     </ThemeProvider>
   );

@@ -80,6 +80,8 @@ import ProductListWrapper from './layouts/Product/components/ProductListWrapper'
 import DashboardCards from "layouts/profile/data/adminDashboard/DashboardCards";
 import ProjectDashboard from "layouts/Projects/components/ProjectDashboard";
 import ProjectList from "./layouts/Projects/components/ProjectList";
+import VenteModule from "layouts/Sale/Data/VenteModule";
+import AchatModule from "layouts/Achat/componants/AchatModule";
 
 
 
@@ -130,7 +132,7 @@ const routes = [
     key: "ClientCommandInterface",
     route: "/ClientCommandInterface",
     icon: <Office size="12px" />,
-    component: <VenteDashboard/>,
+    component: <VenteModule/>,
      noCollapse: true,
    
      
@@ -141,7 +143,7 @@ const routes = [
     key: "achats",
     route: "/Achat",
     icon: <Office size="12px" />,
-    component: < PurchaseDashboard/>,
+    component: < AchatModule/>,
      noCollapse: true,
    
   },

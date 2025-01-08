@@ -5,7 +5,7 @@ import ProductInfoStep from './ProductInfoStep';
 import AdditionalInfoStep from './AdditionalInfoStep';
 import CompletionStep from './CompletionStep';
 
-import { createProduct } from 'services/productService'; // Import de la fonction createProduct depuis votre service
+import { createProduct } from 'services/ProductApi'; // Import de la fonction createProduct depuis votre service
 import PreviewStep from './Preview';
 import PropTypes from 'prop-types';
 import SuccessPage from './SuccessPage';
