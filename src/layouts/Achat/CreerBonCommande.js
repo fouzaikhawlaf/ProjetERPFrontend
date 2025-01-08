@@ -26,7 +26,7 @@ const Input = styled("input")({
   display: "none",
 });
 
-const DevisForm = ({ handleSubmit }) => {
+const CreerDevisAchat = ({ handleSubmit }) => {
   const [client, setClient] = useState("");
   const [document, setDocument] = useState("");
   const [project, setProject] = useState("");
@@ -266,8 +266,8 @@ const DevisForm = ({ handleSubmit }) => {
   );
 };
 
-DevisForm.propTypes = {
+CreerDevisAchat.propTypes = {
   handleSubmit: PropTypes.func.isRequired,
 };
 
-export default DevisForm;
+export default CreerDevisAchat;

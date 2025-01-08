@@ -11,16 +11,27 @@ export const createProduct = async (productData) => {
   }
 };
 
-// Existing functions
 export const getProducts = async () => {
   try {
     const response = await apiErp.get('/Product');
-    return response.data;
+
+    // Vérification de la structure des données retournées
+    if (response.data?.$values && Array.isArray(response.data.$values)) {
+      return response.data.$values; // Retourne les produits si $values existe
+    } else if (Array.isArray(response.data)) {
+      return response.data; // Retourne les produits si data est déjà un tableau
+    } else if (response.data?.products && Array.isArray(response.data.products)) {
+      return response.data.products; // Si une propriété 'products' existe
+    } else {
+      console.error('Unexpected API response format:', response.data);
+      return [];
+    }
   } catch (error) {
     console.error('Error fetching products:', error);
-    throw error;
+    throw error; // Relancer l'erreur pour le gérer à un niveau supérieur
   }
 };
+
 
 export const searchProducts = async (query) => {
   try {

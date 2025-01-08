@@ -1,0 +1,82 @@
+/* Style des cartes */
+.vente-card {
+    border-radius: 8px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .vente-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Icône centrée */
+  .icon-container {
+    color: #4caf50; /* Couleur par défaut des icônes */
+  }
+  
+  .vente-card .fa {
+    transition: color 0.2s ease;
+  }
+  
+  .vente-card:hover .fa {
+    color: #007bff; /* Couleur au survol */
+  }
+  
+  /* Titre */
+  .vente-card .card-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #333;
+  }
+  
+  /* Texte de description */
+  .vente-card .card-text {
+    font-size: 0.9rem;
+    color: #666;
+  }
+  
+  /* Espacement global */
+  body {
+    background-color: #f9f9f9;
+  }
+  /* Carte rapport */
+.vente-card.rapports .icon-container {
+    color: #ff5722; /* Couleur orange pour Rapports */
+  }
+  
+  /* Carte ventes */
+  .vente-card.ventes .icon-container {
+    color: #795548; /* Couleur marron pour Ventes */
+  }
+  
+  /* Animation au survol (général pour toutes les cartes) */
+  .vente-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  }
+  /* Styles des cartes */
+.vente-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: none;
+  }
+  .vente-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  }
+  .icon-container {
+    color: #5a5af7; /* Couleur des icônes */
+  }
+  .icon-container:hover {
+    color: #3a3af5;
+  }
+  
+  /* Section Résumé */
+  .summary-section h5 {
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+  }
+  .summary-section p {
+    font-size: 1.2rem;
+    margin: 0;
+  }
+  
