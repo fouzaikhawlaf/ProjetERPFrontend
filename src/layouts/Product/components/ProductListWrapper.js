@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getAllProducts, deleteProduct } from 'services/productService'; // Import your service functions
+import { getProducts } from 'services/ProductApi'; // Your API service
 import { ProductsTable } from './ProductsTable'; // Import your table component
 import DashboardLayout from '../../../examples/LayoutContainers/DashboardLayout';
 const ProductListWrapper = () => {
@@ -11,7 +11,7 @@ const ProductListWrapper = () => {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const data = await getAllProducts(); // Call the API service to get products
+        const data = await getProducts(); // Call the API service to get products
         setProducts(data); // Set the data in state
       } catch (err) {
         setError('Failed to fetch products'); // Handle API errors

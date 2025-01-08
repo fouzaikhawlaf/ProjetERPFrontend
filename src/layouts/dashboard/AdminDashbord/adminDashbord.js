@@ -1,7 +1,8 @@
 import React from 'react';
 import { Box, Text, Flex, Button, VStack, SimpleGrid, Stat, StatLabel, StatNumber } from '@chakra-ui/react';
-import AddUserModal from './AddUserModal';
+import AddUserModal from '../../profile/data/adminDashboard/AddUserModal';
 import AddRoleModal from './AddRoleModal';
+import AddUser from '../../profile/data/adminDashboard/AddUserModal';
 
 const Dashboard = () => {
   return (
@@ -20,7 +21,7 @@ const Dashboard = () => {
         <Box p="6" bg="gray.100" borderRadius="lg" boxShadow="md">
           <Text fontSize="xl" fontWeight="bold">User Management</Text>
           <Text mt="2">Total Users: 50</Text>
-          <AddUserModal />  {/* Add User Modal */}
+          <AddUser />  {/* Add User Modal */}
         </Box>
         
         {/* Manage User Roles Card */}

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Button, Container } from "react-bootstrap";
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
-import VenteNavbar from "./VenteNavbar";
+import VenteInterface from "./VenteNavbar";
 import SaleProcess from "./SaleProcess"; // Import the SaleProcess component
 
 const VenteDashboard = () => {
@@ -11,7 +11,7 @@ const VenteDashboard = () => {
     <DashboardLayout>
       <Container fluid>
         {/* Navbar with the option to start a new sale */}
-        <VenteNavbar onNewSale={() => setIsSaleActive(true)} />
+        <VenteInterface onNewSale={() => setIsSaleActive(true)} />
 
         {/* Button to initiate a new sale */}
         {!isSaleActive ? (

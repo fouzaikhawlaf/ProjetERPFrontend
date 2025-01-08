@@ -1,0 +1,73 @@
+.quotation-container {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+    background-color: #f9f9f9;
+  }
+  
+  .quotation-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .btn {
+    background-color: #6200ee;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  .btn-confirm {
+    background-color: #018786;
+  }
+  
+  .client-section, .details-section {
+    margin-top: 20px;
+  }
+  
+  .details-section div {
+    margin-bottom: 10px;
+  }
+  
+  .tabs {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+  }
+  
+  .tab {
+    padding: 10px 15px;
+    border: 1px solid #ccc;
+    background-color: #fff;
+    cursor: pointer;
+  }
+  
+  .tab.active {
+    background-color: #e0e0e0;
+  }
+  
+  .product-table {
+    width: 100%;
+    margin-top: 20px;
+    border-collapse: collapse;
+  }
+  
+  .product-table th, .product-table td {
+    border: 1px solid #ccc;
+    padding: 10px;
+    text-align: left;
+  }
+  
+  .add-row {
+    text-align: center;
+    color: #6200ee;
+    cursor: pointer;
+  }
+  
+  .quotation-footer {
+    margin-top: 20px;
+    text-align: right;
+  }
+  
