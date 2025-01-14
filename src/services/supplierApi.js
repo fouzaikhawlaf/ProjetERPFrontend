@@ -5,7 +5,7 @@ import apiErp from './api';
 export const getSuppliers = async () => {
     try {
         const response = await apiErp.get('/suppliers');
-        return response.data;
+        return response.data.$values;
     } catch (error) {
         console.error('Error fetching suppliers:', error);
         throw error;

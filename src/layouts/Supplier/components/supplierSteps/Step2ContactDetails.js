@@ -16,7 +16,7 @@ const Step2ContactDetails = ({ contactDetails, setContactDetails, handleNext, ha
     <Card elevation={3} sx={styles.card}>
       <Box sx={styles.header}>
         <Icon sx={styles.titleIcon}>contact_phone</Icon>
-        <Typography variant="h5">Coordonnées</Typography>
+        
       </Box>
       {contactDetails.map((contact, index) => (
         <Grid container spacing={2} key={index} sx={{ marginTop: '10px' }}>

@@ -9,9 +9,9 @@ const Step1SupplierInfo = ({ supplierInfo, setSupplierInfo, handleNext }) => {
     <Card elevation={3} sx={styles.card}>
       <Box sx={styles.header}>
         <Icon sx={styles.titleIcon}>business</Icon>
-        <Typography variant="h5">Informations Fournisseur</Typography>
+       
       </Box>
-      <Typography variant="subtitle1" sx={{ marginTop: '20px' }}>Personne à contacter</Typography>
+     
       <RadioGroup row value={supplierInfo.contactTitle} onChange={handleInputChange('contactTitle')}>
      
         <FormControlLabel value="Monsieur" control={<Radio />} label="Monsieur" />

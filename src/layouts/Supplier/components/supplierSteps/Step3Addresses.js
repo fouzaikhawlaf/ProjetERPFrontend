@@ -16,7 +16,7 @@ const Step3Addresses = ({ addresses, setAddresses, handleNext, handlePrev }) => 
     <Card elevation={3} sx={styles.card}>
       <Box sx={styles.header}>
         <Icon sx={styles.titleIcon}>location_on</Icon>
-        <Typography variant="h5">Adresses</Typography>
+       
       </Box>
       {addresses.map((address, index) => (
         <Grid container spacing={2} key={index} sx={{ marginTop: '10px' }}>

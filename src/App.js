@@ -104,6 +104,8 @@ import EditTask from 'layouts/Projects/TaskProject/EditTask';
 import DevisForm from 'layouts/Sale/Data/forms/devisForm';
 
 import CreerDevisAchat from 'layouts/Achat/CreerBonCommande';
+import DevisModule from 'layouts/Achat/componants/DevisModule';
+import CreerDevisPurchase from 'layouts/Achat/componants/DevisService';
 
 export default function App() {
   const [controller, dispatch] = useSoftUIController();
@@ -275,6 +277,8 @@ export default function App() {
         <Route path = "/tasks/:projectId" element = {<TaskList/>} />
         <Route path="/edit-task/:taskId" element={<EditTask />} />
         <Route path="/achats/nouveau" element={<CreerDevisAchat />} />
+        <Route path="/achats/Devis" element={<DevisModule />} />
+        <Route path="/devis/service" element={<CreerDevisPurchase />} /> 
       </Routes>
     </ThemeProvider>
   );
