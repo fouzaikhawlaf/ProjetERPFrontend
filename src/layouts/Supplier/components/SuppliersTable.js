@@ -1,37 +1,74 @@
 import React, { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
-import Avatar from '@mui/material/Avatar';
-import Box from '@mui/material/Box';
-import Card from '@mui/material/Card';
-import Checkbox from '@mui/material/Checkbox';
-import Divider from '@mui/material/Divider';
-import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
+import {
+  Card,
+  Box,
+  Checkbox,
+  Divider,
+  Button,
+  CircularProgress,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+} from '@mui/material';
 import Pagination from 'react-bootstrap/Pagination'; // Bootstrap Pagination
-import dayjs from 'dayjs';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import { getSuppliersWithAddresses, deleteSupplier } from 'services/supplierApi'; // Import deleteSupplier
+import DeleteIcon from '@mui/icons-material/Delete'; // Import Delete icon
+import EditIcon from '@mui/icons-material/Edit'; // Import Edit icon
+import VisibilityIcon from '@mui/icons-material/Visibility'; // Import View icon
 
-export function SuppliersTable({
-  rows = [],
+export function SupplierListTable({
   rowsPerPage = 10, // Default number of rows per page
   onDelete,
   onUpdate,
 }) {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [currentPage, setCurrentPage] = useState(1); // Track current page
+  const [suppliers, setSuppliers] = useState([]); // State to store supplier data
+  const [loading, setLoading] = useState(true); // State to handle loading state
+  const [selectedSupplier, setSelectedSupplier] = useState(null); // State to store the selected supplier for viewing details
+  const [openDialog, setOpenDialog] = useState(false); // State to control the dialog visibility
   const selectAllRef = useRef(null);
 
+  // Fetch suppliers when the component mounts
+  useEffect(() => {
+    const fetchSuppliers = async () => {
+      try {
+        const data = await getSuppliersWithAddresses();
+        console.log('API Response:', data); // Log the API response
+
+        // Extract the array of suppliers from the response
+        const suppliersArray = data.$values || [];
+
+        // Ensure each supplier's addresses is an array
+        const suppliersWithAddressesArray = suppliersArray.map((supplier) => ({
+          ...supplier,
+          addresses: supplier.addresses?.$values || [], // Access the nested $values array
+        }));
+
+        setSuppliers(suppliersWithAddressesArray);
+      } catch (error) {
+        console.error('Error fetching suppliers:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSuppliers();
+  }, []);
+
   // Calculate total pages
-  const totalPages = Math.ceil(rows.length / rowsPerPage);
+  const totalPages = Math.ceil(suppliers.length / rowsPerPage);
 
   // Get the rows to display for the current page
-  const displayedRows = rows.slice(
-    (currentPage - 1) * rowsPerPage,
-    currentPage * rowsPerPage
-  );
+  const displayedSuppliers = Array.isArray(suppliers)
+    ? suppliers.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
+    : [];
 
-  const selectAll = () => setSelectedIds(new Set(displayedRows.map(row => row.id)));
+  const selectAll = () => setSelectedIds(new Set(displayedSuppliers.map((supplier) => supplier.id)));
   const deselectAll = () => setSelectedIds(new Set());
   const selectOne = (id) => setSelectedIds(new Set(selectedIds.add(id)));
   const deselectOne = (id) => {
@@ -41,8 +78,8 @@ export function SuppliersTable({
   };
 
   // Checking if all rows are selected or some are selected
-  const selectedAll = displayedRows.length > 0 && selectedIds.size === displayedRows.length;
-  const selectedSome = selectedIds.size > 0 && selectedIds.size < displayedRows.length;
+  const selectedAll = displayedSuppliers.length > 0 && selectedIds.size === displayedSuppliers.length;
+  const selectedSome = selectedIds.size > 0 && selectedIds.size < displayedSuppliers.length;
 
   useEffect(() => {
     if (selectAllRef.current) {
@@ -54,17 +91,52 @@ export function SuppliersTable({
     setCurrentPage(page);
   };
 
+  // Handle view details
+  const handleViewDetails = (supplier) => {
+    console.log('Selected Supplier:', supplier); // Log the selected supplier
+    setSelectedSupplier(supplier);
+    setOpenDialog(true);
+  };
+
+  // Close the dialog
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+  };
+
+  // Handle delete supplier
+  const handleDeleteSupplier = async (id) => {
+    console.log('Delete button clicked, Supplier ID:', id); // Debugging line
+    try {
+      await deleteSupplier(id); // Call the deleteSupplier function
+      // Remove the deleted supplier from the state
+      setSuppliers((prevSuppliers) => {
+        const updatedSuppliers = prevSuppliers.filter((supplier) => supplier.id !== id);
+        console.log('Updated Suppliers:', updatedSuppliers); // Debugging line
+        return updatedSuppliers;
+      });
+      console.log('Supplier deleted successfully');
+    } catch (error) {
+      console.error('Error deleting supplier:', error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
     <Card>
       <Box sx={{ overflowX: 'auto' }}>
         <table className="table table-striped table-hover">
-          <thead className="table-light">
+          <thead>
             <tr>
               <th>
-                <input
-                  type="checkbox"
-                  className="form-check-input"
-                  ref={selectAllRef}
+                <Checkbox
+                  inputRef={selectAllRef}
                   checked={selectedAll}
                   onChange={(event) => {
                     if (event.target.checked) {
@@ -75,57 +147,62 @@ export function SuppliersTable({
                   }}
                 />
               </th>
-              <th>Référence</th>
-              <th>Nom du responsable</th>
-              <th>Raison sociale</th>
-              <th>Matricule fiscal</th>
-              <th>Chiffre affaires</th>
+              <th>Nom de l&apos;entreprise</th>
+              <th>Code</th>
+              <th>Personne de contact</th>
+              <th>Email</th>
+              <th>Téléphone</th>
+              <th>Site web</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {displayedRows.map((row) => {
-              const isSelected = selectedIds.has(row.id);
+            {displayedSuppliers.map((supplier) => {
+              const isSelected = selectedIds.has(supplier.id);
 
               return (
-                <tr key={row.id} className={isSelected ? 'table-primary' : ''}>
+                <tr key={supplier.id} className={isSelected ? 'table-primary' : ''}>
                   <td>
-                    <input
-                      type="checkbox"
-                      className="form-check-input"
+                    <Checkbox
                       checked={isSelected}
                       onChange={(event) => {
                         if (event.target.checked) {
-                          selectOne(row.id);
+                          selectOne(supplier.id);
                         } else {
-                          deselectOne(row.id);
+                          deselectOne(supplier.id);
                         }
                       }}
                     />
                   </td>
-                  <td>{row.reference}</td>
-                  <td>{row.nomResponsable}</td>
-                  <td>{row.raisonSociale}</td>
-                  <td>{row.matriculeFiscal}</td>
-                  <td>{row.chiffreAffaires}</td>
+                  <td>{supplier.name}</td>
+                  <td>{supplier.code}</td>
+                  <td>{supplier.contactPerson}</td>
+                  <td>{supplier.email}</td>
+                  <td>{supplier.phone}</td>
+                  <td>{supplier.website}</td>
                   <td>
                     <div className="d-flex gap-2">
-                      <Button
-                        variant="outlined"
+                      <IconButton
                         color="primary"
-                        onClick={() => onUpdate(row.id)}
+                        onClick={() => onUpdate(supplier.id)}
                         size="small"
                       >
-                        Update
-                      </Button>
-                      <Button
-                        variant="outlined"
+                        <EditIcon /> {/* Edit icon */}
+                      </IconButton>
+                      <IconButton
                         color="secondary"
-                        onClick={() => onDelete(row.id)}
+                        onClick={() => handleDeleteSupplier(supplier.id)} // Call handleDeleteSupplier
                         size="small"
                       >
-                        Delete
-                      </Button>
+                        <DeleteIcon /> {/* Delete icon */}
+                      </IconButton>
+                      <IconButton
+                        color="info"
+                        onClick={() => handleViewDetails(supplier)}
+                        size="small"
+                      >
+                        <VisibilityIcon /> {/* View icon */}
+                      </IconButton>
                     </div>
                   </td>
                 </tr>
@@ -160,22 +237,50 @@ export function SuppliersTable({
           />
         </Pagination>
       </div>
+
+      {/* Dialog to view supplier details */}
+      <Dialog open={openDialog} onClose={handleCloseDialog}>
+        <DialogTitle>Supplier Details</DialogTitle>
+        <DialogContent>
+          {selectedSupplier && (
+            <div>
+              <p><strong>Name:</strong> {selectedSupplier.name}</p>
+              <p><strong>Code:</strong> {selectedSupplier.code}</p>
+              <p><strong>Contact Person:</strong> {selectedSupplier.contactPerson}</p>
+              <p><strong>Email:</strong> {selectedSupplier.email}</p>
+              <p><strong>Phone:</strong> {selectedSupplier.phone}</p>
+              <p><strong>Website:</strong> {selectedSupplier.website}</p>
+              <p><strong>Addresses:</strong></p>
+              {selectedSupplier.addresses && selectedSupplier.addresses.length > 0 ? (
+                <ul>
+                  {selectedSupplier.addresses.map((address, index) => (
+                    <li key={index}>
+                      <p><strong>Address Line 1:</strong> {address.addressLine1}</p>
+                      <p><strong>Address Line 2:</strong> {address.addressLine2}</p>
+                      <p><strong>Country:</strong> {address.country}</p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p>No addresses available.</p>
+              )}
+            </div>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog} color="primary">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Card>
   );
 }
 
-SuppliersTable.propTypes = {
-  rows: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
-      reference: PropTypes.string.isRequired,
-      nomResponsable: PropTypes.string.isRequired,
-      raisonSociale: PropTypes.string.isRequired,
-      matriculeFiscal: PropTypes.string.isRequired,
-      chiffreAffaires: PropTypes.number.isRequired,
-    })
-  ).isRequired,
+SupplierListTable.propTypes = {
   rowsPerPage: PropTypes.number,
   onDelete: PropTypes.func.isRequired,
   onUpdate: PropTypes.func.isRequired,
 };
+
+export default SupplierListTable;

@@ -12,6 +12,17 @@ export const getSuppliers = async () => {
     }
 };
 
+// Function to get all suppliers with addresses
+export const getSuppliersWithAddresses = async () => {
+    try {
+        const response = await apiErp.get('/suppliers/with-addresses');
+        return response.data; // Return the list of suppliers with addresses
+    } catch (error) {
+        console.error('Error fetching suppliers with addresses:', error);
+        throw error;
+    }
+};
+
 // Function to get a supplier by ID
 export const getSupplierById = async (id) => {
     try {

@@ -106,6 +106,8 @@ import DevisForm from 'layouts/Sale/Data/forms/devisForm';
 import CreerDevisAchat from 'layouts/Achat/CreerBonCommande';
 import DevisModule from 'layouts/Achat/componants/DevisModule';
 import CreerDevisPurchase from 'layouts/Achat/componants/DevisService';
+import { SuppliersTable } from 'layouts/Supplier/components/SuppliersTable';
+import PageSupplier from './layouts/Supplier/components';
 
 export default function App() {
   const [controller, dispatch] = useSoftUIController();
@@ -279,6 +281,7 @@ export default function App() {
         <Route path="/achats/nouveau" element={<CreerDevisAchat />} />
         <Route path="/achats/Devis" element={<DevisModule />} />
         <Route path="/devis/service" element={<CreerDevisPurchase />} /> 
+        <Route path="/suppliers" element={<PageSupplier />} /> 
       </Routes>
     </ThemeProvider>
   );
