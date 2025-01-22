@@ -82,6 +82,11 @@ import ProjectDashboard from "layouts/Projects/components/ProjectDashboard";
 import ProjectList from "./layouts/Projects/components/ProjectList";
 import VenteModule from "layouts/Sale/Data/VenteModule";
 import AchatModule from "layouts/Achat/componants/AchatModule";
+import ProjectModule from "layouts/Projects/components/ProjectModule";
+import ModuleRH from "layouts/HRModule/components/ModuleRH";
+import ProductServiceModule from "layouts/Product/components/ProductServiceModule";
+import ProfilePageUser from "layouts/profile/UserProfile/ProfilePageUser";
+
 
 
 
@@ -122,7 +127,7 @@ const routes = [
     key: "produit",
     route: "/produitService",
     icon: <Settings size="12px" />,
-    component: <ProductListWrapper />,
+    component: <ProductServiceModule />,
     noCollapse: true,
    
   },
@@ -164,7 +169,7 @@ const routes = [
     key: "ProjectManagment",
     route: "/ProjectManagment",
     icon: <Settings size="12px" />,
-    component: <ProjectList />,
+    component: <ProjectModule />,
     
     
   },
@@ -174,7 +179,7 @@ const routes = [
     key: "HR",
     route: "/HR",
     icon: <Settings size="12px" />,
-    component: <EmployeeDashboard />,
+    component: <ModuleRH />,
     
     
   },
@@ -187,7 +192,7 @@ const routes = [
     key: "profile",
     route: "/profile",
     icon: <CustomerSupport size="12px" />,
-    component: <ProfileDashboard />,
+    component: <ProfilePageUser />,
     noCollapse: true,
     //show: userRole === 'admin' || userRole === 'HR',  // يظهر كان لل-admin أو HR
   },

@@ -1,0 +1,23 @@
+.profile-card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: none;
+    border-radius: 10px;
+    background-color: #ffffff;
+  }
+  
+  .profile-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  }
+  
+  .icon-container {
+    color: #4e73df; /* Change this to match your theme */
+  }
+  
+  .text-dark {
+    color: #2c3e50; /* Dark text color */
+  }
+  
+  .text-muted {
+    color: #6c757d; /* Muted text color */
+  }

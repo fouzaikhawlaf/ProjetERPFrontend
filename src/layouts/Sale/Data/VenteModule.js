@@ -17,7 +17,7 @@ const VenteModule = () => {
       title: "Devis",
       description: "Créez et envoyez des devis personnalisés.",
       icon: "fa-file-alt",
-      link: "/ventes/devis",
+      link: "/devis",
     },
     {
       title: "Commandes",

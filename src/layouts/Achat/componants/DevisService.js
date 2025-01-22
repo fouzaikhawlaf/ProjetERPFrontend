@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import PropTypes from "prop-types";
 import {
   Paper,
   Button,
@@ -25,26 +24,31 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
 import { createDevisService } from 'services/devisPurchaseService';
 import { getSuppliers } from 'services/supplierApi';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate for navigation
+import { useNavigate } from 'react-router-dom';
 
 const CreerDevisService = () => {
-  const [client, setClient] = useState("");
-  const [devisNumber, setDevisNumber] = useState("");
-  const [date, setDate] = useState("");
+  const [devisNumber, setDevisNumber] = useState("DEVIS-SERVICE-");
   const [validityDate, setValidityDate] = useState("");
   const [description, setDescription] = useState("");
-  const [tarifHoraire, setTarifHoraire] = useState(0);
+  const [notes, setNotes] = useState("");
   const [duree, setDuree] = useState(0);
+  const [serviceType, setServiceType] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [items, setItems] = useState([
-    { designation: "", quantite: 0, unite: "h", prixUnitaire: 0, tva: 0, montant: 0 },
+    { designation: "", quantite: 0, prixUnitaire: 0, tva: 0 },
   ]);
   const [suppliers, setSuppliers] = useState([]);
-  const navigate = useNavigate(); // Initialize useNavigate
+  const [selectedSupplier, setSelectedSupplier] = useState("");
+  const [selectedSupplierName, setSelectedSupplierName] = useState("");
+  const navigate = useNavigate();
 
+  // Fetch suppliers on component mount
   useEffect(() => {
     const fetchSuppliers = async () => {
       try {
         const data = await getSuppliers();
+        console.log("Suppliers data:", data); // Debugging line
         setSuppliers(data);
       } catch (error) {
         console.error('Error fetching suppliers:', error);
@@ -54,60 +58,101 @@ const CreerDevisService = () => {
     fetchSuppliers();
   }, []);
 
+  // Add a new item to the items list
   const handleAddItem = () => {
-    setItems([...items, { designation: "", quantite: 0, unite: "h", prixUnitaire: 0, tva: 0, montant: 0 }]);
+    setItems([...items, { designation: "", quantite: 0, prixUnitaire: 0, tva: 0 }]);
   };
 
+  // Delete an item from the items list
   const handleDeleteItem = (index) => {
     const updatedItems = items.filter((_, i) => i !== index);
     setItems(updatedItems);
   };
 
+  // Handle changes in item fields
   const handleItemChange = (index, field, value) => {
     const newItems = [...items];
     newItems[index][field] = value;
-    if (field === "quantite" || field === "prixUnitaire" || field === "tva") {
-      newItems[index].montant = newItems[index].quantite * newItems[index].prixUnitaire * (1 + newItems[index].tva / 100);
-    }
     setItems(newItems);
   };
 
+  // Calculate total HT (excluding taxes)
   const calculateTotalHT = () =>
     items.reduce((total, item) => total + item.quantite * item.prixUnitaire, 0).toFixed(2);
 
+  // Calculate total VAT
   const calculateTotalVAT = () =>
     items.reduce((total, item) => total + item.quantite * item.prixUnitaire * (item.tva / 100), 0).toFixed(2);
 
+  // Calculate total TTC (including taxes)
   const calculateTotalTTC = () =>
     (parseFloat(calculateTotalHT()) + parseFloat(calculateTotalVAT())).toFixed(2);
 
+  // Handle changes in the devis number field
+  const handleDevisNumberChange = (e) => {
+    const value = e.target.value;
+    if (value.startsWith("DEVIS-")) {
+      setDevisNumber(value);
+    } else {
+      setDevisNumber(`DEVIS-${value}`);
+    }
+  };
+
+  // Handle supplier selection
+  const handleSupplierChange = (e) => {
+    const selectedId = e.target.value;
+    const selectedSupplier = suppliers.find((supplier) => supplier.supplierID === selectedId);
+
+    if (selectedSupplier) {
+      setSelectedSupplier(selectedId); // Save the supplier ID
+      setSelectedSupplierName(selectedSupplier.name); // Save the supplier name
+    } else {
+      setSelectedSupplier(""); // Reset if no supplier is selected
+      setSelectedSupplierName("");
+    }
+  };
+
+  // Handle form submission
   const onSubmit = async () => {
+    console.log("Selected Supplier ID:", selectedSupplier); // Debugging line
+
+    if (!selectedSupplier) {
+      alert('Please select a supplier.');
+      return;
+    }
+
     const devisServiceData = {
-      client,
+      supplierId: selectedSupplier,
       devisNumber,
-      date,
-      validityDate,
-      description,
-      tarifHoraire,
-      duree,
-      items,
       totalHT: parseFloat(calculateTotalHT()),
       totalTVA: parseFloat(calculateTotalVAT()),
       totalTTC: parseFloat(calculateTotalTTC()),
+      items,
+      validityDate,
+      description,
+      notes,
+      duree,
+      serviceType,
+      startDate,
+      endDate,
     };
+
+    console.log('Payload being sent:', devisServiceData); // Debugging line
 
     try {
       const response = await createDevisService(devisServiceData);
       console.log('Devis service created successfully:', response);
-      // Vous pouvez ajouter ici une redirection ou un message de succès
+      alert('Devis service created successfully!');
+      navigate('/DevisService');
     } catch (error) {
       console.error('Error creating devis service:', error);
-      // Vous pouvez ajouter ici un message d'erreur à l'utilisateur
+      alert('Error creating devis service. Please try again.');
     }
   };
 
+  // Navigate to the supplier creation page
   const handleCreateNewSupplier = () => {
-    navigate('/supplier-form-steps'); // Navigate to the create supplier page
+    navigate('/supplier-form-steps');
   };
 
   return (
@@ -135,18 +180,18 @@ const CreerDevisService = () => {
             <FormControl fullWidth variant="outlined">
               <InputLabel>Fournisseur</InputLabel>
               <Select
-                value={suppliers}
-                onChange={(e) => setSuppliers(e.target.value)}
+                value={selectedSupplier}
+                onChange={handleSupplierChange}
                 label="Fournisseur"
               >
                 {Array.isArray(suppliers) && suppliers.length > 0 ? (
                   suppliers.map((supplier) => (
-                    <MenuItem key={supplier.id} value={supplier.id}>
+                    <MenuItem key={supplier.supplierID} value={supplier.supplierID}>
                       {supplier.name}
                     </MenuItem>
                   ))
                 ) : (
-                  <MenuItem >
+                  <MenuItem>
                     <Button onClick={handleCreateNewSupplier} variant="contained" color="primary">
                       Créer un nouveau fournisseur
                     </Button>
@@ -156,27 +201,27 @@ const CreerDevisService = () => {
             </FormControl>
           </Grid>
 
+          {/* Display Selected Supplier Name */}
+          <Grid item xs={12} md={6}>
+            <TextField
+              label="Nom du Fournisseur"
+              fullWidth
+              value={selectedSupplierName}
+              InputProps={{
+                readOnly: true,
+              }}
+              variant="outlined"
+            />
+          </Grid>
+
           {/* Devis Number */}
           <Grid item xs={12} md={6}>
             <TextField
               label="Numéro de devis"
               fullWidth
               value={devisNumber}
-              onChange={(e) => setDevisNumber(e.target.value)}
+              onChange={handleDevisNumberChange}
               variant="outlined"
-            />
-          </Grid>
-
-          {/* Date */}
-          <Grid item xs={12} md={6}>
-            <TextField
-              label="Date"
-              fullWidth
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              variant="outlined"
-              InputLabelProps={{ shrink: true }}
             />
           </Grid>
 
@@ -206,14 +251,15 @@ const CreerDevisService = () => {
             />
           </Grid>
 
-          {/* Tarif Horaire */}
-          <Grid item xs={12} md={6}>
+          {/* Notes */}
+          <Grid item xs={12}>
             <TextField
-              label="Tarif Horaire (TND)"
+              label="Notes"
               fullWidth
-              type="number"
-              value={tarifHoraire}
-              onChange={(e) => setTarifHoraire(parseFloat(e.target.value))}
+              multiline
+              rows={3}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
               variant="outlined"
             />
           </Grid>
@@ -229,92 +275,111 @@ const CreerDevisService = () => {
               variant="outlined"
             />
           </Grid>
+
+          {/* Service Type */}
+          <Grid item xs={12} md={6}>
+            <TextField
+              label="Type de service"
+              fullWidth
+              value={serviceType}
+              onChange={(e) => setServiceType(e.target.value)}
+              variant="outlined"
+            />
+          </Grid>
+
+          {/* Start Date */}
+          <Grid item xs={12} md={6}>
+            <TextField
+              label="Date de début"
+              fullWidth
+              type="date"
+              value={startDate || ""}
+              onChange={(e) => setStartDate(e.target.value)}
+              variant="outlined"
+              InputLabelProps={{ shrink: true }}
+            />
+          </Grid>
+
+          {/* End Date */}
+          <Grid item xs={12} md={6}>
+            <TextField
+              label="Date de fin"
+              fullWidth
+              type="date"
+              value={endDate || ""}
+              onChange={(e) => setEndDate(e.target.value)}
+              variant="outlined"
+              InputLabelProps={{ shrink: true }}
+            />
+          </Grid>
         </Grid>
 
         {/* Items Table */}
-        <Table sx={{ my: 3, tableLayout: "fixed", width: "100%", overflowX: "auto" }}>
-          <TableHead>
-            <TableRow>
-              <TableCell sx={{ width: "25%", textAlign: "center" }}>Désignation</TableCell>
-              <TableCell sx={{ width: "10%", textAlign: "center" }}>Quantité</TableCell>
-              <TableCell sx={{ width: "10%", textAlign: "center" }}>Unité</TableCell>
-              <TableCell sx={{ width: "15%", textAlign: "center" }}>Prix Unitaire (TND)</TableCell>
-              <TableCell sx={{ width: "10%", textAlign: "center" }}>TVA (%)</TableCell>
-              <TableCell sx={{ width: "15%", textAlign: "center" }}>Montant (TND)</TableCell>
-              <TableCell sx={{ width: "15%", textAlign: "center" }}>Action</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
+        <table style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse", margin: "24px 0" }}>
+          <thead>
+            <tr>
+              <th style={{ width: "25%", textAlign: "center", fontWeight: "bold", padding: "8px", borderBottom: "1px solid #ddd" }}>Désignation</th>
+              <th style={{ width: "15%", textAlign: "center", fontWeight: "bold", padding: "8px", borderBottom: "1px solid #ddd" }}>Quantité</th>
+              <th style={{ width: "20%", textAlign: "center", fontWeight: "bold", padding: "8px", borderBottom: "1px solid #ddd" }}>Prix Unitaire (TND)</th>
+              <th style={{ width: "15%", textAlign: "center", fontWeight: "bold", padding: "8px", borderBottom: "1px solid #ddd" }}>TVA (%)</th>
+              <th style={{ width: "15%", textAlign: "center", fontWeight: "bold", padding: "8px", borderBottom: "1px solid #ddd" }}>Action</th>
+            </tr>
+          </thead>
+          <tbody>
             {items.map((item, index) => (
-              <TableRow key={index}>
-                <TableCell sx={{ width: "25%" }}>
-                  <Box display="flex" alignItems="center" justifyContent="center">
-                    <TextField
-                      fullWidth
+              <tr key={index} style={{ borderBottom: "1px solid #ddd" }}>
+                <td style={{ width: "25%", padding: "8px", textAlign: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <input
+                      type="text"
                       value={item.designation}
                       onChange={(e) => handleItemChange(index, "designation", e.target.value)}
-                      variant="standard"
+                      style={{ width: "100%", padding: "8px", border: "1px solid #ccc", borderRadius: "4px" }}
                     />
-                  </Box>
-                </TableCell>
-                <TableCell sx={{ width: "10%" }}>
-                  <Box display="flex" alignItems="center" justifyContent="center">
-                    <TextField
+                  </div>
+                </td>
+                <td style={{ width: "15%", padding: "8px", textAlign: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <input
                       type="number"
-                      fullWidth
                       value={item.quantite}
                       onChange={(e) => handleItemChange(index, "quantite", parseFloat(e.target.value))}
-                      variant="standard"
+                      style={{ width: "100%", padding: "8px", border: "1px solid #ccc", borderRadius: "4px" }}
                     />
-                  </Box>
-                </TableCell>
-                <TableCell sx={{ width: "10%" }}>
-                  <Box display="flex" alignItems="center" justifyContent="center">
-                    <FormControl fullWidth variant="standard">
-                      <Select
-                        value={item.unite}
-                        onChange={(e) => handleItemChange(index, "unite", e.target.value)}
-                      >
-                        <MenuItem value="h">h</MenuItem>
-                        <MenuItem value="u">u</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </Box>
-                </TableCell>
-                <TableCell sx={{ width: "15%" }}>
-                  <Box display="flex" alignItems="center" justifyContent="center">
-                    <TextField
+                  </div>
+                </td>
+                <td style={{ width: "20%", padding: "8px", textAlign: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <input
                       type="number"
-                      fullWidth
                       value={item.prixUnitaire}
                       onChange={(e) => handleItemChange(index, "prixUnitaire", parseFloat(e.target.value))}
-                      variant="standard"
+                      style={{ width: "100%", padding: "8px", border: "1px solid #ccc", borderRadius: "4px" }}
                     />
-                  </Box>
-                </TableCell>
-                <TableCell sx={{ width: "10%" }}>
-                  <Box display="flex" alignItems="center" justifyContent="center">
-                    <TextField
+                  </div>
+                </td>
+                <td style={{ width: "15%", padding: "8px", textAlign: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <input
                       type="number"
-                      fullWidth
                       value={item.tva}
                       onChange={(e) => handleItemChange(index, "tva", parseFloat(e.target.value))}
-                      variant="standard"
+                      style={{ width: "100%", padding: "8px", border: "1px solid #ccc", borderRadius: "4px" }}
                     />
-                  </Box>
-                </TableCell>
-                <TableCell sx={{ width: "15%", textAlign: "center" }}>
-                  {item.montant.toFixed(2)}
-                </TableCell>
-                <TableCell sx={{ width: "15%", textAlign: "center" }}>
-                  <IconButton color="error" onClick={() => handleDeleteItem(index)}>
+                  </div>
+                </td>
+                <td style={{ width: "15%", padding: "8px", textAlign: "center" }}>
+                  <button
+                    onClick={() => handleDeleteItem(index)}
+                    style={{ background: "none", border: "none", color: "red", cursor: "pointer" }}
+                  >
                     <DeleteIcon />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
+                  </button>
+                </td>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
 
         {/* Add Item Button */}
         <Grid container justifyContent="flex-start" sx={{ my: 2 }}>

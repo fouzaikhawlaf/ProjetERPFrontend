@@ -108,6 +108,11 @@ import DevisModule from 'layouts/Achat/componants/DevisModule';
 import CreerDevisPurchase from 'layouts/Achat/componants/DevisService';
 import { SuppliersTable } from 'layouts/Supplier/components/SuppliersTable';
 import PageSupplier from './layouts/Supplier/components';
+import DevisServiceTable from 'layouts/Achat/componants/Tables/DevisPuchase';
+import Page from 'layouts/tables/components';
+import ProjectModule from 'layouts/Projects/components/ProjectModule';
+import ModuleRH from 'layouts/HRModule/components/ModuleRH';
+
 
 export default function App() {
   const [controller, dispatch] = useSoftUIController();
@@ -282,6 +287,12 @@ export default function App() {
         <Route path="/achats/Devis" element={<DevisModule />} />
         <Route path="/devis/service" element={<CreerDevisPurchase />} /> 
         <Route path="/suppliers" element={<PageSupplier />} /> 
+        <Route path="/DevisService" element={<DevisServiceTable />} />    
+        <Route path="/Clients" element={<Page />} />    
+        <Route path="/project-module" element={<ProjectModule />} />
+        <Route path="/projects" element={<ProjectList />} />
+        <Route path="/module-rh" element={<ModuleRH />} />
+           
       </Routes>
     </ThemeProvider>
   );
