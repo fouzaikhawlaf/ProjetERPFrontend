@@ -8,25 +8,26 @@ import {
   InputGroup,
   FormControl,
 } from "react-bootstrap";
-import { FaEdit, FaTrashAlt, FaSearch, FaEye } from "react-icons/fa";
+import { FaSearch, FaEllipsisH, FaEye, FaEdit, FaTrashAlt } from "react-icons/fa";
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
 import "bootstrap/dist/css/bootstrap.min.css";
 import {
-  getAllDevisServices,
+  getAllDevisProducts,
   acceptDevis,
   rejectDevis,
 } from "services/devisPurchaseService";
+import { useNavigate } from "react-router-dom";
 
-const DevisServiceTable = () => {
-  const [services, setServices] = useState([]);
-  const [filteredServices, setFilteredServices] = useState([]);
+const DevisProduitTable = () => {
+  const [produits, setProduits] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
-  const [selectedService, setSelectedService] = useState(null);
+  const [selectedProduit, setSelectedProduit] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   // Map numeric statut to string
   const mapStatutToString = (statut) => {
@@ -42,74 +43,68 @@ const DevisServiceTable = () => {
     }
   };
 
-  // Fetch services on component mount
+  // Fetch produits on component mount
   useEffect(() => {
-    const fetchServices = async () => {
+    const fetchProduits = async () => {
       try {
-        const response = await getAllDevisServices();
-        console.log("Fetched Services:", response);
+        const response = await getAllDevisProducts();
+        console.log("Fetched Produits:", response);
 
         const data = response.$values || [];
-        console.log("Extracted Services:", data);
+        console.log("Extracted Produits:", data);
 
         if (Array.isArray(data)) {
-          setServices(data);
-          setFilteredServices(data);
+          setProduits(data);
         } else {
           console.error("Expected an array but got:", data);
           setError("Invalid data format received from the server.");
         }
       } catch (error) {
-        console.error("Error fetching services:", error);
-        setError("Failed to fetch services. Please try again later.");
+        console.error("Error fetching produits:", error);
+        setError("Failed to fetch produits. Please try again later.");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchServices();
+    fetchProduits();
   }, []);
 
-  // Handle accept devis
-  const handleAcceptDevis = async (id) => {
+  // Handle accept devis produit
+  const handleAcceptDevisProduit = async (id) => {
     try {
       await acceptDevis(id);
       const updatedStatus = 1; // Accepter
-      updateServiceStatus(id, updatedStatus);
+      updateProduitStatus(id, updatedStatus);
     } catch (error) {
-      console.error("Error accepting devis:", error);
+      console.error("Error accepting devis produit:", error);
     }
   };
 
-  // Handle reject devis
-  const handleRejectDevis = async (id) => {
+  // Handle reject devis produit
+  const handleRejectDevisProduit = async (id) => {
     try {
       await rejectDevis(id);
       const updatedStatus = 2; // Rejecter
-      updateServiceStatus(id, updatedStatus);
+      updateProduitStatus(id, updatedStatus);
     } catch (error) {
-      console.error("Error rejecting devis:", error);
+      console.error("Error rejecting devis produit:", error);
     }
   };
 
-  // Update the status of a service
-  const updateServiceStatus = (id, newStatus) => {
+  // Update the status of a produit
+  const updateProduitStatus = (id, newStatus) => {
     const statutString = mapStatutToString(newStatus); // Map numeric statut to string
-    setServices((prevServices) =>
-      prevServices.map((service) =>
-        service.id === id ? { ...service, statut: statutString } : service
-      )
-    );
-    setFilteredServices((prevFilteredServices) =>
-      prevFilteredServices.map((service) =>
-        service.id === id ? { ...service, statut: statutString } : service
+    setProduits((prevProduits) =>
+      prevProduits.map((produit) =>
+        produit.id === id ? { ...produit, statut: statutString } : produit
       )
     );
   };
 
   // Render status button or badge
-  const renderStatusButton = (service) => {
-    const statut = mapStatutToString(service.statut); // Map numeric statut to string
+  const renderStatusButton = (produit) => {
+    const statut = mapStatutToString(produit.statut); // Map numeric statut to string
 
     switch (statut) {
       case "EnCours":
@@ -118,14 +113,14 @@ const DevisServiceTable = () => {
             <Button
               variant="outline-success"
               size="sm"
-              onClick={() => handleAcceptDevis(service.id)}
+              onClick={() => handleAcceptDevisProduit(produit.id)}
             >
               Accepter
             </Button>{" "}
             <Button
               variant="outline-danger"
               size="sm"
-              onClick={() => handleRejectDevis(service.id)}
+              onClick={() => handleRejectDevisProduit(produit.id)}
             >
               Rejeter
             </Button>
@@ -156,48 +151,47 @@ const DevisServiceTable = () => {
   const handleSearch = (e) => {
     const query = e.target.value.toLowerCase();
     setSearchQuery(query);
-    setFilteredServices(
-      services.filter((service) =>
-        Object.values(service).some((value) =>
-          value.toString().toLowerCase().includes(query)
-        )
-      )
-    );
   };
 
+  // Filter produits based on search query
+  const filteredProduits = produits.filter((produit) =>
+    Object.values(produit).some((value) =>
+      value.toString().toLowerCase().includes(searchQuery)
+    )
+  );
+
   // Handle edit
-  const handleEdit = (service) => {
-    setSelectedService(service);
+  const handleEdit = (produit) => {
+    setSelectedProduit(produit);
     setShowEditModal(true);
   };
 
   // Handle delete
-  const handleDelete = (service) => {
-    setSelectedService(service);
+  const handleDelete = (produit) => {
+    setSelectedProduit(produit);
     setShowDeleteModal(true);
   };
 
   // Handle view
-  const handleView = (service) => {
-    setSelectedService(service);
+  const handleView = (produit) => {
+    setSelectedProduit(produit);
     setShowViewModal(true);
   };
 
   // Confirm delete
   const confirmDelete = () => {
-    setServices(services.filter((s) => s.id !== selectedService.id));
-    setFilteredServices(filteredServices.filter((s) => s.id !== selectedService.id));
+    setProduits(produits.filter((p) => p.id !== selectedProduit.id));
     setShowDeleteModal(false);
   };
 
   // Handle save changes
   const handleSave = () => {
-    setServices(services.map((s) => (s.id === selectedService.id ? selectedService : s)));
+    setProduits(produits.map((p) => (p.id === selectedProduit.id ? selectedProduit : p)));
     setShowEditModal(false);
   };
 
   if (loading) {
-    return <div>Loading services...</div>;
+    return <div>Loading produits...</div>;
   }
 
   if (error) {
@@ -207,12 +201,12 @@ const DevisServiceTable = () => {
   return (
     <DashboardLayout>
       <div className="container mt-4">
-        <h2 className="text-center mb-4">Devis Services</h2>
+        <h2 className="text-center mb-4">Devis Produits</h2>
 
         {/* Search Bar */}
         <InputGroup className="mb-3">
           <FormControl
-            placeholder="Search services..."
+            placeholder="Search produits..."
             value={searchQuery}
             onChange={handleSearch}
           />
@@ -227,28 +221,28 @@ const DevisServiceTable = () => {
             <tr>
               <th>#</th>
               <th>Devis Number</th>
-              <th>Service Name</th>
+              <th>Produit Name</th>
               <th>Status</th>
               <th>Price</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {Array.isArray(filteredServices) &&
-              filteredServices.map((service, index) => (
-                <tr key={service.id}>
+            {Array.isArray(filteredProduits) &&
+              filteredProduits.map((produit, index) => (
+                <tr key={produit.id}>
                   <td>{index + 1}</td>
-                  <td>{service.devisNumber}</td>
-                  <td>{service.description}</td>
-                  <td>{renderStatusButton(service)}</td>
-                  <td>{service.totalTTC}</td>
+                  <td>{produit.devisNumber}</td>
+                  <td>{produit.items.$values[0].designation}</td> {/* Updated here */}
+                  <td>{renderStatusButton(produit)}</td>
+                  <td>{produit.totalTTC}</td>
                   <td>
                     <div className="d-flex gap-2 justify-content-center">
                       {/* View Button */}
                       <Button
                         variant="link"
                         size="sm"
-                        onClick={() => handleView(service)}
+                        onClick={() => handleView(produit)}
                         style={{ background: "transparent", border: "none" }}
                       >
                         <FaEye style={{ color: "#0d6efd" }} /> {/* Blue Icon */}
@@ -258,7 +252,7 @@ const DevisServiceTable = () => {
                       <Button
                         variant="link"
                         size="sm"
-                        onClick={() => handleEdit(service)}
+                        onClick={() => handleEdit(produit)}
                         style={{ background: "transparent", border: "none" }}
                       >
                         <FaEdit style={{ color: "#0d6efd" }} /> {/* Blue Icon */}
@@ -268,7 +262,7 @@ const DevisServiceTable = () => {
                       <Button
                         variant="link"
                         size="sm"
-                        onClick={() => handleDelete(service)}
+                        onClick={() => handleDelete(produit)}
                         style={{ background: "transparent", border: "none" }}
                       >
                         <FaTrashAlt style={{ color: "#0d6efd" }} /> {/* Blue Icon */}
@@ -283,41 +277,52 @@ const DevisServiceTable = () => {
         {/* Edit Modal */}
         <Modal show={showEditModal} onHide={() => setShowEditModal(false)}>
           <Modal.Header closeButton>
-            <Modal.Title>Edit Service</Modal.Title>
+            <Modal.Title>Edit Produit</Modal.Title>
           </Modal.Header>
           <Modal.Body>
-            {selectedService && (
+            {selectedProduit && (
               <Form>
                 <Form.Group className="mb-3">
-                  <Form.Label>Service Name</Form.Label>
+                  <Form.Label>Produit Name</Form.Label>
                   <Form.Control
                     type="text"
-                    value={selectedService.name}
+                    value={selectedProduit.items.$values[0].designation}
                     onChange={(e) =>
-                      setSelectedService({ ...selectedService, name: e.target.value })
+                      setSelectedProduit({
+                        ...selectedProduit,
+                        items: {
+                          ...selectedProduit.items,
+                          $values: [
+                            {
+                              ...selectedProduit.items.$values[0],
+                              designation: e.target.value,
+                            },
+                          ],
+                        },
+                      })
                     }
                   />
                 </Form.Group>
                 <Form.Group className="mb-3">
                   <Form.Label>Status</Form.Label>
                   <Form.Select
-                    value={selectedService.status}
+                    value={selectedProduit.statut}
                     onChange={(e) =>
-                      setSelectedService({ ...selectedService, status: e.target.value })
+                      setSelectedProduit({ ...selectedProduit, statut: e.target.value })
                     }
                   >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                    <option value="Pending">Pending</option>
+                    <option value="0">EnCours</option>
+                    <option value="1">Accepter</option>
+                    <option value="2">Rejecter</option>
                   </Form.Select>
                 </Form.Group>
                 <Form.Group className="mb-3">
                   <Form.Label>Created Date</Form.Label>
                   <Form.Control
                     type="date"
-                    value={selectedService.dateCreation}
+                    value={selectedProduit.dateCreation}
                     onChange={(e) =>
-                      setSelectedService({ ...selectedService, dateCreation: e.target.value })
+                      setSelectedProduit({ ...selectedProduit, dateCreation: e.target.value })
                     }
                   />
                 </Form.Group>
@@ -325,9 +330,9 @@ const DevisServiceTable = () => {
                   <Form.Label>Price</Form.Label>
                   <Form.Control
                     type="text"
-                    value={selectedService.price}
+                    value={selectedProduit.totalTTC}
                     onChange={(e) =>
-                      setSelectedService({ ...selectedService, price: e.target.value })
+                      setSelectedProduit({ ...selectedProduit, totalTTC: e.target.value })
                     }
                   />
                 </Form.Group>
@@ -350,7 +355,7 @@ const DevisServiceTable = () => {
             <Modal.Title>Confirm Delete</Modal.Title>
           </Modal.Header>
           <Modal.Body>
-            Are you sure you want to delete service {selectedService?.devisNumber} - {selectedService?.name}?
+            Are you sure you want to delete produit {selectedProduit?.devisNumber} - {selectedProduit?.items.$values[0].designation}?
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
@@ -365,15 +370,15 @@ const DevisServiceTable = () => {
         {/* View Modal */}
         <Modal show={showViewModal} onHide={() => setShowViewModal(false)}>
           <Modal.Header closeButton>
-            <Modal.Title>View Service Details</Modal.Title>
+            <Modal.Title>View Produit Details</Modal.Title>
           </Modal.Header>
           <Modal.Body>
-            {selectedService && (
+            {selectedProduit && (
               <div>
-                <p><strong>Devis Number:</strong> {selectedService.devisNumber}</p>
-                <p><strong>Service Name:</strong> {selectedService.description}</p>
-                <p><strong>Status:</strong> {selectedService.statut}</p>
-                <p><strong>Total TTC:</strong> {selectedService.totalTTC}</p>
+                <p><strong>Devis Number:</strong> {selectedProduit.devisNumber}</p>
+                <p><strong>Produit Name:</strong> {selectedProduit.items.$values[0].designation}</p>
+                <p><strong>Status:</strong> {selectedProduit.statut}</p>
+                <p><strong>Total TTC:</strong> {selectedProduit.totalTTC}</p>
                 {/* Add more fields as needed */}
               </div>
             )}
@@ -389,4 +394,4 @@ const DevisServiceTable = () => {
   );
 };
 
-export default DevisServiceTable;
+export default DevisProduitTable;

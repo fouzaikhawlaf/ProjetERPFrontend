@@ -7,31 +7,29 @@ import {
   IconButton,
   Typography,
   Divider,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   MenuItem,
   Select,
   FormControl,
   InputLabel,
+  Modal,
   Box,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
-import { createDevisService } from 'services/devisPurchaseService';
-import { getSuppliers } from 'services/supplierApi';
-import { useNavigate } from 'react-router-dom';
+import { createDevisService } from "services/devisPurchaseService";
+import { getSuppliers } from "services/supplierApi";
+import { useNavigate } from "react-router-dom";
+import { jsPDF } from "jspdf";
+import "jspdf-autotable"; // Pour les tableaux formaté
+import imageShamash from 'images/imageShamash.png'; // Ajustez le chemin
 
 const CreerDevisService = () => {
   const [devisNumber, setDevisNumber] = useState("DEVIS-SERVICE-");
   const [validityDate, setValidityDate] = useState("");
   const [description, setDescription] = useState("");
   const [notes, setNotes] = useState("");
-  const [duree, setDuree] = useState(0);
   const [serviceType, setServiceType] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -40,7 +38,7 @@ const CreerDevisService = () => {
   ]);
   const [suppliers, setSuppliers] = useState([]);
   const [selectedSupplier, setSelectedSupplier] = useState("");
-  const [selectedSupplierName, setSelectedSupplierName] = useState("");
+  const [modalOpen, setModalOpen] = useState(false); // State for the modal
   const navigate = useNavigate();
 
   // Fetch suppliers on component mount
@@ -48,10 +46,9 @@ const CreerDevisService = () => {
     const fetchSuppliers = async () => {
       try {
         const data = await getSuppliers();
-        console.log("Suppliers data:", data); // Debugging line
         setSuppliers(data);
       } catch (error) {
-        console.error('Error fetching suppliers:', error);
+        console.error("Error fetching suppliers:", error);
       }
     };
 
@@ -70,11 +67,7 @@ const CreerDevisService = () => {
   };
 
   // Handle changes in item fields
-  const handleItemChange = (index, field, value) => {
-    const newItems = [...items];
-    newItems[index][field] = value;
-    setItems(newItems);
-  };
+ 
 
   // Calculate total HT (excluding taxes)
   const calculateTotalHT = () =>
@@ -87,6 +80,14 @@ const CreerDevisService = () => {
   // Calculate total TTC (including taxes)
   const calculateTotalTTC = () =>
     (parseFloat(calculateTotalHT()) + parseFloat(calculateTotalVAT())).toFixed(2);
+
+  // Calculate duration in hours
+  const calculateDuration = () => {
+    if (!startDate || !endDate) return 0;
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    return ((end - start) / (1000 * 60 * 60)).toFixed(2); // Convert milliseconds to hours
+  };
 
   // Handle changes in the devis number field
   const handleDevisNumberChange = (e) => {
@@ -101,23 +102,13 @@ const CreerDevisService = () => {
   // Handle supplier selection
   const handleSupplierChange = (e) => {
     const selectedId = e.target.value;
-    const selectedSupplier = suppliers.find((supplier) => supplier.supplierID === selectedId);
-
-    if (selectedSupplier) {
-      setSelectedSupplier(selectedId); // Save the supplier ID
-      setSelectedSupplierName(selectedSupplier.name); // Save the supplier name
-    } else {
-      setSelectedSupplier(""); // Reset if no supplier is selected
-      setSelectedSupplierName("");
-    }
+    setSelectedSupplier(selectedId);
   };
 
   // Handle form submission
   const onSubmit = async () => {
-    console.log("Selected Supplier ID:", selectedSupplier); // Debugging line
-
     if (!selectedSupplier) {
-      alert('Please select a supplier.');
+      alert("Veuillez sélectionner un fournisseur.");
       return;
     }
 
@@ -131,29 +122,181 @@ const CreerDevisService = () => {
       validityDate,
       description,
       notes,
-      duree,
       serviceType,
       startDate,
       endDate,
     };
 
-    console.log('Payload being sent:', devisServiceData); // Debugging line
-
     try {
       const response = await createDevisService(devisServiceData);
-      console.log('Devis service created successfully:', response);
-      alert('Devis service created successfully!');
-      navigate('/DevisService');
+      console.log("Devis service created successfully:", response);
+
+      // Show the success modal
+      setModalOpen(true);
+
+      // Navigate to the DevisService page after 3 seconds
+      setTimeout(() => {
+        navigate("/DevisService");
+      }, 3000);
     } catch (error) {
-      console.error('Error creating devis service:', error);
-      alert('Error creating devis service. Please try again.');
+      console.error("Error creating devis service:", error);
+      alert("Erreur lors de la création du devis. Veuillez réessayer.");
     }
+  };
+
+  // Close the modal
+  const handleModalClose = () => {
+    setModalOpen(false);
   };
 
   // Navigate to the supplier creation page
   const handleCreateNewSupplier = () => {
-    navigate('/supplier-form-steps');
+    navigate("/supplier-form-steps");
   };
+
+ 
+ 
+ 
+  
+  const generatePDF = () => {
+    if (!selectedSupplier) {
+      alert("Veuillez sélectionner un fournisseur avant de générer le PDF");
+      return;
+    }
+  
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      let yPosition = 15;
+  
+      // En-tête avec logo
+      if (imageShamash) {
+        doc.addImage(imageShamash, 'PNG', 10, 10, 30, 30);
+      }
+  
+      // Titre
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.text(`DEVIS N° ${devisNumber}`, pageWidth / 2, 20, { align: "center" });
+  
+      // Informations société
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text("Société Shamash IT", 140, 15);
+      doc.text("Adresse: étage B03,Centre Urbain Nord, Imm cercle des bureaux", 140, 20);
+      doc.text("Tél: +216  29 511 251", 140, 25);
+      doc.text("Email: contact@shamash-it.com", 140, 30);
+  
+      // Informations client
+      const selectedSupplierObj = suppliers.find(s => s.supplierID === selectedSupplier);
+      const clientInfo = [
+        ["Fournisseur:", selectedSupplierObj?.name || "Non spécifié"],
+        ["Date création:", new Date().toLocaleDateString()],
+        ["Validité:", validityDate || "Non spécifiée"],
+        ["Référence:", `DEV-${devisNumber}`]
+      ];
+  
+      doc.autoTable({
+        startY: 40,
+        body: clientInfo,
+        theme: "plain",
+        columnStyles: { 
+          0: { fontStyle: "bold", cellWidth: 40 },
+          1: { cellWidth: 60 } 
+        },
+        styles: { fontSize: 10 }
+      });
+  
+      yPosition = doc.lastAutoTable.finalY + 10;
+  
+      // Description
+      doc.setFontSize(12);
+      doc.text("Description du service:", 10, yPosition);
+      doc.setFontSize(10);
+      const splitDescription = doc.splitTextToSize(description || "Aucune description", 180);
+      doc.text(splitDescription, 10, yPosition + 7);
+  
+      // Tableau des articles
+      const headers = [["N°", "Désignation", "Qté", "P.U. HT", "TVA", "Total HT"]];
+      const data = items.map((item, index) => [
+        index + 1,
+        item.designation || "-",
+        Number(item.quantite || 0).toFixed(2),
+        `${Number(item.prixUnitaire || 0).toFixed(3)} TND`,
+        `${Number(item.tva || 0).toFixed(2)}%`,
+        `${(Number(item.quantite || 0) * Number(item.prixUnitaire || 0)).toFixed(3)} TND`
+      ]);
+  
+      doc.autoTable({
+        startY: yPosition + 15,
+        head: headers,
+        body: data,
+        theme: "grid",
+        margin: { horizontal: 10 },
+        styles: { fontSize: 8 },
+        headStyles: { 
+          fillColor: [41, 128, 185], 
+          textColor: 255, 
+          fontStyle: "bold" 
+        },
+        columnStyles: {
+          0: { cellWidth: 15 },
+          1: { cellWidth: 65 },
+          2: { cellWidth: 20 },
+          3: { cellWidth: 30 },
+          4: { cellWidth: 20 },
+          5: { cellWidth: 30 }
+        }
+      });
+  
+      // Totaux
+      const totalsY = doc.lastAutoTable.finalY + 15;
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      
+      const totals = [
+        { label: "Total HT:", value: calculateTotalHT() },
+        { label: "Total TVA:", value: calculateTotalVAT() },
+        { label: "Total TTC:", value: calculateTotalTTC() }
+      ];
+  
+      totals.forEach((total, index) => {
+        doc.text(
+          `${total.label} ${Number(total.value).toFixed(3)} TND`,
+          140,
+          totalsY + (index * 7)
+        );
+      });
+  
+      // Pied de page
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.text(
+        "Société XYZ - RCS Tunis B123456 - TVA FR40123456789",
+        pageWidth / 2,
+        doc.internal.pageSize.getHeight() - 10,
+        { align: "center" }
+      );
+  
+      doc.save(`Devis_${devisNumber.replace(/[/]/g, '_')}.pdf`);
+    } catch (error) {
+      console.error("Erreur de génération PDF:", error);
+      alert("Erreur lors de la génération du PDF : " + error.message);
+    }
+  };
+  
+  // Corriger la fonction handleItemChange
+  const handleItemChange = (index, field, value) => {
+    const newItems = [...items];
+    const numericValue = field !== 'designation' ? 
+      Math.max(0, Number(value) || 0) : 
+      value;
+    
+    newItems[index][field] = numericValue;
+    setItems(newItems);
+  };
+
+
 
   return (
     <DashboardLayout>
@@ -201,19 +344,6 @@ const CreerDevisService = () => {
             </FormControl>
           </Grid>
 
-          {/* Display Selected Supplier Name */}
-          <Grid item xs={12} md={6}>
-            <TextField
-              label="Nom du Fournisseur"
-              fullWidth
-              value={selectedSupplierName}
-              InputProps={{
-                readOnly: true,
-              }}
-              variant="outlined"
-            />
-          </Grid>
-
           {/* Devis Number */}
           <Grid item xs={12} md={6}>
             <TextField
@@ -221,6 +351,19 @@ const CreerDevisService = () => {
               fullWidth
               value={devisNumber}
               onChange={handleDevisNumberChange}
+              variant="outlined"
+            />
+          </Grid>
+
+          {/* Date de Création */}
+          <Grid item xs={12} md={6}>
+            <TextField
+              label="Date de création"
+              fullWidth
+              value={new Date().toLocaleDateString()}
+              InputProps={{
+                readOnly: true,
+              }}
               variant="outlined"
             />
           </Grid>
@@ -264,18 +407,6 @@ const CreerDevisService = () => {
             />
           </Grid>
 
-          {/* Durée */}
-          <Grid item xs={12} md={6}>
-            <TextField
-              label="Durée (heures)"
-              fullWidth
-              type="number"
-              value={duree}
-              onChange={(e) => setDuree(parseFloat(e.target.value))}
-              variant="outlined"
-            />
-          </Grid>
-
           {/* Service Type */}
           <Grid item xs={12} md={6}>
             <TextField
@@ -310,6 +441,19 @@ const CreerDevisService = () => {
               onChange={(e) => setEndDate(e.target.value)}
               variant="outlined"
               InputLabelProps={{ shrink: true }}
+            />
+          </Grid>
+
+          {/* Durée */}
+          <Grid item xs={12} md={6}>
+            <TextField
+              label="Durée (heures)"
+              fullWidth
+              value={calculateDuration()}
+              InputProps={{
+                readOnly: true,
+              }}
+              variant="outlined"
             />
           </Grid>
         </Grid>
@@ -409,6 +553,14 @@ const CreerDevisService = () => {
 
         {/* Submit Button */}
         <Grid container justifyContent="flex-end" sx={{ mt: 3 }}>
+        <Button
+    variant="contained"
+    color="secondary"
+    onClick={generatePDF}
+    sx={{ borderRadius: "8px", px: 4, mr: 2 }}
+  >
+    Télécharger le PDF
+  </Button>
           <Button
             variant="contained"
             color="success"
@@ -420,6 +572,45 @@ const CreerDevisService = () => {
           </Button>
         </Grid>
       </Paper>
+
+      {/* Full-Screen Success Modal */}
+      <Modal
+        open={modalOpen}
+        onClose={handleModalClose}
+        aria-labelledby="success-modal-title"
+        aria-describedby="success-modal-description"
+      >
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: "80%",
+            maxWidth: "600px",
+            bgcolor: "background.paper",
+            boxShadow: 24,
+            p: 4,
+            textAlign: "center",
+            borderRadius: "12px",
+          }}
+        >
+          <Typography id="success-modal-title" variant="h4" component="h2" sx={{ mb: 2 }}>
+            🎉 Devis créé avec succès!
+          </Typography>
+          <Typography id="success-modal-description" variant="h6" sx={{ mb: 4 }}>
+            Vous serez redirigé vers la page des devis dans quelques secondes.
+          </Typography>
+          <Button
+            variant="contained"
+            color="success"
+            size="large"
+            onClick={handleModalClose}
+          >
+            Fermer
+          </Button>
+        </Box>
+      </Modal>
     </DashboardLayout>
   );
 };

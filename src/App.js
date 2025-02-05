@@ -112,6 +112,12 @@ import DevisServiceTable from 'layouts/Achat/componants/Tables/DevisPuchase';
 import Page from 'layouts/tables/components';
 import ProjectModule from 'layouts/Projects/components/ProjectModule';
 import ModuleRH from 'layouts/HRModule/components/ModuleRH';
+import ProfileInterface from 'layouts/profile/UserProfile/ProfileInterface';
+import CreerDevisProduit from 'layouts/Achat/componants/DevisProduit/CreerDevisProduit';
+import DevisProduitTable from 'layouts/Achat/componants/Tables/DevisProduitTable';
+import CommandeModule from 'layouts/Achat/componants/OrderSupplier/CommandeModule';
+import CreateCommandeSupplier from 'layouts/Achat/componants/OrderSupplier/CreateOrderSupplierService';
+
 
 
 export default function App() {
@@ -292,7 +298,11 @@ export default function App() {
         <Route path="/project-module" element={<ProjectModule />} />
         <Route path="/projects" element={<ProjectList />} />
         <Route path="/module-rh" element={<ModuleRH />} />
-           
+        <Route path="/profile-user" element={<ProfileInterface />} />
+        <Route path="/devis/produit" element={<CreerDevisProduit />} />
+        <Route path="/devis/produitTable" element={<DevisProduitTable />} />
+        <Route path="/achats/commandes" element={<CommandeModule />} />
+        <Route path="/achats/commande/service" element={<CreateCommandeSupplier />} />
       </Routes>
     </ThemeProvider>
   );

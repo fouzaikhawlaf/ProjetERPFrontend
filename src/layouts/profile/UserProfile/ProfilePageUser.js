@@ -22,7 +22,7 @@ const ProfilePageUser = () => {
       title: 'Profile', 
       description: 'View and update your personal information...', 
       icon: 'fa-user', 
-      link: '/profile' 
+      link: '/profile-user' 
     },
     { 
       title: 'Settings', 

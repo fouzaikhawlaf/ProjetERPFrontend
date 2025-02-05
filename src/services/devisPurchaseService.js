@@ -66,35 +66,54 @@ export const updateDevisPurchase = async (id, updateDevisPurchaseDto) => {
   }
 };
 
-// Accepter un devis
-export const acceptDevis = async (id) => {
-  try {
-    const response = await apiErp.post(`/DevisPurchase/${id}/accept`);
-    return response.data;
-  } catch (error) {
-    console.error(`Error accepting devis with ID ${id}:`, error);
-    throw error;
-  }
-};
-
-// Rejeter un devis
-export const rejectDevis = async (id) => {
-  try {
-    const response = await apiErp.post(`/DevisPurchase/${id}/reject`);
-    return response.data;
-  } catch (error) {
-    console.error(`Error rejecting devis with ID ${id}:`, error);
-    throw error;
-  }
-};
-
 // Récupérer tous les services de devis
 export const getAllDevisServices = async () => {
   try {
-    const response = await apiErp.get('/DevisPurchase/services');
+    const response = await apiErp.get("/DevisPurchase/services");
     return response.data;
   } catch (error) {
-    console.error('Error fetching devis services:', error);
+    console.error("Error fetching devis services:", error);
+    throw error;
+  }
+};
+
+// Other functions (acceptDevis, rejectDevis, getDevisStatus, etc.)
+export const acceptDevis = async (id) => {
+  try {
+    const requestBody = {
+      userId: 123, // Replace with the actual user ID
+      comment: "Devis accepted", // Replace with the actual comment
+    };
+
+    const response = await apiErp.post(`/DevisPurchase/${id}/accept`, requestBody);
+    return response.data;
+  } catch (error) {
+    console.error("Error accepting devis:", error);
+    throw error;
+  }
+};
+
+export const rejectDevis = async (id) => {
+  try {
+    const requestBody = {
+      userId: 123, // Replace with the actual user ID
+      comment: "Devis rejected", // Replace with the actual comment
+    };
+
+    const response = await apiErp.post(`/DevisPurchase/${id}/reject`, requestBody);
+    return response.data;
+  } catch (error) {
+    console.error("Error rejecting devis:", error);
+    throw error;
+  }
+};
+
+export const getDevisStatus = async (id) => {
+  try {
+    const response = await apiErp.get(`/DevisPurchase/${id}/status`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching devis status:", error);
     throw error;
   }
 };
@@ -202,13 +221,3 @@ export const getDevisByDateRange = async (startDate, endDate) => {
   }
 };
 
-// Récupérer le statut d'un devis
-export const getDevisStatus = async (id) => {
-  try {
-    const response = await apiErp.get(`/DevisPurchase/${id}/status`);
-    return response.data;
-  } catch (error) {
-    console.error(`Error fetching status for devis with ID ${id}:`, error);
-    throw error;
-  }
-};

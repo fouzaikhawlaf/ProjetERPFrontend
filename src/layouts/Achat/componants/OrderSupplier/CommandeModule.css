@@ -1,0 +1,23 @@
+.commande-card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: none;
+    border-radius: 10px;
+    background-color: #ffffff;
+  }
+  
+  .commande-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  }
+  
+  .icon-container {
+    color: #007bff; /* Change the icon color */
+  }
+  
+  .commande-card .card-title {
+    font-size: 1.25rem;
+  }
+  
+  .commande-card .card-text {
+    font-size: 0.9rem;
+  }
