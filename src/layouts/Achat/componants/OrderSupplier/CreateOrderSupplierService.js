@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { PDFDownloadLink, PDFViewer } from '@react-pdf/renderer';
 import CommandePDF from '../pdfForm/CommandePDF';
+import { createOrderSupplier } from 'services/CommandeService';
 import {
   Paper,
   Button,
@@ -133,21 +134,47 @@ const CreateCommandeSupplier = () => {
   const calculateTotalTTC = () => 
     (parseFloat(calculateTotalHT()) + parseFloat(calculateTotalVAT())).toFixed(2);
 
-  // Form submission
-  const onSubmit = async () => {
-    setLoading(prev => ({ ...prev, submission: true }));
-    setError(null);
+    const onSubmit = async () => {
+      setLoading(prev => ({ ...prev, submission: true }));
+      setError(null);
+    
+      try {
+        // Création du DTO
+        const orderDto = {
+          orderNumber,
+          deliveryDate,
+          items: items.map(item => ({
+            designation: item.designation,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            tva: item.tva
+          })),
+          notes,
+          devisNumber: selectedDevisNumber,
+          totalHT: calculateTotalHT(),
+          totalTVA: calculateTotalVAT(),
+          totalTTC: calculateTotalTTC()
+        };
+       console.log(orderDto);
+        // Appel API
+        const createdOrder = await createOrderSupplier(orderDto);
 
-    try {
-      // Logique d'appel API ici
-      setModalOpen(true);
-      setTimeout(() => navigate("/CommandesFournisseur"), 3000);
-    } catch (err) {
-      setError("Échec de la création de commande");
-    } finally {
-      setLoading(prev => ({ ...prev, submission: false }));
-    }
-  };
+        // Gestion de la réponse
+        if (createdOrder) {
+          setModalOpen(true);
+          setTimeout(() => navigate("/CommandesFournisseur"), 3000);
+        }
+      } catch (err) {
+        setError(err.response?.data?.message || "Échec de la création de commande");
+      } finally {
+        setLoading(prev => ({ ...prev, submission: false }));
+      }
+    };
+    
+
+
+
+
 
   return (
     <DashboardLayout>
@@ -287,7 +314,8 @@ const CreateCommandeSupplier = () => {
                   ))}
                 </tbody>
               </table>
-              
+             
+
               <Button 
                 variant="outlined" 
                 startIcon={<AddIcon />} 
@@ -297,7 +325,17 @@ const CreateCommandeSupplier = () => {
                 Ajouter un produit
               </Button>
             </Grid>
-
+            <Grid item xs={12}>
+  <TextField
+    label="Notes"
+    fullWidth
+    multiline
+    rows={3}
+    value={notes}
+    onChange={(e) => setNotes(e.target.value)}
+    sx={{ mt: 2 }}
+  />
+</Grid>
             {/* Totaux */}
             <Grid item xs={12}>
               <Divider sx={{ my: 2 }} />

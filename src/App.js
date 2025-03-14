@@ -117,6 +117,7 @@ import CreerDevisProduit from 'layouts/Achat/componants/DevisProduit/CreerDevisP
 import DevisProduitTable from 'layouts/Achat/componants/Tables/DevisProduitTable';
 import CommandeModule from 'layouts/Achat/componants/OrderSupplier/CommandeModule';
 import CreateCommandeSupplier from 'layouts/Achat/componants/OrderSupplier/CreateOrderSupplierService';
+import LeaveRequestForm from 'layouts/Conge/Component/LeaveRequestForm';
 
 
 
@@ -303,6 +304,7 @@ export default function App() {
         <Route path="/devis/produitTable" element={<DevisProduitTable />} />
         <Route path="/achats/commandes" element={<CommandeModule />} />
         <Route path="/achats/commande/service" element={<CreateCommandeSupplier />} />
+       <Route path = "/User/Congé"   element= {<LeaveRequestForm />} />
       </Routes>
     </ThemeProvider>
   );

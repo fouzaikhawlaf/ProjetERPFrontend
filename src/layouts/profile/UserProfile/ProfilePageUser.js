@@ -10,13 +10,13 @@ const ProfilePageUser = () => {
       title: 'Congé', 
       description: 'Manage leave requests and approvals...', 
       icon: 'fa-calendar-check', 
-      link: '/conge' 
+      link: '/User/Congé' 
     },
     { 
       title: 'Project', 
       description: 'Manage your projects and track progress...', 
       icon: 'fa-project-diagram', 
-      link: '/project' 
+      link: '/projectManagement' 
     },
     { 
       title: 'Profile', 
