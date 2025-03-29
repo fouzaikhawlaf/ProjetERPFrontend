@@ -11,13 +11,13 @@ const VenteModule = () => {
       title: "Nouvelle Vente",
       description: "Ajoutez une nouvelle vente ou commande.",
       icon: "fa-shopping-cart",
-      link: "/ventes/nouveau",
+      link: "/Vente/Nouveau/Devis",
     },
     {
       title: "Devis",
       description: "Créez et envoyez des devis personnalisés.",
       icon: "fa-file-alt",
-      link: "/devis",
+      link: "/Vente/list/Devis",
     },
     {
       title: "Commandes",
