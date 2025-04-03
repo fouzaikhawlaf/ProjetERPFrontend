@@ -122,6 +122,7 @@ import CreerDevisClient from 'layouts/Sale/Data/forms/CreateDevisServiceCLient';
 import DevisModuleClient from 'layouts/Sale/Data/devisModuleClient';
 import ListDevisVenteService from 'layouts/Sale/Data/Tables/DevisTable';
 import CreerDevisClientProduit from 'layouts/Sale/Data/forms/devisForm';
+import { CustomersTable } from 'layouts/tables/components/custumersTabe';
 
 
 
@@ -312,7 +313,8 @@ export default function App() {
        <Route path = "/Vente/DevisServiceClient"   element= {<CreerDevisClient />} /> 
        <Route path = "/Vente/Nouveau/Devis"   element= {<DevisModuleClient />} /> 
        <Route path = "/Vente/list/Devis"   element= {<ListDevisVenteService />} /> 
-       <Route path = "/Vente/DevisProductClient"   element= {<CreerDevisClientProduit />} />   
+       <Route path = "/Vente/DevisProductClient"   element= {<CreerDevisClientProduit />} /> 
+       <Route path = "/listCLients"   element= {<CustomersTable />} />   
       </Routes>
     </ThemeProvider>
   );

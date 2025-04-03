@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import PropTypes from 'prop-types';
 import {
   Paper,
   Button,
@@ -11,7 +12,11 @@ import {
   Alert,
   Chip,
   Grid,
-  InputAdornment
+  InputAdornment,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle
 } from "@mui/material";
 import { 
   AddCircle, 
@@ -19,19 +24,100 @@ import {
   Delete, 
   Visibility, 
   Search,
-  Refresh
+  Refresh,
+  CheckCircle,
+  Pending
 } from "@mui/icons-material";
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
-import { getAllDevis, deleteDevis, getDevisByStatus, searchDevis } from "services/DevisClientService";
+import { 
+  getAllDevis, 
+  deleteDevis, 
+  getDevisByStatus, 
+  searchDevis,
+  validateDevis 
+} from "services/DevisClientService";
 import { useSnackbar } from "notistack";
 
 const statusOptions = [
   { value: "Tous", label: "Tous", color: "default" },
   { value: 0, label: "Brouillon", color: "primary" },
   { value: 1, label: "Envoyé", color: "warning" },
-  { value: 2, label: "Payé", color: "success" },
+  { value: 2, label: "Validé", color: "success" },
   { value: 3, label: "Annulé", color: "error" }
 ];
+
+const DevisValidationButton = ({ devisId, currentStatus, onValidateSuccess }) => {
+  const { enqueueSnackbar } = useSnackbar();
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [notes, setNotes] = useState('');
+
+  const handleValidate = async () => {
+    setLoading(true);
+    try {
+      await validateDevis(devisId);
+      onValidateSuccess(devisId);
+      enqueueSnackbar("Devis validé avec succès", { variant: "success" });
+      setOpen(false);
+    } catch (error) {
+      enqueueSnackbar("Erreur lors de la validation", { variant: "error" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (currentStatus === 2) {
+    return (
+      <Chip
+        icon={<CheckCircle />}
+        label="Validé"
+        color="success"
+        size="small"
+      />
+    );
+  }
+
+  return (
+    <>
+      <Tooltip title="Valider le devis">
+        <IconButton
+          size="small"
+          onClick={() => setOpen(true)}
+          color="primary"
+        >
+          <Pending />
+        </IconButton>
+      </Tooltip>
+
+      <Dialog open={open} onClose={() => setOpen(false)}>
+        <DialogTitle>Confirmer la validation</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Notes (optionnel)"
+            fullWidth
+            multiline
+            rows={3}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpen(false)}>Annuler</Button>
+          <Button 
+            onClick={handleValidate}
+            color="primary"
+            disabled={loading}
+            startIcon={<CheckCircle />}
+          >
+            {loading ? 'Validation...' : 'Confirmer'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+};
 
 const DevisClient = () => {
   const { enqueueSnackbar } = useSnackbar();
@@ -104,6 +190,15 @@ const DevisClient = () => {
       console.error("Delete error:", error);
       enqueueSnackbar("Erreur de suppression", { variant: "error" });
     }
+  };
+
+  const handleValidateSuccess = (id) => {
+    setDevis(prev => prev.map(d => 
+      d.id === id ? { ...d, status: 2 } : d
+    ));
+    setFilteredDevis(prev => prev.map(d => 
+      d.id === id ? { ...d, status: 2 } : d
+    ));
   };
 
   return (
@@ -279,7 +374,7 @@ const DevisClient = () => {
                     }}>Total TTC</th>
                     
                     <th style={{ 
-                      width: '100px',
+                      width: '150px', // Augmenté pour accommoder le nouveau bouton
                       padding: '0 16px',
                       fontWeight: 600,
                       fontSize: '0.875rem',
@@ -355,7 +450,7 @@ const DevisClient = () => {
                             label={
                               devis.status === 0 ? 'Brouillon' :
                               devis.status === 1 ? 'Envoyé' :
-                              devis.status === 2 ? 'Payé' : 'Annulé'
+                              devis.status === 2 ? 'Validé' : 'Annulé'
                             }
                             size="small"
                             sx={{
@@ -406,6 +501,7 @@ const DevisClient = () => {
                                 <Visibility fontSize="small" />
                               </IconButton>
                             </Tooltip>
+                            
                             <Tooltip title="Modifier">
                               <IconButton 
                                 size="small"
@@ -418,6 +514,13 @@ const DevisClient = () => {
                                 <Edit fontSize="small" />
                               </IconButton>
                             </Tooltip>
+                            
+                            <DevisValidationButton 
+                              devisId={devis.id}
+                              currentStatus={devis.status}
+                              onValidateSuccess={handleValidateSuccess}
+                            />
+                            
                             <Tooltip title="Supprimer">
                               <IconButton 
                                 size="small"
@@ -464,5 +567,12 @@ const DevisClient = () => {
     </DashboardLayout>
   );
 };
-
+DevisValidationButton.propTypes = {
+  devisId: PropTypes.oneOfType([
+    PropTypes.string,
+    PropTypes.number
+  ]).isRequired,
+  currentStatus: PropTypes.number.isRequired,
+  onValidateSuccess: PropTypes.func.isRequired
+};
 export default DevisClient;

@@ -168,6 +168,52 @@ export const convertDevisToOrder = async (id) => {
   }
 };
 
+
+// services/DevisClientService.js
+export const checkIfDevisIsValidated = async (id) => {
+  try {
+    // Récupère uniquement les devis validés (statut = 2)
+    const response = await getDevisByStatus(2);
+    const validatedDevis = response.$values || response;
+    
+    // Vérifie si le devis actuel est dans la liste des validés
+    return validatedDevis.some(devis => devis.id === id);
+  } catch (error) {
+    console.error('Verification error:', error);
+    return false;
+  }
+};
+
+// Version améliorée de validateDevis
+export const validateDevisWithFeedback = async (id) => {
+  try {
+    const result = await validateDevis(id);
+    
+    // Vérification supplémentaire
+    const isNowValidated = await checkIfDevisIsValidated(id);
+    
+    return {
+      success: isNowValidated,
+      message: isNowValidated 
+        ? "Devis validé avec succès" 
+        : "La validation a échoué"
+    };
+  } catch (error) {
+    console.error('Validation error:', error);
+    return {
+      success: false,
+      message: "Erreur technique lors de la validation"
+    };
+  }
+};
+
+
+
+
+
+
+
+
 // Default export with all methods as an object
 const DevisClientService = {
   getDevisById,

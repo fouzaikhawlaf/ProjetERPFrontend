@@ -86,6 +86,8 @@ import ProjectModule from "layouts/Projects/components/ProjectModule";
 import ModuleRH from "layouts/HRModule/components/ModuleRH";
 import ProductServiceModule from "layouts/Product/components/ProductServiceModule";
 import ProfilePageUser from "layouts/profile/UserProfile/ProfilePageUser";
+import { CustomersTable } from "layouts/tables/components/custumersTabe";
+import SupplierListTable from "layouts/Supplier/components/SuppliersTable";
 
 
 
@@ -105,10 +107,10 @@ const routes = [
   {
     type: "collapse",
     name: "Clients",
-    key: "tables",
-    route: "/tables",
+    key: "listCLients",
+    route: "/listCLients",
     icon: <Office size="12px" />,
-    component: <Page />,
+    component: <CustomersTable />,
     noCollapse: true,
     
   },
@@ -118,7 +120,7 @@ const routes = [
     key: "supplier",
     route: "/supplier",
     icon: <Settings size="12px" />,
-    component: <PageSupplier />,
+    component: <SupplierListTable />,
     noCollapse: true,
   }, 
   {
