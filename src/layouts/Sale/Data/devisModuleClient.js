@@ -23,7 +23,7 @@ const DevisModuleClient = () => {
       title: "Project",
       description: "Gérez les devis liés aux projets.",
       icon: "fa-project-diagram", // FontAwesome icon for projects
-      link: "/devis/project",
+      link: "/Vente/DevisClientPorjet",
     },
   ];
 

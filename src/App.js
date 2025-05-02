@@ -125,6 +125,7 @@ import CreerDevisClientProduit from 'layouts/Sale/Data/forms/devisForm';
 import { CustomersTable } from 'layouts/tables/components/custumersTabe';
 import OrderClientModule from 'layouts/Sale/Data/OrderClient/OrderCLientModule';
 import CreateClientOrder from './layouts/Sale/Data/OrderClient/OrderClientCreate';
+import DevisProjetForm from 'layouts/Sale/Data/forms/CreerDevisClientProjet ';
 
 
 
@@ -318,7 +319,8 @@ export default function App() {
        <Route path = "/Vente/DevisProductClient"   element= {<CreerDevisClientProduit />} /> 
        <Route path = "/listCLients"   element= {<CustomersTable />} />   
        <Route path = "/Vente/OrderCLient"   element= {<OrderClientModule />} />   
-       <Route path = "/Vente/OrderCLientService"   element= {<CreateClientOrder />} />    
+       <Route path = "/Vente/OrderCLientService"   element= {<CreateClientOrder />} />   
+       <Route path = "/Vente/DevisClientPorjet"   element= {<DevisProjetForm />} />    
       </Routes>
     </ThemeProvider>
   );
