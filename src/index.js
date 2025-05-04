@@ -28,6 +28,7 @@ root.render(
 
   <BrowserRouter>
     <SoftUIControllerProvider>
+      
       <App />
     </SoftUIControllerProvider>
   </BrowserRouter>

@@ -1,17 +1,23 @@
 import apiErp from './api'; // Import the Axios instance
 
 // Get all projects
-const getProjects = async () => {
+ const getProjects = async () => {
   try {
-    const response = await apiErp.get('/project');
-    console.log('Projects fetched:', response.data.$values);
-    return response.data.$values; // Return the data if needed elsewhere
+    const response = await apiErp.get('/project', {
+      params: { 
+        include: 'manager',
+        status: 'ACTIVE'
+      }
+    });
+
+    // Handle different response structures
+    const data = response.data;
+    return data.items || data.$values || data || [];
   } catch (error) {
     console.error('Error fetching projects:', error);
-    throw error; // Rethrow the error if you need to handle it later
+    return [];
   }
 };
-
 // Create a new project
 const createProject = async (projectData) => {
   try {
