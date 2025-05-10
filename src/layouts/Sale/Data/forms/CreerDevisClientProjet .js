@@ -69,20 +69,31 @@ const DevisProjetForm = () => {
     const loadData = async () => {
       try {
         const [clientsResponse, projectsResponse] = await Promise.all([
-          getClients(1, 1000),
+          getClients(),
           getProjects()
         ]);
 
         if (isMounted) {
-          const clientsData = (clientsResponse.clients || [])
-            .filter(c => c?.id)
+          let clientData = [];
+          if (clientsResponse?.data?.$values) {
+            clientData = clientsResponse.data.$values;
+          } else if (Array.isArray(clientsResponse?.$values)) {
+            clientData = clientsResponse.$values;
+          } else if (Array.isArray(clientsResponse?.clients)) {
+            clientData = clientsResponse.clients;
+          } else if (Array.isArray(clientsResponse?.data)) {
+            clientData = clientsResponse.data;
+          } else if (Array.isArray(clientsResponse)) {
+            clientData = clientsResponse;
+          }
+
+          const transformedClients = clientData
             .map(client => ({
-              id: String(client.id),
-              name: client.name || client.companyName || 'Client sans nom',
-              reference: client.reference || client.clientCode || 'N/A',
-              email: client.email || client.contactEmail || 'Non spécifié',
-              rawData: client
-            }));
+              id: client.clientID || client.$id || client.id,
+              name: client.name || client.companyName || `Client ${client.clientID || client.id || 'N/A'}`,
+              email: client.email || client.contactEmail || '',
+            }))
+            .filter(client => client.id);
 
           const projectsData = (projectsResponse || [])
             .filter(p => p.status === 0)
@@ -101,9 +112,12 @@ const DevisProjetForm = () => {
               rawData: project
             }));
 
-          setClients(clientsData);
+          setClients(transformedClients);
           setProjects(projectsData);
 
+          if (transformedClients.length === 0) {
+            enqueueSnackbar("Aucun client disponible", { variant: "warning" });
+          }
           if (projectsData.length === 0) {
             enqueueSnackbar("Aucun projet actif disponible", { variant: "warning" });
           }
@@ -266,26 +280,19 @@ const DevisProjetForm = () => {
                   value={state.clientId}
                   onChange={(e) => setState(p => ({ ...p, clientId: e.target.value }))}
                   label="Client"
-                  displayEmpty
-                  renderValue={(selected) => {
-                    if (!selected) return <em>Sélectionnez un client</em>;
-                    const client = clients.find(c => c.id === selected);
-                    return client ? `${client.name} (${client.reference})` : '';
-                  }}
+                  disabled={clients.length === 0}
                 >
-                  <MenuItem disabled value="">
-                    <em>Sélectionnez un client</em>
-                  </MenuItem>
-                  {clients.map(client => (
-                    <MenuItem key={client.id} value={client.id}>
-                      <Box display="flex" flexDirection="column">
-                        <Typography variant="body1">{client.name}</Typography>
-                        <Typography variant="caption" color="textSecondary">
-                          {client.reference} • {client.email}
-                        </Typography>
-                      </Box>
+                  {clients.length > 0 ? (
+                    clients.map(client => (
+                      <MenuItem key={client.id} value={client.id}>
+                        {client.name} 
+                      </MenuItem>
+                    ))
+                  ) : (
+                    <MenuItem disabled>
+                      Aucun client disponible
                     </MenuItem>
-                  ))}
+                  )}
                 </Select>
                 {errors.client && <FormHelperText error>{errors.client}</FormHelperText>}
               </FormControl>
@@ -346,7 +353,7 @@ const DevisProjetForm = () => {
                               variant="outlined"
                               size="small"
                               error={!!errors[`project-${index}`]}
-                              helperText={errors[`project-${index}`] || "Sélectionnez un projet"}
+                              helperText={errors[`project-${index}`] }
                               placeholder="Rechercher un projet..."
                             />
                           )}
@@ -372,21 +379,24 @@ const DevisProjetForm = () => {
                         />
                       </td>
                       <td style={{ padding: "8px" }}>
-                      <TextField
-  type="number"
-  value={item.quantity}
-  onChange={(e) => {
-    const newItems = [...state.items];
-    newItems[index].quantity = Math.max(1, Math.min(1000, parseInt(e.target.value) || 1));
-    setState(p => ({ ...p, items: newItems }));
-  }}
-  InputProps={{ inputProps: { min: 1, max: 1000 } }}
-  fullWidth
-  size="small"
-  error={!!errors[`quantity-${index}`]}
-  helperText={errors[`quantity-${index}`]}
-/>
-                      </td>
+  <TextField
+    type="number"
+    value={item.quantity}
+    onChange={(e) => {
+      const newItems = [...state.items];
+      newItems[index].quantity = Math.max(
+        1, 
+        Math.min(1000, parseInt(e.target.value) || 1)
+      );
+      setState(p => ({ ...p, items: newItems }));
+    }}
+    InputProps={{ inputProps: { min: 1, max: 1000 } }}
+    fullWidth
+    size="small"
+    error={!!errors[`quantity-${index}`]}
+    helperText={errors[`quantity-${index}`]}
+  />
+</td>
                       <td style={{ padding: "8px" }}>
                         <TextField
                           value={item.prixUnitaire?.toFixed(2) || '0.00'}
