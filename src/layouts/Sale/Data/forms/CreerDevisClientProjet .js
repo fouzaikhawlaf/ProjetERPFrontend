@@ -34,6 +34,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from "dayjs";
 import { useSnackbar } from "notistack";
+import { createDevis } from "services/DevisClientService";
 
 const DevisProjetForm = () => {
   const { enqueueSnackbar } = useSnackbar();
@@ -43,7 +44,7 @@ const DevisProjetForm = () => {
     expirationDate: dayjs().add(15, 'day'),
     items: [{ projectId: "", quantity: 1 }],
     notes: "",
-    status: "DRAFT"
+    status: 0
   });
 
   const [clients, setClients] = useState([]);
@@ -75,23 +76,16 @@ const DevisProjetForm = () => {
 
         if (isMounted) {
           let clientData = [];
-          if (clientsResponse?.data?.$values) {
-            clientData = clientsResponse.data.$values;
-          } else if (Array.isArray(clientsResponse?.$values)) {
-            clientData = clientsResponse.$values;
-          } else if (Array.isArray(clientsResponse?.clients)) {
-            clientData = clientsResponse.clients;
-          } else if (Array.isArray(clientsResponse?.data)) {
-            clientData = clientsResponse.data;
-          } else if (Array.isArray(clientsResponse)) {
-            clientData = clientsResponse;
-          }
+          if (clientsResponse?.data?.$values) clientData = clientsResponse.data.$values;
+          else if (Array.isArray(clientsResponse?.$values)) clientData = clientsResponse.$values;
+          else if (Array.isArray(clientsResponse?.clients)) clientData = clientsResponse.clients;
+          else if (Array.isArray(clientsResponse?.data)) clientData = clientsResponse.data;
+          else if (Array.isArray(clientsResponse)) clientData = clientsResponse;
 
           const transformedClients = clientData
             .map(client => ({
               id: client.clientID || client.$id || client.id,
-              name: client.name || client.companyName || `Client ${client.clientID || client.id || 'N/A'}`,
-              email: client.email || client.contactEmail || '',
+              name: client.name || client.companyName || `Client ${client.clientID || client.id || 'N/A'}`
             }))
             .filter(client => client.id);
 
@@ -104,33 +98,17 @@ const DevisProjetForm = () => {
               tva: 20,
               startDate: dayjs(project.startDate),
               endDate: dayjs(project.endDate),
-              manager: project.manager?.fullName || 
-                      project.employees?.$values?.[0]?.name || 
-                      'Non assigné',
-              description: project.description || '',
-              riskLevel: project.riskLevel || 0,
               rawData: project
             }));
 
           setClients(transformedClients);
           setProjects(projectsData);
-
-          if (transformedClients.length === 0) {
-            enqueueSnackbar("Aucun client disponible", { variant: "warning" });
-          }
-          if (projectsData.length === 0) {
-            enqueueSnackbar("Aucun projet actif disponible", { variant: "warning" });
-          }
         }
       } catch (error) {
         enqueueSnackbar(`Erreur de chargement: ${error.message}`, { variant: "error" });
       } finally {
         if (isMounted) {
-          setIsLoading(prev => ({
-            ...prev,
-            clients: false,
-            projects: false
-          }));
+          setIsLoading(prev => ({ ...prev, clients: false, projects: false }));
         }
       }
     };
@@ -174,14 +152,8 @@ const DevisProjetForm = () => {
 
     state.items.forEach((item, index) => {
       const project = projectsMap.get(item.projectId);
-      
-      if (!project || project.rawData.status !== 0) {
-        newErrors[`project-${index}`] = "Projet non valide ou inactif";
-      }
-      
-      if (item.quantity <= 0 || item.quantity > 1000) {
-        newErrors[`quantity-${index}`] = "Quantité invalide (1-1000)";
-      }
+      if (!project || project.rawData.status !== 0) newErrors[`project-${index}`] = "Projet non valide";
+      if (item.quantity <= 0 || item.quantity > 1000) newErrors[`quantity-${index}`] = "Quantité invalide";
     });
 
     setErrors(newErrors);
@@ -197,36 +169,68 @@ const DevisProjetForm = () => {
     setIsLoading(prev => ({ ...prev, submitting: true }));
 
     const payload = {
-      ...state,
-      expirationDate: state.expirationDate.format('YYYY-MM-DD'),
-      totalHT: totalHT.toFixed(2),
-      totalTVA: totalTVA.toFixed(2),
-      totalTTC: totalTTC.toFixed(2),
-      items: state.items.map(item => ({
-        projectId: item.projectId,
-        quantity: item.quantity,
-        tva: item.tva,
-        prixUnitaire: item.prixUnitaire
-      }))
+      clientId: Number(state.clientId),
+      creationDate: dayjs().format('YYYY-MM-DDTHH:mm:ss.SSSZ'),
+      expirationDate: state.expirationDate.format('YYYY-MM-DDTHH:mm:ss.SSSZ'),
+      reference: state.reference,
+      status: 0,
+      items: state.items.map(item => {
+        const project = projectsMap.get(item.projectId);
+        return {
+          type: 0,
+          projectId: item.projectId, // Conserver le format string
+          designation: project?.name || "",
+          price: parseFloat(project?.price || 0).toFixed(2),
+          tva: parseFloat(item.tva).toFixed(2),
+          quantity: parseInt(item.quantity, 10)
+         
+        };
+      })
     };
 
     try {
-      enqueueSnackbar("Devis créé avec succès !", { variant: "success" });
-      handlePreviewPdf();
+      console.log("Payload envoyé:", JSON.stringify(payload, null, 2));
+      const response = await createDevis(payload);
+      
+      enqueueSnackbar("Devis créé avec succès !", { 
+        variant: "success",
+        anchorOrigin: { vertical: 'top', horizontal: 'right' }
+      });
+      
+      const pdfBlob = new Blob([response.data], { type: 'application/pdf' });
+      const url = URL.createObjectURL(pdfBlob);
+      setPdfUrl(url);
+      setPdfDialogOpen(true);
+
     } catch (error) {
-      enqueueSnackbar("Échec de la création du devis", { variant: "error" });
+      let errorMessage = "Erreur inconnue";
+      if (error.response?.data?.errors) {
+        errorMessage = Object.entries(error.response.data.errors)
+          .map(([field, messages]) => `${field}: ${messages.join(', ')}`)
+          .join('\n');
+      }
+      
+      enqueueSnackbar(
+        <div>
+          <strong>Erreur de validation :</strong>
+          <pre style={{ 
+            whiteSpace: 'pre-wrap', 
+            fontSize: '0.8rem',
+            backgroundColor: '#ffe6e6',
+            padding: '8px',
+            borderRadius: '4px'
+          }}>
+            {errorMessage}
+          </pre>
+        </div>, 
+        {
+          variant: "error",
+          autoHideDuration: 10000,
+          anchorOrigin: { vertical: 'top', horizontal: 'right' }
+        }
+      );
     } finally {
       setIsLoading(prev => ({ ...prev, submitting: false }));
-    }
-  };
-
-  const handlePreviewPdf = async () => {
-    try {
-      const mockPdfUrl = "https://example.com/dummy.pdf";
-      setPdfUrl(mockPdfUrl);
-      setPdfDialogOpen(true);
-    } catch (error) {
-      enqueueSnackbar("Erreur lors de la génération du PDF", { variant: "error" });
     }
   };
 
@@ -258,15 +262,7 @@ const DevisProjetForm = () => {
   return (
     <DashboardLayout>
       <LocalizationProvider dateAdapter={AdapterDayjs}>
-        <Paper elevation={4} sx={{
-          p: 4,
-          width: "90%",
-          maxWidth: "1200px",
-          margin: "auto",
-          mt: 4,
-          borderRadius: "12px",
-          backgroundColor: "#f9f9f9",
-        }}>
+        <Paper elevation={4} sx={{ p: 4, width: "90%", maxWidth: "1200px", margin: "auto", mt: 4, borderRadius: "12px" }}>
           <Typography variant="h4" gutterBottom textAlign="center" sx={{ mb: 3, fontWeight: 600 }}>
             Nouveau Devis Projet
           </Typography>
@@ -282,17 +278,9 @@ const DevisProjetForm = () => {
                   label="Client"
                   disabled={clients.length === 0}
                 >
-                  {clients.length > 0 ? (
-                    clients.map(client => (
-                      <MenuItem key={client.id} value={client.id}>
-                        {client.name} 
-                      </MenuItem>
-                    ))
-                  ) : (
-                    <MenuItem disabled>
-                      Aucun client disponible
-                    </MenuItem>
-                  )}
+                  {clients.map(client => (
+                    <MenuItem key={client.id} value={client.id}>{client.name}</MenuItem>
+                  ))}
                 </Select>
                 {errors.client && <FormHelperText error>{errors.client}</FormHelperText>}
               </FormControl>
@@ -305,8 +293,6 @@ const DevisProjetForm = () => {
                 InputProps={{ readOnly: true }}
                 fullWidth
                 variant="outlined"
-                helperText="Référence automatique générée"
-                error={!!errors.reference}
               />
             </Grid>
 
@@ -341,11 +327,6 @@ const DevisProjetForm = () => {
                           value={projects.find(p => p.id === item.projectId) || null}
                           onChange={(e, newValue) => handleProjectSelect(index, newValue)}
                           isOptionEqualToValue={(option, value) => option.id === value?.id}
-                          filterOptions={(options, state) => 
-                            options.filter(option =>
-                              option.name.toLowerCase().includes(state.inputValue.toLowerCase())
-                            )
-                          }
                           noOptionsText="Aucun projet trouvé"
                           renderInput={(params) => (
                             <TextField
@@ -353,50 +334,28 @@ const DevisProjetForm = () => {
                               variant="outlined"
                               size="small"
                               error={!!errors[`project-${index}`]}
-                              helperText={errors[`project-${index}`] }
-                              placeholder="Rechercher un projet..."
+                              helperText={errors[`project-${index}`]}
                             />
-                          )}
-                          renderOption={(props, option) => (
-                            <li {...props}>
-                              <Box sx={{ width: '100%' }}>
-                                <Typography variant="body1">{option.name}</Typography>
-                                <Box display="flex" justifyContent="space-between">
-                                  <Typography variant="caption">
-                                    {dayjs(option.startDate).format('DD/MM/YYYY')} - 
-                                    {dayjs(option.endDate).format('DD/MM/YYYY')}
-                                  </Typography>
-                                  <Typography variant="caption">
-                                    Risque: {option.riskLevel}
-                                  </Typography>
-                                </Box>
-                                <Typography variant="caption" display="block">
-                                  {option.description}
-                                </Typography>
-                              </Box>
-                            </li>
                           )}
                         />
                       </td>
                       <td style={{ padding: "8px" }}>
-  <TextField
-    type="number"
-    value={item.quantity}
-    onChange={(e) => {
-      const newItems = [...state.items];
-      newItems[index].quantity = Math.max(
-        1, 
-        Math.min(1000, parseInt(e.target.value) || 1)
-      );
-      setState(p => ({ ...p, items: newItems }));
-    }}
-    InputProps={{ inputProps: { min: 1, max: 1000 } }}
-    fullWidth
-    size="small"
-    error={!!errors[`quantity-${index}`]}
-    helperText={errors[`quantity-${index}`]}
-  />
-</td>
+                        <TextField
+                          type="number"
+                          value={item.quantity}
+                          onChange={(e) => {
+                            const newItems = [...state.items];
+                            const rawValue = parseInt(e.target.value) || 1;
+                            newItems[index].quantity = Math.max(1, Math.min(1000, rawValue));
+                            setState(p => ({ ...p, items: newItems }));
+                          }}
+                          InputProps={{ inputProps: { min: 1, max: 1000 } }}
+                          fullWidth
+                          size="small"
+                          error={!!errors[`quantity-${index}`]}
+                          helperText={errors[`quantity-${index}`]}
+                        />
+                      </td>
                       <td style={{ padding: "8px" }}>
                         <TextField
                           value={item.prixUnitaire?.toFixed(2) || '0.00'}
@@ -421,10 +380,7 @@ const DevisProjetForm = () => {
                       </td>
                       <td style={{ padding: "8px", textAlign: "center" }}>
                         <IconButton 
-                          onClick={() => setState(p => ({
-                            ...p,
-                            items: p.items.filter((_, i) => i !== index)
-                          }))}
+                          onClick={() => setState(p => ({ ...p, items: p.items.filter((_, i) => i !== index) }))}
                           color="error"
                           disabled={state.items.length === 1}
                         >
@@ -441,29 +397,16 @@ const DevisProjetForm = () => {
               <Button
                 variant="contained"
                 startIcon={<AddIcon />}
-                onClick={() => setState(p => ({
-                  ...p,
-                  items: [...p.items, { projectId: "", quantity: 1 }]
-                }))}
+                onClick={() => setState(p => ({ ...p, items: [...p.items, { projectId: "", quantity: 1 }] }))}
               >
                 Ajouter un projet
               </Button>
             </Grid>
 
-            <Divider sx={{ my: 3, width: '100%' }} />
-
             <Grid container spacing={2} sx={{ width: '100%' }}>
-              <Grid item xs={4}>
-                <Typography variant="h6">Total HT: {totalHT.toFixed(2)} TND</Typography>
-              </Grid>
-              <Grid item xs={4}>
-                <Typography variant="h6">Total TVA: {totalTVA.toFixed(2)} TND</Typography>
-              </Grid>
-              <Grid item xs={4}>
-                <Typography variant="h5" color="primary">
-                  Total TTC: {totalTTC.toFixed(2)} TND
-                </Typography>
-              </Grid>
+              <Grid item xs={4}><Typography variant="h6">Total HT: {totalHT.toFixed(2)} TND</Typography></Grid>
+              <Grid item xs={4}><Typography variant="h6">Total TVA: {totalTVA.toFixed(2)} TND</Typography></Grid>
+              <Grid item xs={4}><Typography variant="h5" color="primary">Total TTC: {totalTTC.toFixed(2)} TND</Typography></Grid>
             </Grid>
 
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3, width: '100%', gap: 2 }}>
@@ -471,7 +414,7 @@ const DevisProjetForm = () => {
                 variant="outlined"
                 color="secondary"
                 startIcon={<PictureAsPdfIcon />}
-                onClick={handlePreviewPdf}
+                onClick={() => setPdfDialogOpen(true)}
                 disabled={!state.clientId}
               >
                 Prévisualiser PDF
@@ -483,7 +426,6 @@ const DevisProjetForm = () => {
                 size="large"
                 startIcon={isLoading.submitting ? <CircularProgress size={20} color="inherit" /> : <CheckCircleIcon />}
                 onClick={handleSubmit}
-                sx={{ minWidth: 200 }}
                 disabled={isLoading.submitting}
               >
                 {isLoading.submitting ? 'Enregistrement...' : 'Valider le Devis'}
@@ -491,15 +433,9 @@ const DevisProjetForm = () => {
             </Box>
           </Grid>
 
-          <Dialog
-            open={pdfDialogOpen}
-            onClose={handleClosePdfDialog}
-            maxWidth="lg"
-            fullWidth
-            sx={{ '& .MuiDialog-paper': { height: '90vh' } }}
-          >
+          <Dialog open={pdfDialogOpen} onClose={handleClosePdfDialog} maxWidth="lg" fullWidth>
             <DialogTitle>Prévisualisation du Devis</DialogTitle>
-            <DialogContent sx={{ p: 0 }}>
+            <DialogContent sx={{ p: 0, height: '80vh' }}>
               {pdfUrl && (
                 <iframe
                   src={pdfUrl}
@@ -512,12 +448,7 @@ const DevisProjetForm = () => {
             </DialogContent>
             <DialogActions>
               <Button onClick={handleClosePdfDialog}>Fermer</Button>
-              <Button 
-                onClick={handleDownloadPdf} 
-                variant="contained" 
-                color="primary"
-                startIcon={<PictureAsPdfIcon />}
-              >
+              <Button onClick={handleDownloadPdf} variant="contained" color="primary">
                 Télécharger PDF
               </Button>
             </DialogActions>
