@@ -39,10 +39,11 @@ import { createDevis } from "services/DevisClientService";
 const DevisProjetForm = () => {
   const { enqueueSnackbar } = useSnackbar();
   const [state, setState] = useState({
+
     clientId: "",
     reference: `DEV-PROJ-${dayjs().format('YYMMDD')}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`,
     expirationDate: dayjs().add(15, 'day'),
-    items: [{ projectId: "", quantity: 1 }],
+    items: [{ projectId: "", quantity: 1  ,type: 2}],
     notes: "",
     status: 0
   });
@@ -124,7 +125,8 @@ const DevisProjetForm = () => {
       projectId: project?.id || "",
       designation: project?.name || "",
       prixUnitaire: project?.price || 0,
-      tva: project?.tva || 20
+      tva: project?.tva || 20,
+      type: 2 // Ensure type is set when project is selected
     };
     setState(prev => ({ ...prev, items: newItems }));
   }, [state.items]);
@@ -177,7 +179,7 @@ const DevisProjetForm = () => {
       items: state.items.map(item => {
         const project = projectsMap.get(item.projectId);
         return {
-          type: 0,
+          type: 2,
           projectId: item.projectId, // Conserver le format string
           designation: project?.name || "",
           price: parseFloat(project?.price || 0).toFixed(2),
@@ -397,7 +399,7 @@ const DevisProjetForm = () => {
               <Button
                 variant="contained"
                 startIcon={<AddIcon />}
-                onClick={() => setState(p => ({ ...p, items: [...p.items, { projectId: "", quantity: 1 }] }))}
+                onClick={() => setState(p => ({ ...p, items: [...p.items, { projectId: "", quantity: 1, type: 2 }] }))}
               >
                 Ajouter un projet
               </Button>

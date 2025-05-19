@@ -3,7 +3,7 @@ import {
   Paper,
   Button,
   TextField,
-  IconButton, // Ajoutez cette ligne
+  IconButton,
   Grid,
   Typography,
   Divider,
@@ -11,95 +11,165 @@ import {
   Select,
   FormControl,
   InputLabel,
+  CircularProgress,
+  FormHelperText,
+  Box,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
 import { getClients } from "services/ApiClient";
 import { useNavigate } from "react-router-dom";
+import generateDevisPDF from "../pdf/DevisPDF";
 
 const CreerDevisClient = () => {
-  const [devisNumber, setDevisNumber] = useState("DEVIS-CLIENT-");
+  const [devisNumber, setDevisNumber] = useState("DEVIS-CLIENT-SERVICE-");
   const [validityDate, setValidityDate] = useState("");
   const [description, setDescription] = useState("");
   const [notes, setNotes] = useState("");
   const [serviceType, setServiceType] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [items, setItems] = useState([
-    { designation: "", quantite: 0, prixUnitaire: 0, tva: 0 },
-  ]);
+  const [items, setItems] = useState([{ 
+    type: 1,
+    designation: "", 
+    quantite: 0, 
+    prixUnitaire: 0, 
+    tva: 0
+  }]);
   const [clients, setClients] = useState([]);
+  const [services, setServices] = useState([]);
   const [selectedClient, setSelectedClient] = useState("");
+  const [loadingClients, setLoadingClients] = useState(true);
+  const [clientError, setClientError] = useState("");
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
+  const [pdfBlob, setPdfBlob] = useState(null);
   const navigate = useNavigate();
 
-  // Fetch clients on component mount
   useEffect(() => {
-    const fetchClients = async () => {
+    const fetchData = async () => {
       try {
-        const data = await getClients();
-        setClients(data);
+        const [clientsResponse, servicesData] = await Promise.all([
+          getClients(),
+          fetchServices()
+        ]);
+
+        let clientData = [];
+        if (clientsResponse?.data?.$values) clientData = clientsResponse.data.$values;
+        else if (Array.isArray(clientsResponse)) clientData = clientsResponse;
+
+        const transformedClients = clientData
+          .map(client => ({
+            id: client.clientID || client.id,
+            name: client.name || client.companyName || `Client ${client.clientID || client.id}`
+          }))
+          .filter(client => client.id);
+
+        setClients(transformedClients);
+        setClientError(transformedClients.length === 0 ? "Aucun client disponible" : "");
+        setServices(servicesData);
+
       } catch (error) {
-        console.error("Error fetching clients:", error);
+        setClientError("Échec du chargement des clients");
+      } finally {
+        setLoadingClients(false);
       }
     };
-
-    fetchClients();
+    fetchData();
   }, []);
 
-  // Add a new item to the items list
   const handleAddItem = () => {
-    setItems([...items, { designation: "", quantite: 0, prixUnitaire: 0, tva: 0 }]);
+    setItems([...items, { 
+      type: 1,
+      designation: "", 
+      quantite: 0, 
+      prixUnitaire: 0, 
+      tva: 0,
+      serviceId: null 
+    }]);
   };
 
-  // Delete an item from the items list
   const handleDeleteItem = (index) => {
     const updatedItems = items.filter((_, i) => i !== index);
     setItems(updatedItems);
   };
 
-// Handle changes in item fields
-const handleItemChange = (index, field, value) => {
+  const handleItemChange = (index, field, value) => {
     const newItems = [...items];
-    const numericValue = field !== "designation" ? Math.max(0, Number(value) || 0) : value;
-    newItems[index][field] = numericValue;
+    
+    if (field === "serviceId") {
+      const selectedService = services.find(s => s.id === value);
+      newItems[index] = {
+        ...newItems[index],
+        serviceId: value,
+        designation: selectedService?.name || ""
+      };
+    } else {
+      const numericValue = ["quantite", "prixUnitaire", "tva"].includes(field) 
+        ? Math.max(0, Number(value) || 0) 
+        : value;
+      newItems[index][field] = numericValue;
+    }
+    
     setItems(newItems);
   };
 
-  // Calculate total HT (excluding taxes)
   const calculateTotalHT = () =>
     items.reduce((total, item) => total + item.quantite * item.prixUnitaire, 0).toFixed(2);
 
-  // Calculate total VAT
   const calculateTotalVAT = () =>
     items.reduce((total, item) => total + item.quantite * item.prixUnitaire * (item.tva / 100), 0).toFixed(2);
 
-  // Calculate total TTC (including taxes)
   const calculateTotalTTC = () =>
     (parseFloat(calculateTotalHT()) + parseFloat(calculateTotalVAT())).toFixed(2);
 
-  // Handle changes in the devis number field
   const handleDevisNumberChange = (e) => {
     const value = e.target.value;
-    if (value.startsWith("DEVIS-")) {
-      setDevisNumber(value);
-    } else {
-      setDevisNumber(`DEVIS-${value}`);
-    }
+    setDevisNumber(value.startsWith("DEVIS-") ? value : `DEVIS-${value}`);
   };
 
-  // Handle client selection
   const handleClientChange = (e) => {
-    const selectedId = e.target.value;
-    setSelectedClient(selectedId);
+    setSelectedClient(e.target.value);
   };
 
-  // Handle form submission
+  const handlePreviewPDF = () => {
+    if (!selectedClient) return;
+    
+    const clientData = clients.find(c => c.id === selectedClient);
+    const devisData = {
+      reference: devisNumber,
+      creationDate: new Date().toISOString(),
+      expirationDate: validityDate,
+      totalHT: calculateTotalHT(),
+      totalTVA: calculateTotalVAT(),
+      totalTTC: calculateTotalTTC()
+    };
+
+    const pdf = generateDevisPDF(devisData, clientData, items);
+    const blob = pdf.output("blob");
+    setPdfBlob(blob);
+    setPdfPreviewOpen(true);
+  };
+
+  const handleDownloadPDF = () => {
+    if (!pdfBlob) return;
+    
+    const url = URL.createObjectURL(pdfBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${devisNumber}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const onSubmit = async () => {
-    if (!selectedClient) {
-      alert("Veuillez sélectionner un client.");
-      return;
-    }
+    if (!selectedClient) return;
 
     const devisClientData = {
       clientId: selectedClient,
@@ -107,7 +177,14 @@ const handleItemChange = (index, field, value) => {
       totalHT: parseFloat(calculateTotalHT()),
       totalTVA: parseFloat(calculateTotalVAT()),
       totalTTC: parseFloat(calculateTotalTTC()),
-      items,
+      items: items.map(item => ({
+        type: 1,
+        designation: item.designation,
+        quantity: item.quantite,
+        price: item.prixUnitaire,
+        tva: item.tva,
+        serviceId: item.serviceId
+      })),
       validityDate,
       description,
       notes,
@@ -117,59 +194,60 @@ const handleItemChange = (index, field, value) => {
     };
 
     try {
-      // Appeler l'API pour créer le devis client
-      console.log("Devis client data:", devisClientData);
-      alert("Devis client créé avec succès !");
-      navigate("/DevisClient"); // Rediriger vers la liste des devis clients
+      console.log(devisClientData);
+      navigate("/DevisClient");
     } catch (error) {
-      console.error("Error creating devis client:", error);
-      alert("Erreur lors de la création du devis. Veuillez réessayer.");
+      console.error(error);
     }
   };
 
   return (
     <DashboardLayout>
-      <Paper
-        elevation={4}
-        sx={{
-          p: 4,
-          width: "90%",
-          maxWidth: "1200px",
-          margin: "auto",
-          mt: 4,
-          borderRadius: "12px",
-          backgroundColor: "#f9f9f9",
-        }}
-      >
+      <Paper elevation={4} sx={{ p: 4, width: "90%", maxWidth: "1200px", margin: "auto", mt: 4, borderRadius: "12px", backgroundColor: "#f9f9f9" }}>
         <Typography variant="h4" gutterBottom textAlign="center" sx={{ mb: 3, fontWeight: 600 }}>
-          Créer un Nouveau Devis Client
+          Créer un Devis Service
         </Typography>
         <Divider sx={{ mb: 3 }} />
 
         <Grid container spacing={4}>
-          {/* Client */}
           <Grid item xs={12} md={6}>
-            <FormControl fullWidth variant="outlined">
+            <FormControl fullWidth variant="outlined" error={!!clientError}>
               <InputLabel>Client</InputLabel>
               <Select
                 value={selectedClient}
                 onChange={handleClientChange}
                 label="Client"
+                disabled={loadingClients || clientError}
+                renderValue={(value) => {
+                  const selected = clients.find(c => c.id === value);
+                  return selected ? selected.name : "Sélectionnez un client";
+                }}
               >
-                {Array.isArray(clients) && clients.length > 0 ? (
-                  clients.map((client) => (
-                    <MenuItem key={client.clientID} value={client.clientID}>
-                      {client.name}
-                    </MenuItem>
-                  ))
-                ) : (
-                  <MenuItem disabled>Aucun client disponible</MenuItem>
-                )}
+                {loadingClients ? (
+                  <MenuItem disabled>
+                    <CircularProgress size={24} />
+                    <Typography variant="body2" sx={{ ml: 2 }}>Chargement des clients...</Typography>
+                  </MenuItem>
+                ) : clients.map((client) => (
+                  <MenuItem key={client.id} value={client.id}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                      <span>{client.name}</span>
+                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                        ID: {client.id}
+                      </Typography>
+                    </Box>
+                  </MenuItem>
+                ))}
               </Select>
+              {clientError && (
+                <FormHelperText error sx={{ display: 'flex', alignItems: 'center' }}>
+                  <span style={{ marginRight: 8 }}>❌</span>
+                  {clientError}
+                </FormHelperText>
+              )}
             </FormControl>
           </Grid>
 
-          {/* Devis Number */}
           <Grid item xs={12} md={6}>
             <TextField
               label="Numéro de devis"
@@ -180,20 +258,6 @@ const handleItemChange = (index, field, value) => {
             />
           </Grid>
 
-          {/* Date de Création */}
-          <Grid item xs={12} md={6}>
-            <TextField
-              label="Date de création"
-              fullWidth
-              value={new Date().toLocaleDateString()}
-              InputProps={{
-                readOnly: true,
-              }}
-              variant="outlined"
-            />
-          </Grid>
-
-          {/* Validity Date */}
           <Grid item xs={12} md={6}>
             <TextField
               label="Date de validité"
@@ -206,7 +270,6 @@ const handleItemChange = (index, field, value) => {
             />
           </Grid>
 
-          {/* Description */}
           <Grid item xs={12}>
             <TextField
               label="Description"
@@ -218,81 +281,37 @@ const handleItemChange = (index, field, value) => {
               variant="outlined"
             />
           </Grid>
-
-          {/* Notes */}
-          <Grid item xs={12}>
-            <TextField
-              label="Notes"
-              fullWidth
-              multiline
-              rows={3}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              variant="outlined"
-            />
-          </Grid>
-
-          {/* Service Type */}
-          <Grid item xs={12} md={6}>
-            <TextField
-              label="Type de service"
-              fullWidth
-              value={serviceType}
-              onChange={(e) => setServiceType(e.target.value)}
-              variant="outlined"
-            />
-          </Grid>
-
-          {/* Start Date */}
-          <Grid item xs={12} md={6}>
-            <TextField
-              label="Date de début"
-              fullWidth
-              type="date"
-              value={startDate || ""}
-              onChange={(e) => setStartDate(e.target.value)}
-              variant="outlined"
-              InputLabelProps={{ shrink: true }}
-            />
-          </Grid>
-
-          {/* End Date */}
-          <Grid item xs={12} md={6}>
-            <TextField
-              label="Date de fin"
-              fullWidth
-              type="date"
-              value={endDate || ""}
-              onChange={(e) => setEndDate(e.target.value)}
-              variant="outlined"
-              InputLabelProps={{ shrink: true }}
-            />
-          </Grid>
         </Grid>
 
-        {/* Items Table */}
-        <table style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse", margin: "24px 0" }}>
+        <table style={{ width: "100%", margin: "24px 0", borderCollapse: "collapse" }}>
           <thead>
             <tr>
-              <th style={{ width: "25%", textAlign: "center", fontWeight: "bold", padding: "8px", borderBottom: "1px solid #ddd" }}>Désignation</th>
-              <th style={{ width: "15%", textAlign: "center", fontWeight: "bold", padding: "8px", borderBottom: "1px solid #ddd" }}>Quantité</th>
-              <th style={{ width: "20%", textAlign: "center", fontWeight: "bold", padding: "8px", borderBottom: "1px solid #ddd" }}>Prix Unitaire (TND)</th>
-              <th style={{ width: "15%", textAlign: "center", fontWeight: "bold", padding: "8px", borderBottom: "1px solid #ddd" }}>TVA (%)</th>
-              <th style={{ width: "15%", textAlign: "center", fontWeight: "bold", padding: "8px", borderBottom: "1px solid #ddd" }}>Action</th>
+              <th style={{ width: "30%", padding: "8px", borderBottom: "1px solid #ddd" }}>Service</th>
+              <th style={{ width: "15%", padding: "8px", borderBottom: "1px solid #ddd" }}>Quantité</th>
+              <th style={{ width: "20%", padding: "8px", borderBottom: "1px solid #ddd" }}>Prix Unitaire (TND)</th>
+              <th style={{ width: "15%", padding: "8px", borderBottom: "1px solid #ddd" }}>TVA (%)</th>
+              <th style={{ width: "10%", padding: "8px", borderBottom: "1px solid #ddd" }}>Action</th>
             </tr>
           </thead>
           <tbody>
             {items.map((item, index) => (
               <tr key={index} style={{ borderBottom: "1px solid #ddd" }}>
-                <td style={{ width: "25%", padding: "8px", textAlign: "center" }}>
-                  <TextField
+                <td style={{ padding: "8px" }}>
+                  <Select
                     fullWidth
-                    value={item.designation}
-                    onChange={(e) => handleItemChange(index, "designation", e.target.value)}
-                    variant="outlined"
-                  />
+                    value={item.serviceId || ""}
+                    onChange={(e) => handleItemChange(index, "serviceId", e.target.value)}
+                  >
+                    <MenuItem value="">Sélectionnez un service</MenuItem>
+                    {services.map(service => (
+                      <MenuItem key={service.id} value={service.id}>
+                        {service.name} ({service.duration})
+                      </MenuItem>
+                    ))}
+                  </Select>
                 </td>
-                <td style={{ width: "15%", padding: "8px", textAlign: "center" }}>
+
+                <td style={{ padding: "8px" }}>
                   <TextField
                     fullWidth
                     type="number"
@@ -301,7 +320,8 @@ const handleItemChange = (index, field, value) => {
                     variant="outlined"
                   />
                 </td>
-                <td style={{ width: "20%", padding: "8px", textAlign: "center" }}>
+
+                <td style={{ padding: "8px" }}>
                   <TextField
                     fullWidth
                     type="number"
@@ -310,7 +330,8 @@ const handleItemChange = (index, field, value) => {
                     variant="outlined"
                   />
                 </td>
-                <td style={{ width: "15%", padding: "8px", textAlign: "center" }}>
+
+                <td style={{ padding: "8px" }}>
                   <TextField
                     fullWidth
                     type="number"
@@ -319,7 +340,8 @@ const handleItemChange = (index, field, value) => {
                     variant="outlined"
                   />
                 </td>
-                <td style={{ width: "15%", padding: "8px", textAlign: "center" }}>
+
+                <td style={{ padding: "8px" }}>
                   <IconButton onClick={() => handleDeleteItem(index)} color="error">
                     <DeleteIcon />
                   </IconButton>
@@ -329,43 +351,63 @@ const handleItemChange = (index, field, value) => {
           </tbody>
         </table>
 
-        {/* Add Item Button */}
-        <Grid container justifyContent="flex-start" sx={{ my: 2 }}>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleAddItem}
-            sx={{ borderRadius: "8px" }}
-          >
-            Ajouter un article
-          </Button>
-        </Grid>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={handleAddItem} sx={{ mb: 2 }}>
+          Ajouter un service
+        </Button>
 
-        {/* Totals */}
         <Divider sx={{ my: 3 }} />
         <Grid container spacing={2}>
           <Grid item xs={6}>
-            <Typography>Total HT: {calculateTotalHT()} TND</Typography>
+            <Typography variant="h6">Total HT: {calculateTotalHT()} TND</Typography>
           </Grid>
           <Grid item xs={6}>
-            <Typography>Total TVA: {calculateTotalVAT()} TND</Typography>
+            <Typography variant="h6">Total TVA: {calculateTotalVAT()} TND</Typography>
           </Grid>
           <Grid item xs={6}>
-            <Typography>Total TTC: {calculateTotalTTC()} TND</Typography>
+            <Typography variant="h6">Total TTC: {calculateTotalTTC()} TND</Typography>
           </Grid>
         </Grid>
 
-        {/* Submit Button */}
-        <Grid container justifyContent="flex-end" sx={{ mt: 3 }}>
+        <Grid container justifyContent="flex-end" sx={{ mt: 3, gap: 2 }}>
+          <Button
+            variant="outlined"
+            color="secondary"
+            onClick={handlePreviewPDF}
+            disabled={!selectedClient}
+          >
+            Prévisualiser PDF
+          </Button>
           <Button
             variant="contained"
             color="primary"
             onClick={onSubmit}
-            sx={{ borderRadius: "8px", px: 4 }}
+            sx={{ borderRadius: "8px", px: 4, py: 1.5 }}
+            size="large"
           >
-            Créer le Devis
+            Valider Devis
           </Button>
         </Grid>
+
+        <Dialog open={pdfPreviewOpen} onClose={() => setPdfPreviewOpen(false)} maxWidth="lg" fullWidth>
+          <DialogTitle>Aperçu du devis</DialogTitle>
+          <DialogContent sx={{ height: '80vh' }}>
+            {pdfBlob && (
+              <iframe
+                src={URL.createObjectURL(pdfBlob)}
+                width="100%"
+                height="100%"
+                style={{ border: 'none' }}
+                title="Aperçu PDF"
+              />
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setPdfPreviewOpen(false)}>Fermer</Button>
+            <Button onClick={handleDownloadPDF} variant="contained" color="primary">
+              Télécharger
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Paper>
     </DashboardLayout>
   );

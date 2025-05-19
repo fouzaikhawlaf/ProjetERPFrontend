@@ -10,7 +10,7 @@ const ProductServiceModule = () => {
       title: 'Product', 
       description: 'Manage your products and inventory...', 
       icon: 'fa-box', 
-      link: '/product' 
+      link: '/products' 
     },
     { 
       title: 'Service', 
