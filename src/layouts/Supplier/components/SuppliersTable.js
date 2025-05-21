@@ -160,7 +160,7 @@ export function SupplierListTable({ rowsPerPage = 10, onDelete, onUpdate }) {
             <Button
               variant="contained"
               startIcon={<AddCircle />}
-              onClick={() => window.location.href = "/fournisseurs/ajouter"}
+              onClick={() => window.location.href = "/SupplierForm"}
               sx={{ mr: 2 }}
             >
               Nouveau Fournisseur

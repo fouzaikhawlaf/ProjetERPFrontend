@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getProducts } from 'services/ProductApi'; // Your API service
-import { ProductsTable } from './ProductsTable'; // Import your table component
+import ProductsTable from './ProductsTable'; // Import sans accolades
 import DashboardLayout from '../../../examples/LayoutContainers/DashboardLayout';
 const ProductListWrapper = () => {
   const [products, setProducts] = useState([]); // Store fetched products

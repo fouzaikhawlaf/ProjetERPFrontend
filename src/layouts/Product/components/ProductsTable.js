@@ -1,121 +1,240 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
-import Pagination from 'react-bootstrap/Pagination';
-import Avatar from '@mui/material/Avatar';
-import 'bootstrap/dist/css/bootstrap.min.css';
+import {
+  Card,
+  Box,
+  Checkbox,
+  Button,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Paper,
+  Typography,
+  Pagination,
+  Grid,
+  TextField,
+  InputAdornment,
+  Avatar,
+  Chip
+} from '@mui/material';
+import {
+  Delete as DeleteIcon,
+  Edit as EditIcon,
+  AddCircle,
+  Refresh,
+  Search,
+  Inventory
+} from '@mui/icons-material';
 
-export function ProductsTable({ rows = [], rowsPerPage = 10, onDelete, onUpdate }) {
+const ProductsTable = ({ rows = [], rowsPerPage = 10, onDelete, onUpdate }) => {
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [openDialog, setOpenDialog] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
-  const totalPages = Math.ceil(rows.length / rowsPerPage);
-  const displayedRows = rows.slice(
+  const filteredRows = rows.filter(row =>
+    row.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    row.productType.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
+  const displayedRows = filteredRows.slice(
     (currentPage - 1) * rowsPerPage,
     currentPage * rowsPerPage
   );
 
-  const handlePageChange = (page) => {
+  const selectAll = () => setSelectedIds(new Set(displayedRows.map((s) => s.id)));
+  const deselectAll = () => setSelectedIds(new Set());
+  const selectOne = (id) => setSelectedIds(new Set(selectedIds.add(id)));
+  const deselectOne = (id) => {
+    const newSelectedIds = new Set(selectedIds);
+    newSelectedIds.delete(id);
+    setSelectedIds(newSelectedIds);
+  };
+
+  const selectedAll = displayedRows.length > 0 && selectedIds.size === displayedRows.length;
+  const selectedSome = selectedIds.size > 0 && selectedIds.size < displayedRows.length;
+
+  const handlePageChange = (event, page) => {
     setCurrentPage(page);
   };
 
-  return (
-    <div className="card">
-      <div className="card-header">
-        <h4 className="mb-0">Liste des Produits</h4>
-      </div>
-      <div className="table-responsive">
-        <table className="table table-striped table-hover">
-          <thead className="table-light">
-            <tr>
-              <th scope="col">
-                <input type="checkbox" className="form-check-input" />
-              </th>
-              <th scope="col">Nom</th>
-              <th scope="col">Type</th>
-              <th scope="col">Prix de vente</th>
-              <th scope="col">Stock</th>
-              <th scope="col">TVA (%)</th>
-             
-              <th scope="col">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {displayedRows.length > 0 ? (
-              displayedRows.map((row) => (
-                <tr key={row.id}>
-                  <td>
-                    <input type="checkbox" className="form-check-input" />
-                  </td>
-                  <td>{row.name}</td>
-                  <td>
-                    <div className="d-flex align-items-center">
-                      {row.brand ? <Avatar>{row.brand[0]}</Avatar> : <Avatar>N</Avatar>}
-                      <span className="ms-2">{`${row.productType} `}</span>
-                    </div>
-                  </td>
-                  <td>{row.salePrice || '0.00'}</td>
-                  <td>{row.Quantity || '0'}</td>
-                  <td>{row.taxRate || '0'}</td>
-                 
-                  <td>
-                    <button
-                      className="btn btn-outline-primary btn-sm me-2"
-                      onClick={() => onUpdate(row.id)}
-                    >
-                      Modifier
-                    </button>
-                    <button
-                      className="btn btn-outline-danger btn-sm"
-                      onClick={() => onDelete(row.id)}
-                    >
-                      Supprimer
-                    </button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="8" className="text-center">
-                  Aucun produit trouvé.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+  const handleViewDetails = (product) => {
+    setSelectedProduct(product);
+    setOpenDialog(true);
+  };
 
-      <div className="d-flex justify-content-center">
-        <Pagination>
-          <Pagination.First onClick={() => handlePageChange(1)} disabled={currentPage === 1} />
-          <Pagination.Prev onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} />
-          {Array.from({ length: totalPages }, (_, index) => (
-            <Pagination.Item
-              key={index + 1}
-              active={index + 1 === currentPage}
-              onClick={() => handlePageChange(index + 1)}
-            >
-              {index + 1}
-            </Pagination.Item>
-          ))}
-          <Pagination.Next onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} />
-          <Pagination.Last onClick={() => handlePageChange(totalPages)} disabled={currentPage === totalPages} />
-        </Pagination>
-      </div>
-    </div>
+  return (
+    <Card elevation={3} sx={{ p: 2 }}>
+      <Grid container spacing={2} alignItems="center" sx={{ mb: 3 }}>
+        <Grid item xs={12} md={6}>
+          <Typography variant="h4" fontWeight="bold">Gestion des Produits</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {filteredRows.length} produit{filteredRows.length !== 1 ? 's' : ''} trouvé{filteredRows.length !== 1 ? 's' : ''}
+          </Typography>
+        </Grid>
+        <Grid item xs={12} md={6} sx={{ textAlign: { md: 'right' } }}>
+          <Button variant="contained" startIcon={<AddCircle />} sx={{ mr: 2 }}  onClick={() => window.location.href = "/Produit"}>
+            Ajouter Produit
+          </Button>
+          <Button variant="outlined" startIcon={<Refresh />} onClick={() => setSearchQuery('')}>
+            Actualiser
+          </Button>
+        </Grid>
+      </Grid>
+
+      <Box sx={{ mb: 3 }}>
+        <TextField
+          fullWidth
+          variant="outlined"
+          placeholder="Rechercher produits..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search color="action" />
+              </InputAdornment>
+            ),
+          }}
+        />
+      </Box>
+
+      <Paper elevation={0} sx={{ overflowX: 'auto' }}>
+        <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', minWidth: 1000 }}>
+          <Box component="thead" sx={{ bgcolor: 'background.default' }}>
+            <Box component="tr">
+              <Box component="th" sx={{ padding: '16px', textAlign: 'left', borderBottom: '1px solid', borderColor: 'divider' }}>
+                <Checkbox checked={selectedAll} indeterminate={selectedSome} onChange={(e) => e.target.checked ? selectAll() : deselectAll()} />
+              </Box>
+              <Box component="th" sx={{ padding: '16px', fontWeight: 600, textAlign: 'left' }}>Produit</Box>
+              <Box component="th" sx={{ padding: '16px', fontWeight: 600, textAlign: 'left' }}>Type</Box>
+              <Box component="th" sx={{ padding: '16px', fontWeight: 600, textAlign: 'right' }}>Prix</Box>
+              <Box component="th" sx={{ padding: '16px', fontWeight: 600, textAlign: 'left' }}>Stock</Box>
+              <Box component="th" sx={{ padding: '16px', fontWeight: 600, textAlign: 'left' }}>TVA</Box>
+              <Box component="th" sx={{ padding: '16px', fontWeight: 600, textAlign: 'center' }}>Actions</Box>
+            </Box>
+          </Box>
+
+          <Box component="tbody">
+            {displayedRows.map((row) => {
+              const isSelected = selectedIds.has(row.id);
+              const stockColor = row.Quantity > 0 ? 'success' : 'error';
+              const stockLabel = row.Quantity > 0 ? 'En stock' : 'Rupture';
+
+              return (
+                <Box component="tr" key={row.id} sx={{ 
+                  cursor: 'pointer',
+                  backgroundColor: isSelected ? 'action.selected' : 'inherit',
+                  '&:hover': { backgroundColor: 'action.hover' }
+                }} onClick={() => handleViewDetails(row)}>
+                  <Box component="td" sx={{ padding: '16px' }}>
+                    <Checkbox checked={isSelected} onChange={(e) => e.target.checked ? selectOne(row.id) : deselectOne(row.id)} />
+                  </Box>
+                  <Box component="td" sx={{ padding: '16px' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <Avatar sx={{ bgcolor: 'primary.main' }}>{row.name[0]}</Avatar>
+                      <Box>
+                        <Typography fontWeight={600}>{row.name}</Typography>
+                        <Typography variant="body2" color="text.secondary">{row.reference || 'N/A'}</Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+                  <Box component="td" sx={{ padding: '16px' }}>
+                    <Chip label={row.productType} size="small" sx={{ bgcolor: 'primary.light', color: 'primary.contrastText', textTransform: 'uppercase' }} />
+                  </Box>
+                  <Box component="td" sx={{ padding: '16px', textAlign: 'right' }}>
+                    <Typography fontWeight={600} color="success.main">{row.salePrice?.toFixed(2)} TND</Typography>
+                    <Typography variant="body2" color="text.secondary">HT: {(row.salePrice / (1 + row.taxRate / 100))?.toFixed(2)} TND</Typography>
+                  </Box>
+                  <Box component="td" sx={{ padding: '16px' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Inventory fontSize="small" color={stockColor} />
+                      <Typography color={`${stockColor}.main`} fontWeight={600}>{row.Quantity || 0}</Typography>
+                      <Typography variant="body2" color="text.secondary">{stockLabel}</Typography>
+                    </Box>
+                  </Box>
+                  <Box component="td" sx={{ padding: '16px' }}>
+                    <Chip label={`${row.taxRate}%`} size="small" variant="outlined" />
+                  </Box>
+                  <Box component="td" sx={{ padding: '16px', textAlign: 'center' }}>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <IconButton color="primary" onClick={(e) => { e.stopPropagation(); onUpdate(row.id); }}>
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton color="error" onClick={(e) => { e.stopPropagation(); onDelete(row.id); }}>
+                        <DeleteIcon />
+                      </IconButton>
+                    </Box>
+                  </Box>
+                </Box>
+              );
+            })}
+
+            {displayedRows.length === 0 && (
+              <Box component="tr">
+                <Box component="td" colSpan={7} sx={{ py: 6, textAlign: 'center' }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                    <Inventory sx={{ fontSize: 40, color: 'text.disabled' }} />
+                    <Typography variant="h6">Aucun produit trouvé</Typography>
+                    <Typography variant="body2">
+                      Essayez de modifier vos critères de recherche ou ajoutez un nouveau produit
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+            )}
+          </Box>
+        </Box>
+      </Paper>
+
+      {filteredRows.length > 0 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+          <Pagination count={totalPages} page={currentPage} onChange={handlePageChange} color="primary" showFirstButton showLastButton />
+        </Box>
+      )}
+
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md">
+        <DialogTitle>Détails du Produit</DialogTitle>
+        <DialogContent dividers>
+          {selectedProduct && (
+            <Grid container spacing={3} sx={{ p: 2 }}>
+              <Grid item xs={12} md={6}>
+                <Typography variant="h6" gutterBottom>Informations de base</Typography>
+                <Typography><strong>Nom:</strong> {selectedProduct.name}</Typography>
+                <Typography><strong>Référence:</strong> {selectedProduct.reference || 'N/A'}</Typography>
+                <Typography><strong>Type:</strong> {selectedProduct.productType}</Typography>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Typography variant="h6" gutterBottom>Détails financiers</Typography>
+                <Typography><strong>Prix de vente:</strong> {selectedProduct.salePrice?.toFixed(2)} TND</Typography>
+                <Typography><strong>TVA:</strong> {selectedProduct.taxRate}%</Typography>
+                <Typography><strong>Stock:</strong> {selectedProduct.Quantity || 0}</Typography>
+              </Grid>
+            </Grid>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDialog(false)} color="primary">Fermer</Button>
+        </DialogActions>
+      </Dialog>
+    </Card>
   );
-}
+};
 
 ProductsTable.propTypes = {
   rows: PropTypes.arrayOf(
     PropTypes.shape({
       id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+      name: PropTypes.string.isRequired,
       reference: PropTypes.string,
-      name: PropTypes.string,
-      category: PropTypes.string,
-      brand: PropTypes.string,
+      productType: PropTypes.string,
       salePrice: PropTypes.number,
       Quantity: PropTypes.number,
-      tva: PropTypes.number,
-      tax: PropTypes.number,
+      taxRate: PropTypes.number,
     })
   ).isRequired,
   rowsPerPage: PropTypes.number,
@@ -126,3 +245,5 @@ ProductsTable.propTypes = {
 ProductsTable.defaultProps = {
   rowsPerPage: 10,
 };
+
+export default ProductsTable;
