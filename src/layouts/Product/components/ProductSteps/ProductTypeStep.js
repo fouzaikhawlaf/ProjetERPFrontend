@@ -37,7 +37,7 @@ const ProductTypeStep = ({ productType, setProductType, handleNext }) => {
           >
              <img src={ProductIcon} alt="product icon"
                   style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
-            <Typography>Matériel</Typography>
+            <Typography>Produit</Typography>
           </Box>
         }
       />

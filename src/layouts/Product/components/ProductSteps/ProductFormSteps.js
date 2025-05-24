@@ -154,7 +154,7 @@ function ProductFormStepsPD ({ handleEdit })  {
           textColor="primary"
           centered
         >
-          <Tab label="Type de produit" />
+          <Tab label="Type de produit hh" />
           <Tab label="Informations du produit" />
           <Tab label="Informations supplémentaires" />
           <Tab label="Aperçu" /> {/* New tab for preview */}

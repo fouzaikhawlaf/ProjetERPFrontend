@@ -7,13 +7,15 @@ import {
   Box,
   IconButton,
   CircularProgress,
+  Avatar
 } from '@mui/material';
-import { Edit } from '@mui/icons-material'; // Import edit icon
+import { Edit } from '@mui/icons-material';
 import PropTypes from 'prop-types';
-import { createProduct } from 'services/ProductApi'; // Assurez-vous du bon chemin 
+import { createProduct } from 'services/ProductApi';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+
 const PreviewStep = ({
   productType,
   productInfo,
@@ -23,7 +25,7 @@ const PreviewStep = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  // Validation des données avant soumission
+
   const validateData = () => {
     if (!productInfo.name || !productInfo.salePrice || !additionalInfo.description) {
       alert('Veuillez remplir toutes les informations nécessaires.');
@@ -34,41 +36,48 @@ const PreviewStep = ({
 
   const handleSubmit = async () => {
     try {
-      // Préparation des données pour l'API
       const productData = {
-        name: productInfo.name, // string
-        description: additionalInfo.description, // string
-        price: parseFloat(productInfo.salePrice), // number
-        productType: 0, // int (par exemple, type par défaut)
-        taxRate: productInfo.tvaRate, // number
-        priceType: productInfo.priceType, // string (TTC ou HT)
-        category: additionalInfo.category, // string
-        unit: additionalInfo.unit, // string (kg, etc.)
-        quantity: parseInt(productInfo.quantity, 10), // integer
+        name: productInfo.name,
+        description: additionalInfo.description,
+        price: parseFloat(productInfo.salePrice),
+        productType: 0,
+        taxRate: productInfo.tvaRate,
+        priceType: productInfo.priceType,
+        category: additionalInfo.category,
+        unit: additionalInfo.unit,
+        quantity: parseInt(productInfo.quantity, 10),
+        imagePath: additionalInfo.imageFile ? URL.createObjectURL(additionalInfo.imageFile) : null,
       };
 
       const response = await createProduct(productData);
       console.log('Product created successfully:', response);
-  
-      // Affichez un toast (facultatif) pour une confirmation rapide
       toast.success("Produit créé avec succès !");
-  
-      // Redirigez vers la page de succès
       navigate('/success');
     } catch (error) {
       console.error('Error creating product:', error.response ? error.response.data : error.message);
-  
-      // Affichez une notification d'erreur
       toast.error("Erreur lors de la création du produit.");
     }
   };
-  
-  
+
   return (
     <Card elevation={3} style={{ padding: '30px', marginTop: '20px', borderRadius: '12px' }}>
       <Typography variant="h5" gutterBottom style={{ textAlign: 'center' }}>
         Aperçu du produit
       </Typography>
+
+      {/* Image Preview */}
+      {additionalInfo.imageFile && (
+        <Card elevation={1} style={{ padding: '20px', marginTop: '20px', borderRadius: '8px', textAlign: 'center' }}>
+          <Typography variant="h6" gutterBottom>
+            Image du produit
+          </Typography>
+          <Avatar
+            src={URL.createObjectURL(additionalInfo.imageFile)}
+            sx={{ width: 150, height: 150, margin: '0 auto' }}
+            variant="rounded"
+          />
+        </Card>
+      )}
 
       {/* Product Type Section */}
       <Card elevation={1} style={{ padding: '20px', marginTop: '20px', borderRadius: '8px' }}>
@@ -110,7 +119,7 @@ const PreviewStep = ({
           </Grid>
           <Grid item xs={12} sm={6}>
             <Typography variant="subtitle1">
-              <strong>Quantity:</strong> {productInfo.quantity}
+              <strong>Quantité:</strong> {productInfo.quantity}
             </Typography>
           </Grid>
         </Grid>
@@ -166,8 +175,19 @@ const PreviewStep = ({
 
 PreviewStep.propTypes = {
   productType: PropTypes.string.isRequired,
-  productInfo: PropTypes.object.isRequired,
-  additionalInfo: PropTypes.object.isRequired,
+  productInfo: PropTypes.shape({
+    name: PropTypes.string.isRequired,
+    salePrice: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    tvaRate: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    quantity: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    priceType: PropTypes.string.isRequired,
+  }).isRequired,
+  additionalInfo: PropTypes.shape({
+    description: PropTypes.string.isRequired,
+    category: PropTypes.string.isRequired,
+    unit: PropTypes.string.isRequired,
+    imageFile: PropTypes.instanceOf(File)
+  }).isRequired,
   handlePrev: PropTypes.func.isRequired,
   handleEdit: PropTypes.func.isRequired,
 };
