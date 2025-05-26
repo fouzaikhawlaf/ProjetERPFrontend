@@ -139,21 +139,21 @@ const ProductsTable = ({ rows = [], rowsPerPage = 10, onDelete, onUpdate }) => {
                       <Avatar sx={{ bgcolor: 'primary.main' }}>{row.name[0]}</Avatar>
                       <Box>
                         <Typography fontWeight={600}>{row.name}</Typography>
-                        <Typography variant="body2" color="text.secondary">{row.reference || 'N/A'}</Typography>
+                       
                       </Box>
                     </Box>
                   </Box>
                   <Box component="td" sx={{ padding: '16px' }}>
-                    <Chip label={row.productType} size="small" sx={{ bgcolor: 'primary.light', color: 'primary.contrastText', textTransform: 'uppercase' }} />
+                    <Chip label={row.itemTypeArticle} size="small" sx={{ bgcolor: 'primary.light', color: 'primary.contrastText', textTransform: 'uppercase' }} />
                   </Box>
                   <Box component="td" sx={{ padding: '16px', textAlign: 'right' }}>
-                    <Typography fontWeight={600} color="success.main">{row.salePrice?.toFixed(2)} TND</Typography>
-                    <Typography variant="body2" color="text.secondary">HT: {(row.salePrice / (1 + row.taxRate / 100))?.toFixed(2)} TND</Typography>
+                    <Typography fontWeight={600} color="success.main">{row.price?.toFixed(2)} TND</Typography>
+                    <Typography variant="body2" color="text.secondary">HT: {(row.price / (1 + row.taxRate / 100))?.toFixed(2)} TND</Typography>
                   </Box>
                   <Box component="td" sx={{ padding: '16px' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Inventory fontSize="small" color={stockColor} />
-                      <Typography color={`${stockColor}.main`} fontWeight={600}>{row.Quantity || 0}</Typography>
+                      <Typography color={`${stockColor}.main`} fontWeight={600}>{row.stockQuantity || 0}</Typography>
                       <Typography variant="body2" color="text.secondary">{stockLabel}</Typography>
                     </Box>
                   </Box>
@@ -205,14 +205,14 @@ const ProductsTable = ({ rows = [], rowsPerPage = 10, onDelete, onUpdate }) => {
               <Grid item xs={12} md={6}>
                 <Typography variant="h6" gutterBottom>Informations de base</Typography>
                 <Typography><strong>Nom:</strong> {selectedProduct.name}</Typography>
-                <Typography><strong>Référence:</strong> {selectedProduct.reference || 'N/A'}</Typography>
+              
                 <Typography><strong>Type:</strong> {selectedProduct.productType}</Typography>
               </Grid>
               <Grid item xs={12} md={6}>
                 <Typography variant="h6" gutterBottom>Détails financiers</Typography>
-                <Typography><strong>Prix de vente:</strong> {selectedProduct.salePrice?.toFixed(2)} TND</Typography>
+                <Typography><strong>Prix de vente:</strong> {selectedProduct.price?.toFixed(2)} TND</Typography>
                 <Typography><strong>TVA:</strong> {selectedProduct.taxRate}%</Typography>
-                <Typography><strong>Stock:</strong> {selectedProduct.Quantity || 0}</Typography>
+                <Typography><strong>Stock:</strong> {selectedProduct.stockQuantity || 0}</Typography>
               </Grid>
             </Grid>
           )}

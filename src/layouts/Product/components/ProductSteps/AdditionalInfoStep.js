@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Card, Typography, TextField, Grid, Button, FormControl, Select, MenuItem, Avatar } from '@mui/material';
+import { Box, Card, Typography, TextField, Grid, Button, FormControl, Select, MenuItem } from '@mui/material';
 import PropTypes from 'prop-types';
 
 const AdditionalInfoStep = ({ additionalInfo, handleAdditionalInfoChange, handlePrev, handleNext }) => {
@@ -10,37 +10,6 @@ const AdditionalInfoStep = ({ additionalInfo, handleAdditionalInfoChange, handle
       </Typography>
 
       <Grid container spacing={3} style={{ marginTop: '20px' }}>
-        {/* Section upload d'image */}
-        <Grid item xs={12}>
-          <input
-            accept="image/*"
-            style={{ display: 'none' }}
-            id="image-upload"
-            type="file"
-            onChange={(e) => {
-              const file = e.target.files[0];
-              handleAdditionalInfoChange('imageFile')({ target: { value: file } });
-            }}
-          />
-          <label htmlFor="image-upload">
-            <Button variant="outlined" component="span">
-              Uploader image du produit
-            </Button>
-          </label>
-          {additionalInfo.imageFile && (
-            <Box mt={2} display="flex" alignItems="center" gap={2}>
-              <Avatar 
-                src={URL.createObjectURL(additionalInfo.imageFile)} 
-                sx={{ width: 56, height: 56 }}
-                variant="rounded"
-              />
-              <Typography variant="body2">
-                {additionalInfo.imageFile.name}
-              </Typography>
-            </Box>
-          )}
-        </Grid>
-
         <Grid item xs={12}>
           <TextField
             label="Description"
@@ -97,7 +66,6 @@ AdditionalInfoStep.propTypes = {
     description: PropTypes.string.isRequired,
     category: PropTypes.string.isRequired,
     unit: PropTypes.string.isRequired,
-    imageFile: PropTypes.instanceOf(File)
   }).isRequired,
   handleAdditionalInfoChange: PropTypes.func.isRequired,
   handlePrev: PropTypes.func.isRequired,

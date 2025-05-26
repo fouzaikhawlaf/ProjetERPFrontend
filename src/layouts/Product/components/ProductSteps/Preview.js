@@ -6,8 +6,7 @@ import {
   Grid,
   Box,
   IconButton,
-  CircularProgress,
-  Avatar
+  CircularProgress
 } from '@mui/material';
 import { Edit } from '@mui/icons-material';
 import PropTypes from 'prop-types';
@@ -27,35 +26,61 @@ const PreviewStep = ({
   const navigate = useNavigate();
 
   const validateData = () => {
-    if (!productInfo.name || !productInfo.salePrice || !additionalInfo.description) {
-      alert('Veuillez remplir toutes les informations nécessaires.');
+    const requiredFields = {
+      name: productInfo.name,
+      salePrice: productInfo.salePrice,
+      description: additionalInfo.description,
+      category: additionalInfo.category,
+      unit: additionalInfo.unit,
+      quantity: productInfo.quantity,
+      tvaRate: productInfo.tvaRate
+    };
+
+    const missingFields = Object.entries(requiredFields)
+      .filter(([_, value]) => !value)
+      .map(([key]) => key);
+
+    if (missingFields.length > 0) {
+      toast.error(`Champs manquants: ${missingFields.join(', ')}`);
       return false;
     }
+
+    if (isNaN(productInfo.salePrice)) {
+      toast.error('Le prix doit être un nombre valide');
+      return false;
+    }
+
     return true;
   };
 
   const handleSubmit = async () => {
     try {
+      if (!validateData()) return;
+      setLoading(true);
+
       const productData = {
         name: productInfo.name,
         description: additionalInfo.description,
         price: parseFloat(productInfo.salePrice),
-        productType: 0,
-        taxRate: productInfo.tvaRate,
-        priceType: productInfo.priceType,
+        taxRate: parseFloat(productInfo.tvaRate),
+        tvaRate: parseFloat(productInfo.tvaRate),
+        priceType: productInfo.priceType.toLowerCase(),
         category: additionalInfo.category,
         unit: additionalInfo.unit,
-        quantity: parseInt(productInfo.quantity, 10),
-        imagePath: additionalInfo.imageFile ? URL.createObjectURL(additionalInfo.imageFile) : null,
+        itemTypeArticle: productType === 'Matériel' ? 0 : 1,
+        stockQuantity: parseInt(productInfo.quantity, 10)
       };
 
       const response = await createProduct(productData);
-      console.log('Product created successfully:', response);
       toast.success("Produit créé avec succès !");
-      navigate('/success');
+      navigate('/products');
     } catch (error) {
-      console.error('Error creating product:', error.response ? error.response.data : error.message);
-      toast.error("Erreur lors de la création du produit.");
+      toast.error(
+        error.response?.data?.Errors?.[0]?.Message || 
+        'Erreur lors de la création du produit'
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -65,21 +90,6 @@ const PreviewStep = ({
         Aperçu du produit
       </Typography>
 
-      {/* Image Preview */}
-      {additionalInfo.imageFile && (
-        <Card elevation={1} style={{ padding: '20px', marginTop: '20px', borderRadius: '8px', textAlign: 'center' }}>
-          <Typography variant="h6" gutterBottom>
-            Image du produit
-          </Typography>
-          <Avatar
-            src={URL.createObjectURL(additionalInfo.imageFile)}
-            sx={{ width: 150, height: 150, margin: '0 auto' }}
-            variant="rounded"
-          />
-        </Card>
-      )}
-
-      {/* Product Type Section */}
       <Card elevation={1} style={{ padding: '20px', marginTop: '20px', borderRadius: '8px' }}>
         <Box display="flex" justifyContent="space-between" alignItems="center">
           <Typography variant="subtitle1">
@@ -91,7 +101,6 @@ const PreviewStep = ({
         </Box>
       </Card>
 
-      {/* Product Information Section */}
       <Card elevation={1} style={{ padding: '20px', marginTop: '20px', borderRadius: '8px' }}>
         <Typography variant="h6" gutterBottom>
           Informations du produit
@@ -125,7 +134,6 @@ const PreviewStep = ({
         </Grid>
       </Card>
 
-      {/* Additional Information Section */}
       <Card elevation={1} style={{ padding: '20px', marginTop: '20px', borderRadius: '8px' }}>
         <Typography variant="h6" gutterBottom>
           Informations supplémentaires
@@ -154,7 +162,6 @@ const PreviewStep = ({
         </Grid>
       </Card>
 
-      {/* Action Buttons */}
       <Box display="flex" justifyContent="space-between" marginTop="30px">
         <Button onClick={handlePrev} variant="outlined" style={{ borderRadius: '8px' }}>
           Retour
@@ -186,7 +193,6 @@ PreviewStep.propTypes = {
     description: PropTypes.string.isRequired,
     category: PropTypes.string.isRequired,
     unit: PropTypes.string.isRequired,
-    imageFile: PropTypes.instanceOf(File)
   }).isRequired,
   handlePrev: PropTypes.func.isRequired,
   handleEdit: PropTypes.func.isRequired,

@@ -1,15 +1,21 @@
 import apiErp from './api';
 
-// Function to create a new product
 export const createProduct = async (productData) => {
   try {
-    const response = await apiErp.post('/Product', productData);
+    const response = await apiErp.post('/Product', productData, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'text/plain'
+      }
+    });
     return response.data;
   } catch (error) {
-    console.error('Error creating product:', error);
-    throw error;
+    // Améliorer le logging
+    console.error('Server response:', error.response?.data); 
+    throw new Error(error.response?.data?.Errors[0]?.Message || error.message);
   }
 };
+
 
 export const getProducts = async () => {
   try {
