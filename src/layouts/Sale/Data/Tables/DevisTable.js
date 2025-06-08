@@ -1,258 +1,578 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import PropTypes from 'prop-types';
 import {
-  Table,
-  Badge,
+  Paper,
   Button,
-  Modal,
-  Form,
-  InputGroup,
-  FormControl,
-  Dropdown,
-} from "react-bootstrap";
-import { FaEdit, FaTrashAlt, FaSearch, FaEllipsisH } from "react-icons/fa";
+  Typography,
+  IconButton,
+  Tooltip,
+  Box,
+  CircularProgress,
+  TextField,
+  Alert,
+  Chip,
+  Grid,
+  InputAdornment,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle
+} from "@mui/material";
+import { 
+  AddCircle, 
+  Edit, 
+  Delete, 
+  Visibility, 
+  Search,
+  Refresh,
+  CheckCircle,
+  Pending
+} from "@mui/icons-material";
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
-import "bootstrap/dist/css/bootstrap.min.css";
-import StatusFilters from "./StatusFilter";
+import { 
+  getAllDevis, 
+  deleteDevis, 
+  getDevisByStatus, 
+  searchDevis,
+  validateDevis 
+} from "services/DevisClientService";
+import { useSnackbar } from "notistack";
 
-const DevisTable = () => {
-  const initialDevis = [
-    { id: "D001", client: "John Doe", status: "Approved", createdDate: "2024-12-01", amount: "$1,200" },
-    { id: "D002", client: "Jane Smith", status: "Pending", createdDate: "2024-12-05", amount: "$800" },
-    { id: "D003", client: "Michael Brown", status: "Rejected", createdDate: "2024-12-03", amount: "$1,500" },
-    { id: "D004", client: "Emily Davis", status: "Under Review", createdDate: "2024-12-02", amount: "$2,000" },
-  ];
+const statusOptions = [
+  { value: "Tous", label: "Tous", color: "default" },
+  { value: 0, label: "Brouillon", color: "primary" },
+  { value: 1, label: "Envoyé", color: "warning" },
+  { value: 2, label: "Validé", color: "success" },
+  { value: 3, label: "Annulé", color: "error" }
+];
 
-  const [devis, setDevis] = useState(initialDevis);
-  const [filteredDevis, setFilteredDevis] = useState(initialDevis);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [selectedDevis, setSelectedDevis] = useState(null);
-  const [activeFilter, setActiveFilter] = useState("Tous");
-  const [showAddForm, setShowAddForm] = useState(false);
-  const renderStatusBadge = (status) => {
-    const statusColors = {
-      Approved: "success",
-      Pending: "warning",
-      Rejected: "danger",
-      "Under Review": "info",
-    };
-    return <Badge bg={statusColors[status] || "secondary"}>{status}</Badge>;
+const DevisValidationButton = ({ devisId, currentStatus, onValidateSuccess }) => {
+  const { enqueueSnackbar } = useSnackbar();
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [notes, setNotes] = useState('');
+
+  const handleValidate = async () => {
+    setLoading(true);
+    try {
+      await validateDevis(devisId);
+      onValidateSuccess(devisId);
+      enqueueSnackbar("Devis validé avec succès", { variant: "success" });
+      setOpen(false);
+    } catch (error) {
+      enqueueSnackbar("Erreur lors de la validation", { variant: "error" });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSearch = (e) => {
-    const query = e.target.value.toLowerCase();
-    setSearchQuery(query);
-    setFilteredDevis(
-      devis.filter((d) =>
-        Object.values(d).some((value) =>
-          value.toString().toLowerCase().includes(query)
-        )
-      )
+  if (currentStatus === 2) {
+    return (
+      <Chip
+        icon={<CheckCircle />}
+        label="Validé"
+        color="success"
+        size="small"
+      />
     );
-  };
+  }
 
-  const handleEdit = (devis) => {
-    setSelectedDevis(devis);
-    setShowEditModal(true);
-  };
-
-  const handleDelete = (devis) => {
-    setSelectedDevis(devis);
-    setShowDeleteModal(true);
-  };
-
-  const confirmDelete = () => {
-    setDevis(devis.filter((d) => d.id !== selectedDevis.id));
-    setFilteredDevis(filteredDevis.filter((d) => d.id !== selectedDevis.id));
-    setShowDeleteModal(false);
-  };
-
-  const handleSave = () => {
-    setDevis(devis.map((d) => (d.id === selectedDevis.id ? selectedDevis : d)));
-    setShowEditModal(false);
-  };
-  const handleFilterClick = (filter) => {
-    setActiveFilter(filter);
-    console.log(`Filter clicked: ${filter}`);
-  };
-  
-  const handleCreateClick = () => {
-    setShowAddForm(true);
-    console.log("Create button clicked");
-  };
   return (
-    <DashboardLayout>
-      <div className="container mt-4">
-        <h2 className="text-center mb-4">Devis</h2>
-        <StatusFilters
-    activeFilter={activeFilter}
-    handleFilterClick={handleFilterClick}
-    handleCreateClick={handleCreateClick}
-    showAddForm={showAddForm}
-  />
-        
-        <Table
-          striped
-          bordered
-          hover
-          responsive
-          className="shadow-sm rounded text-center"
+    <>
+      <Tooltip title="Valider le devis">
+        <IconButton
+          size="small"
+          onClick={() => setOpen(true)}
+          color="primary"
         >
-          <thead className="bg-light">
-            <tr>
-              <th>#</th>
-              <th>Devis ID</th>
-              <th>Client</th>
-              <th>Status</th>
-              <th>Created Date</th>
-              <th>Amount</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredDevis.map((d, index) => (
-              <tr key={d.id}>
-                <td>{index + 1}</td>
-                <td>{d.id}</td>
-                <td>{d.client}</td>
-                <td>{renderStatusBadge(d.status)}</td>
-                <td>{d.createdDate}</td>
-                <td>{d.amount}</td>
-                <td>
-                  <Dropdown>
-                    <Dropdown.Toggle
-                      variant="light"
-                      size="sm"
-                      className="border-0"
-                    >
-                      <FaEllipsisH />
-                    </Dropdown.Toggle>
-                    <Dropdown.Menu>
-                      <Dropdown.Item onClick={() => handleEdit(d)}>
-                        <FaEdit className="me-2" />
-                        Edit
-                      </Dropdown.Item>
-                      <Dropdown.Item
-                        onClick={() => handleDelete(d)}
-                        className="text-danger"
-                      >
-                        <FaTrashAlt className="me-2" />
-                        Delete
-                      </Dropdown.Item>
-                    </Dropdown.Menu>
-                  </Dropdown>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
+          <Pending />
+        </IconButton>
+      </Tooltip>
 
-        {/* Edit Modal */}
-        <Modal show={showEditModal} onHide={() => setShowEditModal(false)}>
-          <Modal.Header closeButton>
-            <Modal.Title>Edit Devis</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            {selectedDevis && (
-              <Form>
-                <Form.Group className="mb-3">
-                  <Form.Label>Client</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="client"
-                    value={selectedDevis.client}
-                    onChange={(e) =>
-                      setSelectedDevis({
-                        ...selectedDevis,
-                        client: e.target.value,
-                      })
-                    }
-                  />
-                </Form.Group>
-                <Form.Group className="mb-3">
-                  <Form.Label>Status</Form.Label>
-                  <Form.Select
-                    name="status"
-                    value={selectedDevis.status}
-                    onChange={(e) =>
-                      setSelectedDevis({
-                        ...selectedDevis,
-                        status: e.target.value,
-                      })
-                    }
-                  >
-                    <option value="Approved">Approved</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Rejected">Rejected</option>
-                    <option value="Under Review">Under Review</option>
-                  </Form.Select>
-                </Form.Group>
-                <Form.Group className="mb-3">
-                  <Form.Label>Created Date</Form.Label>
-                  <Form.Control
-                    type="date"
-                    name="createdDate"
-                    value={selectedDevis.createdDate}
-                    onChange={(e) =>
-                      setSelectedDevis({
-                        ...selectedDevis,
-                        createdDate: e.target.value,
-                      })
-                    }
-                  />
-                </Form.Group>
-                <Form.Group className="mb-3">
-                  <Form.Label>Amount</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="amount"
-                    value={selectedDevis.amount}
-                    onChange={(e) =>
-                      setSelectedDevis({
-                        ...selectedDevis,
-                        amount: e.target.value,
-                      })
-                    }
-                  />
-                </Form.Group>
-              </Form>
-            )}
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowEditModal(false)}>
-              Close
-            </Button>
-            <Button variant="primary" onClick={handleSave}>
-              Save Changes
-            </Button>
-          </Modal.Footer>
-        </Modal>
-
-        {/* Delete Modal */}
-        <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
-          <Modal.Header closeButton>
-            <Modal.Title>Confirm Delete</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            Are you sure you want to delete devis {selectedDevis?.id} for{" "}
-            {selectedDevis?.client}?
-          </Modal.Body>
-          <Modal.Footer>
-            <Button
-              variant="secondary"
-              onClick={() => setShowDeleteModal(false)}
-            >
-              Cancel
-            </Button>
-            <Button variant="danger" onClick={confirmDelete}>
-              Delete
-            </Button>
-          </Modal.Footer>
-        </Modal>
-      </div>
-    </DashboardLayout>
+      <Dialog open={open} onClose={() => setOpen(false)}>
+        <DialogTitle>Confirmer la validation</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Notes (optionnel)"
+            fullWidth
+            multiline
+            rows={3}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpen(false)}>Annuler</Button>
+          <Button 
+            onClick={handleValidate}
+            color="primary"
+            disabled={loading}
+            startIcon={<CheckCircle />}
+          >
+            {loading ? 'Validation...' : 'Confirmer'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 };
 
-export default DevisTable;
+const DevisClient = () => {
+  const { enqueueSnackbar } = useSnackbar();
+  const [devis, setDevis] = useState([]);
+  const [filteredDevis, setFilteredDevis] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState("Tous");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleDotNetResponse = (response) => {
+    if (response && response.$values) return response.$values;
+    if (Array.isArray(response)) return response;
+    return [];
+  };
+
+  const fetchDevis = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = activeFilter === "Tous" 
+        ? await getAllDevis() 
+        : await getDevisByStatus(activeFilter);
+      const devisData = handleDotNetResponse(response);
+      setDevis(devisData);
+      setFilteredDevis(devisData);
+    } catch (error) {
+      console.error("Fetch error:", error);
+      setError("Erreur de chargement des devis");
+      enqueueSnackbar("Erreur de chargement", { variant: "error" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchDevis(); }, [activeFilter, enqueueSnackbar]);
+
+  const handleSearch = async (e) => {
+    const query = e.target.value;
+    setSearchQuery(query);
+    
+    if (query.length < 3) {
+      setFilteredDevis(devis);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await searchDevis(query);
+      setFilteredDevis(handleDotNetResponse(response));
+    } catch (error) {
+      console.error("Search error:", error);
+      enqueueSnackbar("Erreur de recherche", { variant: "error" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleView = (id) => window.location.href = `/devis/view/${id}`;
+  const handleEdit = (id) => window.location.href = `/devis/edit/${id}`;
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Confirmer la suppression?")) return;
+    try {
+      await deleteDevis(id);
+      setDevis(prev => prev.filter(d => d.id !== id));
+      setFilteredDevis(prev => prev.filter(d => d.id !== id));
+      enqueueSnackbar("Devis supprimé", { variant: "success" });
+    } catch (error) {
+      console.error("Delete error:", error);
+      enqueueSnackbar("Erreur de suppression", { variant: "error" });
+    }
+  };
+
+  const handleValidateSuccess = (id) => {
+    setDevis(prev => prev.map(d => 
+      d.id === id ? { ...d, status: 2 } : d
+    ));
+    setFilteredDevis(prev => prev.map(d => 
+      d.id === id ? { ...d, status: 2 } : d
+    ));
+  };
+
+  return (
+    <DashboardLayout>
+      <Box sx={{ p: 3 }}>
+        {/* Header Section */}
+        <Grid container spacing={2} alignItems="center" sx={{ mb: 3 }}>
+          <Grid item xs={12} md={6}>
+            <Typography variant="h4" fontWeight="bold">
+              Gestion des Devis Clients
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {filteredDevis.length} devis trouvés
+            </Typography>
+          </Grid>
+          <Grid item xs={12} md={6} sx={{ textAlign: { md: 'right' } }}>
+            <Button
+              variant="contained"
+              startIcon={<AddCircle />}
+              onClick={() => window.location.href = "/Vente/DevisProductClient"}
+              sx={{ mr: 2 }}
+            >
+              Nouveau Devis
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<Refresh />}
+              onClick={fetchDevis}
+            >
+              Actualiser
+            </Button>
+          </Grid>
+        </Grid>
+
+        {/* Filters Section */}
+        <Box sx={{ 
+          p: 2, 
+          mb: 3, 
+          bgcolor: 'background.paper', 
+          borderRadius: 1,
+          boxShadow: 1
+        }}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                variant="outlined"
+                placeholder="Rechercher par référence, client..."
+                value={searchQuery}
+                onChange={handleSearch}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search color="action" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', py: 1 }}>
+                {statusOptions.map((option) => (
+                  <Chip
+                    key={option.value}
+                    label={`${option.label} (${devis.filter(d => 
+                      option.value === "Tous" ? true : d.status === option.value
+                    ).length})`}
+                    onClick={() => setActiveFilter(option.value)}
+                    color={option.color}
+                    variant={activeFilter === option.value ? "filled" : "outlined"}
+                    sx={{ 
+                      minWidth: 100,
+                      fontWeight: activeFilter === option.value ? 'bold' : 'normal'
+                    }}
+                  />
+                ))}
+              </Box>
+            </Grid>
+          </Grid>
+        </Box>
+
+        {/* Content Section */}
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+        )}
+
+        {isLoading ? (
+          <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px">
+            <CircularProgress size={60} />
+          </Box>
+        ) : (
+          <Box 
+            component={Paper} 
+            elevation={0} 
+            sx={{ 
+              border: '1px solid', 
+              borderColor: 'divider', 
+              borderRadius: 2,
+              overflow: 'hidden'
+            }}
+          >
+            <Box sx={{ overflowX: 'auto' }}>
+              <table style={{ 
+                width: '100%',
+                borderCollapse: 'collapse',
+                minWidth: '1000px'
+              }}>
+                <thead>
+                  <tr style={{ 
+                    backgroundColor: '#f5f7fa',
+                    height: '60px'
+                  }}>
+                    <th style={{ 
+                      width: '50px',
+                      padding: '0 16px',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      textAlign: 'left',
+                      borderBottom: '2px solid #e0e0e0',
+                      color: '#333'
+                    }}>#</th>
+                    
+                    <th style={{ 
+                      width: '200px',
+                      padding: '0 16px',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      textAlign: 'left',
+                      borderBottom: '2px solid #e0e0e0',
+                      color: '#333'
+                    }}>Référence</th>
+                    
+                    <th style={{ 
+                      width: '200px',
+                      padding: '0 16px',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      textAlign: 'left',
+                      borderBottom: '2px solid #e0e0e0',
+                      color: '#333'
+                    }}>Client</th>
+                    
+                    <th style={{ 
+                      width: '150px',
+                      padding: '0 16px',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      textAlign: 'left',
+                      borderBottom: '2px solid #e0e0e0',
+                      color: '#333'
+                    }}>Date Création</th>
+                    
+                    <th style={{ 
+                      width: '150px',
+                      padding: '0 16px',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      textAlign: 'left',
+                      borderBottom: '2px solid #e0e0e0',
+                      color: '#333'
+                    }}>Statut</th>
+                    
+                    <th style={{ 
+                      width: '150px',
+                      padding: '0 16px',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      textAlign: 'right',
+                      borderBottom: '2px solid #e0e0e0',
+                      color: '#333'
+                    }}>Total TTC</th>
+                    
+                    <th style={{ 
+                      width: '150px', // Augmenté pour accommoder le nouveau bouton
+                      padding: '0 16px',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      textAlign: 'center',
+                      borderBottom: '2px solid #e0e0e0',
+                      color: '#333'
+                    }}>Actions</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {filteredDevis.length > 0 ? (
+                    filteredDevis.map((devis, index) => (
+                      <tr 
+                        key={devis.id}
+                        style={{ 
+                          borderBottom: '1px solid #eee',
+                          '&:hover': { backgroundColor: '#f9fafc' }
+                        }}
+                      >
+                        <td style={{ 
+                          padding: '12px 16px',
+                          color: '#555',
+                          fontSize: '0.875rem',
+                          verticalAlign: 'middle'
+                        }}>{index + 1}</td>
+                        
+                        <td style={{ 
+                          padding: '12px 16px',
+                          color: '#333',
+                          fontSize: '0.875rem',
+                          verticalAlign: 'middle'
+                        }}>
+                          <Box 
+                            component="span" 
+                            sx={{
+                              fontWeight: 500,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              display: 'block',
+                              maxWidth: '180px',
+                              color: '#1976d2'
+                            }}
+                          >
+                            {devis.reference || 'N/A'}
+                          </Box>
+                        </td>
+                        
+                        <td style={{ 
+                          padding: '12px 16px',
+                          color: '#555',
+                          fontSize: '0.875rem',
+                          verticalAlign: 'middle'
+                        }}>{devis.clientName || 'N/A'}</td>
+                        
+                        <td style={{ 
+                          padding: '12px 16px',
+                          color: '#555',
+                          fontSize: '0.875rem',
+                          verticalAlign: 'middle'
+                        }}>
+                          {devis.creationDate ? 
+                            new Date(devis.creationDate).toLocaleDateString('fr-FR') : 
+                            'N/A'}
+                        </td>
+                        
+                        <td style={{ 
+                          padding: '12px 16px',
+                          verticalAlign: 'middle'
+                        }}>
+                          <Chip
+                            label={
+                              devis.status === 0 ? 'Brouillon' :
+                              devis.status === 1 ? 'Envoyé' :
+                              devis.status === 2 ? 'Validé' : 'Annulé'
+                            }
+                            size="small"
+                            sx={{
+                              fontSize: '0.75rem',
+                              fontWeight: 500,
+                              backgroundColor: 
+                                devis.status === 0 ? '#e3f2fd' :
+                                devis.status === 1 ? '#fff8e1' :
+                                devis.status === 2 ? '#e8f5e9' : '#ffebee',
+                              color: 
+                                devis.status === 0 ? '#1565c0' :
+                                devis.status === 1 ? '#ff8f00' :
+                                devis.status === 2 ? '#2e7d32' : '#c62828'
+                            }}
+                          />
+                        </td>
+                        
+                        <td style={{ 
+                          padding: '12px 16px',
+                          color: '#333',
+                          fontSize: '0.875rem',
+                          fontWeight: 500,
+                          textAlign: 'right',
+                          verticalAlign: 'middle'
+                        }}>
+                          {devis.totalTTC ? `${devis.totalTTC.toFixed(2)} TND` : '0.00 TND'}
+                        </td>
+                        
+                        <td style={{ 
+                          padding: '12px 16px',
+                          textAlign: 'center',
+                          verticalAlign: 'middle'
+                        }}>
+                          <Box sx={{ 
+                            display: 'flex', 
+                            justifyContent: 'center',
+                            gap: '6px'
+                          }}>
+                            <Tooltip title="Voir">
+                              <IconButton 
+                                size="small"
+                                onClick={() => handleView(devis.id)}
+                                sx={{ 
+                                  color: '#5c6bc0',
+                                  '&:hover': { backgroundColor: '#e8eaf6' }
+                                }}
+                              >
+                                <Visibility fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            
+                            <Tooltip title="Modifier">
+                              <IconButton 
+                                size="small"
+                                onClick={() => handleEdit(devis.id)}
+                                sx={{ 
+                                  color: '#26a69a',
+                                  '&:hover': { backgroundColor: '#e0f2f1' }
+                                }}
+                              >
+                                <Edit fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            
+                            <DevisValidationButton 
+                              devisId={devis.id}
+                              currentStatus={devis.status}
+                              onValidateSuccess={handleValidateSuccess}
+                            />
+                            
+                            <Tooltip title="Supprimer">
+                              <IconButton 
+                                size="small"
+                                onClick={() => handleDelete(devis.id)}
+                                sx={{ 
+                                  color: '#ef5350',
+                                  '&:hover': { backgroundColor: '#ffebee' }
+                                }}
+                              >
+                                <Delete fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td 
+                        colSpan="7" 
+                        style={{ 
+                          padding: '24px', 
+                          textAlign: 'center',
+                          color: '#666'
+                        }}
+                      >
+                        <Box sx={{ textAlign: 'center' }}>
+                          <Typography variant="body1">
+                            Aucun devis trouvé
+                          </Typography>
+                          <Typography variant="body2" sx={{ mt: 1 }}>
+                            Essayez de modifier vos critères de recherche
+                          </Typography>
+                        </Box>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </Box>
+          </Box>
+        )}
+      </Box>
+    </DashboardLayout>
+  );
+};
+DevisValidationButton.propTypes = {
+  devisId: PropTypes.oneOfType([
+    PropTypes.string,
+    PropTypes.number
+  ]).isRequired,
+  currentStatus: PropTypes.number.isRequired,
+  onValidateSuccess: PropTypes.func.isRequired
+};
+export default DevisClient;

@@ -10,7 +10,7 @@ import dayjs from 'dayjs';
 
 
 import { Link } from 'react-router-dom';
-import { ProductsTable } from './ProductsTable';
+import ProductsTable from './ProductsTable'; // Sans accolades
 import { ProductsFilters } from './ProductsFilters';
 import DashboardLayout from '../../../examples/LayoutContainers/DashboardLayout';
 // Suppression de la partie config

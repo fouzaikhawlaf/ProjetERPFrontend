@@ -156,12 +156,6 @@ const CreerBonCommande = ({ handleSubmit }) => {
           </Grid>
         </Grid>
 
-        {/* Image Preview */}
-        {image && (
-          <Paper elevation={1} sx={{ my: 3, overflow: "hidden", borderRadius: "8px" }}>
-            <img src={image} alt="Uploaded" style={{ width: "100%", height: "auto" }} />
-          </Paper>
-        )}
 
         {/* Items Table */}
         <Table sx={{ my: 3, tableLayout: "fixed", width: "100%", overflowX: "auto" }}>
@@ -271,3 +265,4 @@ CreerBonCommande.propTypes = {
 };
 
 export default CreerBonCommande;
+

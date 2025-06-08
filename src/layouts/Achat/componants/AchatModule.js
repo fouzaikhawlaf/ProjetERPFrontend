@@ -11,13 +11,13 @@ const AchatModule = () => {
       title: "Nouvel Achat",
       description: "Ajoutez une nouvelle commande d'achat.",
       icon: "fa-cart-plus",
-      link: "/achats/nouveau",
+      link: "/achats/Devis",
     },
     {
-      title: "Fournisseurs",
-      description: "Gérez vos fournisseurs et leurs informations.",
+      title: "Devis",
+      description: "Gérez vos devis .",
       icon: "fa-users",
-      link: "/achats/fournisseurs",
+      link: "/DevisService",
     },
     {
       title: "Commandes",

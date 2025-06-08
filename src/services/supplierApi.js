@@ -5,9 +5,20 @@ import apiErp from './api';
 export const getSuppliers = async () => {
     try {
         const response = await apiErp.get('/suppliers');
-        return response.data;
+        return response.data.$values;
     } catch (error) {
         console.error('Error fetching suppliers:', error);
+        throw error;
+    }
+};
+
+// Function to get all suppliers with addresses
+export const getSuppliersWithAddresses = async () => {
+    try {
+        const response = await apiErp.get('/suppliers/with-addresses');
+        return response.data; // Return the list of suppliers with addresses
+    } catch (error) {
+        console.error('Error fetching suppliers with addresses:', error);
         throw error;
     }
 };

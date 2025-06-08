@@ -6,7 +6,7 @@ import { Download as DownloadIcon } from '@phosphor-icons/react';
 import { Plus as PlusIcon } from '@phosphor-icons/react';
 import { Upload as UploadIcon } from '@phosphor-icons/react';
 import dayjs from 'dayjs';
-import { CustomersFilters } from './CustomersFilters';
+
 import { CustomersTable } from './custumersTabe';
 import DashboardLayout from '../../../examples/LayoutContainers/DashboardLayout';
 
@@ -61,7 +61,7 @@ export default function Page() {
 </Button>
         </div>
       </Stack>
-      <CustomersFilters />
+     
       <CustomersTable
         count={paginatedCustomers.length}
         page={page}

@@ -13,7 +13,7 @@ import DashboardLayout from '../../../../examples/LayoutContainers/DashboardLayo
 
 function ProductFormStepsPD ({ handleEdit })  {
   const [step, setStep] = useState(0);
-  const [productType, setProductType] = useState('');
+ const [productType, setProductType] = useState(0); // 0=Produit, 1=Service
   const [productInfo, setProductInfo] = useState({
     reference: '',
     name: '',
@@ -154,7 +154,7 @@ function ProductFormStepsPD ({ handleEdit })  {
           textColor="primary"
           centered
         >
-          <Tab label="Type de produit" />
+          <Tab label="Type de produit hh" />
           <Tab label="Informations du produit" />
           <Tab label="Informations supplémentaires" />
           <Tab label="Aperçu" /> {/* New tab for preview */}

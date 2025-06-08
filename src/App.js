@@ -104,6 +104,30 @@ import EditTask from 'layouts/Projects/TaskProject/EditTask';
 import DevisForm from 'layouts/Sale/Data/forms/devisForm';
 
 import CreerDevisAchat from 'layouts/Achat/CreerBonCommande';
+import DevisModule from 'layouts/Achat/componants/DevisModule';
+import CreerDevisPurchase from 'layouts/Achat/componants/DevisService';
+import { SuppliersTable } from 'layouts/Supplier/components/SuppliersTable';
+import PageSupplier from './layouts/Supplier/components';
+import DevisServiceTable from 'layouts/Achat/componants/Tables/DevisPuchase';
+import Page from 'layouts/tables/components';
+import ProjectModule from 'layouts/Projects/components/ProjectModule';
+import ModuleRH from 'layouts/HRModule/components/ModuleRH';
+import ProfileInterface from 'layouts/profile/UserProfile/ProfileInterface';
+import CreerDevisProduit from 'layouts/Achat/componants/DevisProduit/CreerDevisProduit';
+import DevisProduitTable from 'layouts/Achat/componants/Tables/DevisProduitTable';
+import CommandeModule from 'layouts/Achat/componants/OrderSupplier/CommandeModule';
+import CreateCommandeSupplier from 'layouts/Achat/componants/OrderSupplier/CreateOrderSupplierService';
+import LeaveRequestForm from 'layouts/Conge/Component/LeaveRequestForm';
+import CreerDevisClient from 'layouts/Sale/Data/forms/CreateDevisServiceCLient';
+import DevisModuleClient from 'layouts/Sale/Data/devisModuleClient';
+import ListDevisVenteService from 'layouts/Sale/Data/Tables/DevisTable';
+import CreerDevisClientProduit from 'layouts/Sale/Data/forms/devisForm';
+import { CustomersTable } from 'layouts/tables/components/custumersTabe';
+import OrderClientModule from 'layouts/Sale/Data/OrderClient/OrderCLientModule';
+import CreateClientOrder from './layouts/Sale/Data/OrderClient/OrderClientCreate';
+import DevisProjetForm from 'layouts/Sale/Data/forms/CreerDevisClientProjet ';
+
+
 
 export default function App() {
   const [controller, dispatch] = useSoftUIController();
@@ -275,6 +299,29 @@ export default function App() {
         <Route path = "/tasks/:projectId" element = {<TaskList/>} />
         <Route path="/edit-task/:taskId" element={<EditTask />} />
         <Route path="/achats/nouveau" element={<CreerDevisAchat />} />
+        <Route path="/achats/Devis" element={<DevisModule />} />
+        <Route path="/devis/service" element={<CreerDevisPurchase />} /> 
+        <Route path="/suppliers" element={<PageSupplier />} /> 
+        <Route path="/DevisService" element={<DevisServiceTable />} />    
+        <Route path="/Clients" element={<Page />} />    
+        <Route path="/project-module" element={<ProjectModule />} />
+        <Route path="/projects" element={<ProjectList />} />
+        <Route path="/module-rh" element={<ModuleRH />} />
+        <Route path="/profile-user" element={<ProfileInterface />} />
+        <Route path="/devis/produit" element={<CreerDevisProduit />} />
+        <Route path="/devis/produitTable" element={<DevisProduitTable />} />
+        <Route path="/achats/commandes" element={<CommandeModule />} />
+        <Route path="/achats/commande/service" element={<CreateCommandeSupplier />} />
+       <Route path = "/User/Congé"   element= {<LeaveRequestForm />} />
+       <Route path = "/Vente/DevisServiceClient"   element= {<CreerDevisClient />} /> 
+       <Route path = "/Vente/Nouveau/Devis"   element= {<DevisModuleClient />} /> 
+       <Route path = "/Vente/list/Devis"   element= {<ListDevisVenteService />} /> 
+       <Route path = "/Vente/DevisProductClient"   element= {<CreerDevisClientProduit />} /> 
+       <Route path = "/listCLients"   element= {<CustomersTable />} />   
+       <Route path = "/Vente/OrderCLient"   element= {<OrderClientModule />} />   
+       <Route path = "/Vente/OrderCLientService"   element= {<CreateClientOrder />} />   
+       <Route path = "/Vente/DevisClientPorjet"   element= {<DevisProjetForm />} />   
+      <Route path = "/produit/ajouter"   element= {<ProductFormSteps />} />      
       </Routes>
     </ThemeProvider>
   );

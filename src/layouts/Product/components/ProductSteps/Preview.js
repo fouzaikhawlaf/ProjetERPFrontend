@@ -6,14 +6,15 @@ import {
   Grid,
   Box,
   IconButton,
-  CircularProgress,
+  CircularProgress
 } from '@mui/material';
-import { Edit } from '@mui/icons-material'; // Import edit icon
+import { Edit } from '@mui/icons-material';
 import PropTypes from 'prop-types';
-import { createProduct } from 'services/ProductApi'; // Assurez-vous du bon chemin 
+import { createProduct } from 'services/ProductApi';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+
 const PreviewStep = ({
   productType,
   productInfo,
@@ -23,54 +24,72 @@ const PreviewStep = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  // Validation des données avant soumission
+
   const validateData = () => {
-    if (!productInfo.name || !productInfo.salePrice || !additionalInfo.description) {
-      alert('Veuillez remplir toutes les informations nécessaires.');
+    const requiredFields = {
+      name: productInfo.name,
+      salePrice: productInfo.salePrice,
+      description: additionalInfo.description,
+      category: additionalInfo.category,
+      unit: additionalInfo.unit,
+      quantity: productInfo.quantity,
+      tvaRate: productInfo.tvaRate
+    };
+
+    const missingFields = Object.entries(requiredFields)
+      .filter(([_, value]) => !value)
+      .map(([key]) => key);
+
+    if (missingFields.length > 0) {
+      toast.error(`Champs manquants: ${missingFields.join(', ')}`);
       return false;
     }
+
+    if (isNaN(productInfo.salePrice)) {
+      toast.error('Le prix doit être un nombre valide');
+      return false;
+    }
+
     return true;
   };
 
   const handleSubmit = async () => {
     try {
-      // Préparation des données pour l'API
+      if (!validateData()) return;
+      setLoading(true);
+
       const productData = {
-        name: productInfo.name, // string
-        description: additionalInfo.description, // string
-        price: parseFloat(productInfo.salePrice), // number
-        productType: 0, // int (par exemple, type par défaut)
-        taxRate: productInfo.tvaRate, // number
-        priceType: productInfo.priceType, // string (TTC ou HT)
-        category: additionalInfo.category, // string
-        unit: additionalInfo.unit, // string (kg, etc.)
-        quantity: parseInt(productInfo.quantity, 10), // integer
+        name: productInfo.name,
+        description: additionalInfo.description,
+        price: parseFloat(productInfo.salePrice),
+        taxRate: parseFloat(productInfo.tvaRate),
+        tvaRate: parseFloat(productInfo.tvaRate),
+        priceType: productInfo.priceType.toLowerCase(),
+        category: additionalInfo.category,
+        unit: additionalInfo.unit,
+        itemTypeArticle: productType === 'Matériel' ? 0 : 1,
+        stockQuantity: parseInt(productInfo.quantity, 10)
       };
 
       const response = await createProduct(productData);
-      console.log('Product created successfully:', response);
-  
-      // Affichez un toast (facultatif) pour une confirmation rapide
       toast.success("Produit créé avec succès !");
-  
-      // Redirigez vers la page de succès
-      navigate('/success');
+      navigate('/products');
     } catch (error) {
-      console.error('Error creating product:', error.response ? error.response.data : error.message);
-  
-      // Affichez une notification d'erreur
-      toast.error("Erreur lors de la création du produit.");
+      toast.error(
+        error.response?.data?.Errors?.[0]?.Message || 
+        'Erreur lors de la création du produit'
+      );
+    } finally {
+      setLoading(false);
     }
   };
-  
-  
+
   return (
     <Card elevation={3} style={{ padding: '30px', marginTop: '20px', borderRadius: '12px' }}>
       <Typography variant="h5" gutterBottom style={{ textAlign: 'center' }}>
         Aperçu du produit
       </Typography>
 
-      {/* Product Type Section */}
       <Card elevation={1} style={{ padding: '20px', marginTop: '20px', borderRadius: '8px' }}>
         <Box display="flex" justifyContent="space-between" alignItems="center">
           <Typography variant="subtitle1">
@@ -82,7 +101,6 @@ const PreviewStep = ({
         </Box>
       </Card>
 
-      {/* Product Information Section */}
       <Card elevation={1} style={{ padding: '20px', marginTop: '20px', borderRadius: '8px' }}>
         <Typography variant="h6" gutterBottom>
           Informations du produit
@@ -110,13 +128,12 @@ const PreviewStep = ({
           </Grid>
           <Grid item xs={12} sm={6}>
             <Typography variant="subtitle1">
-              <strong>Quantity:</strong> {productInfo.quantity}
+              <strong>Quantité:</strong> {productInfo.quantity}
             </Typography>
           </Grid>
         </Grid>
       </Card>
 
-      {/* Additional Information Section */}
       <Card elevation={1} style={{ padding: '20px', marginTop: '20px', borderRadius: '8px' }}>
         <Typography variant="h6" gutterBottom>
           Informations supplémentaires
@@ -145,7 +162,6 @@ const PreviewStep = ({
         </Grid>
       </Card>
 
-      {/* Action Buttons */}
       <Box display="flex" justifyContent="space-between" marginTop="30px">
         <Button onClick={handlePrev} variant="outlined" style={{ borderRadius: '8px' }}>
           Retour
@@ -166,8 +182,18 @@ const PreviewStep = ({
 
 PreviewStep.propTypes = {
   productType: PropTypes.string.isRequired,
-  productInfo: PropTypes.object.isRequired,
-  additionalInfo: PropTypes.object.isRequired,
+  productInfo: PropTypes.shape({
+    name: PropTypes.string.isRequired,
+    salePrice: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    tvaRate: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    quantity: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    priceType: PropTypes.string.isRequired,
+  }).isRequired,
+  additionalInfo: PropTypes.shape({
+    description: PropTypes.string.isRequired,
+    category: PropTypes.string.isRequired,
+    unit: PropTypes.string.isRequired,
+  }).isRequired,
   handlePrev: PropTypes.func.isRequired,
   handleEdit: PropTypes.func.isRequired,
 };

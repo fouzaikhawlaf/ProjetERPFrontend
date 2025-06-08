@@ -1,17 +1,39 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import Pagination from 'react-bootstrap/Pagination';
-import Avatar from '@mui/material/Avatar';
+import {
+  Paper,
+  Button,
+  Typography,
+  IconButton,
+  Tooltip,
+  Box,
+  CircularProgress,
+  TextField,
+  Alert,
+  Chip,
+  Grid,
+  InputAdornment,
+  Avatar
+} from '@mui/material';
+import { 
+  AddCircle,
+  Edit,
+  Delete,
+  Search,
+  Refresh
+} from '@mui/icons-material';
+import DashboardLayout from 'examples/LayoutContainers/DashboardLayout';
 import { getClients } from 'services/ApiClient';
-import 'bootstrap/dist/css/bootstrap.min.css';
+import { useSnackbar } from 'notistack';
 
 export function CustomersTable({ rowsPerPage = 10, onDelete, onUpdate }) {
+  const { enqueueSnackbar } = useSnackbar();
   const [clients, setClients] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const selectAllRef = useRef(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -20,12 +42,12 @@ export function CustomersTable({ rowsPerPage = 10, onDelete, onUpdate }) {
 
       try {
         const { clients, totalCount } = await getClients(currentPage, rowsPerPage);
-        console.log('Fetched clients:', clients);
         setClients(clients || []);
         setTotalCount(totalCount || 0);
       } catch (err) {
         console.error('Error fetching clients:', err);
-        setError('Failed to load clients. Please try again.');
+        setError('Failed to load clients');
+        enqueueSnackbar('Error loading clients', { variant: 'error' });
         setClients([]);
       } finally {
         setLoading(false);
@@ -33,7 +55,7 @@ export function CustomersTable({ rowsPerPage = 10, onDelete, onUpdate }) {
     };
 
     fetchClients();
-  }, [currentPage, rowsPerPage]);
+  }, [currentPage, rowsPerPage, enqueueSnackbar]);
 
   const totalPages = Math.ceil(totalCount / rowsPerPage);
 
@@ -41,93 +63,352 @@ export function CustomersTable({ rowsPerPage = 10, onDelete, onUpdate }) {
     setCurrentPage(page);
   };
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  if (error) {
-    return <div className="text-danger">{error}</div>;
-  }
+  const handleSearch = (e) => {
+    setSearchQuery(e.target.value);
+    // Implémentez la logique de recherche ici
+  };
 
   return (
-    <div className="card">
-      <div className="table-responsive">
-        <table className="table table-striped table-hover">
-          <thead className="table-light">
-            <tr>
-              <th scope="col">
-                <input type="checkbox" className="form-check-input" ref={selectAllRef} />
-              </th>
-              <th scope="col">Name</th>
-              <th scope="col">Email</th>
-              <th scope="col">Address</th>
-              <th scope="col">Phone</th>
-              <th scope="col">Notes</th>
-              <th scope="col">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Array.isArray(clients) && clients.length > 0 ? (
-              clients.map((client) => (
-                <tr key={client.id}>
-                  <td>
-                    <input type="checkbox" className="form-check-input" />
-                  </td>
-                  <td>
-                    <div className="d-flex align-items-center">
-                      {client.avatar ? <Avatar src={client.avatar} /> : <Avatar>{client.name?.[0]}</Avatar>}
-                      <span className="ms-2">{client.name || 'Unknown'}</span>
-                    </div>
-                  </td>
-                  <td>{client.email || 'No email'}</td>
-                  <td>
-                    {client.address
-                      ? `${client.address.city}, ${client.address.state}, ${client.address.country}`
-                      : 'No address'}
-                  </td>
-                  <td>{client.phone || 'No phone'}</td>
-                  <td>{client.notes || 'No notes'}</td>
-                  <td>
-                    <button className="btn btn-outline-primary btn-sm" onClick={() => onUpdate(client.id)}>
-                      Update
-                    </button>
-                    <button className="btn btn-outline-danger btn-sm" onClick={() => onDelete(client.id)}>
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="7" className="text-center">
-                  No clients found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="d-flex justify-content-center">
-        <Pagination>
-          <Pagination.First onClick={() => handlePageChange(1)} disabled={currentPage === 1} />
-          <Pagination.Prev onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} />
-          {Array.from({ length: totalPages }, (_, index) => (
-            <Pagination.Item
-              key={index + 1}
-              active={index + 1 === currentPage}
-              onClick={() => handlePageChange(index + 1)}
+    <DashboardLayout>
+      <Box sx={{ p: 3 }}>
+        {/* Header Section */}
+        <Grid container spacing={2} alignItems="center" sx={{ mb: 3 }}>
+          <Grid item xs={12} md={6}>
+            <Typography variant="h4" fontWeight="bold">
+              Gestion des Clients
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {clients.length} clients trouvés
+            </Typography>
+          </Grid>
+          <Grid item xs={12} md={6} sx={{ textAlign: { md: 'right' } }}>
+            <Button
+              variant="contained"
+              startIcon={<AddCircle />}
+              onClick={() => window.location.href = "/clients/add"}
+              sx={{ mr: 2 }}
             >
-              {index + 1}
-            </Pagination.Item>
-          ))}
-          <Pagination.Next onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} />
-          <Pagination.Last onClick={() => handlePageChange(totalPages)} disabled={currentPage === totalPages} />
-        </Pagination>
-      </div>
-    </div>
+              Nouveau Client
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<Refresh />}
+              onClick={() => setCurrentPage(1)}
+            >
+              Actualiser
+            </Button>
+          </Grid>
+        </Grid>
+
+        {/* Search Section */}
+        <Box sx={{ 
+          p: 2, 
+          mb: 3, 
+          bgcolor: 'background.paper', 
+          borderRadius: 1,
+          boxShadow: 1
+        }}>
+          <TextField
+            fullWidth
+            variant="outlined"
+            placeholder="Rechercher clients..."
+            value={searchQuery}
+            onChange={handleSearch}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search color="action" />
+                </InputAdornment>
+              ),
+            }}
+          />
+        </Box>
+
+        {/* Content Section */}
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+        )}
+
+        {loading ? (
+          <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px">
+            <CircularProgress size={60} />
+          </Box>
+        ) : (
+          <Box 
+            component={Paper} 
+            elevation={0} 
+            sx={{ 
+              border: '1px solid', 
+              borderColor: 'divider', 
+              borderRadius: 2,
+              overflow: 'hidden'
+            }}
+          >
+            <Box sx={{ overflowX: 'auto' }}>
+              <table style={{ 
+                width: '100%',
+                borderCollapse: 'collapse',
+                minWidth: '1000px'
+              }}>
+                <thead>
+                  <tr style={{ 
+                    backgroundColor: '#f5f7fa',
+                    height: '60px'
+                  }}>
+                    <th style={{ 
+                      width: '50px',
+                      padding: '0 16px',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      textAlign: 'left',
+                      borderBottom: '2px solid #e0e0e0',
+                      color: '#333'
+                    }}>#</th>
+                    
+                    <th style={{ 
+                      width: '200px',
+                      padding: '0 16px',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      textAlign: 'left',
+                      borderBottom: '2px solid #e0e0e0',
+                      color: '#333'
+                    }}>Client</th>
+                    
+                    <th style={{ 
+                      width: '200px',
+                      padding: '0 16px',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      textAlign: 'left',
+                      borderBottom: '2px solid #e0e0e0',
+                      color: '#333'
+                    }}>Email</th>
+                    
+                    <th style={{ 
+                      width: '150px',
+                      padding: '0 16px',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      textAlign: 'left',
+                      borderBottom: '2px solid #e0e0e0',
+                      color: '#333'
+                    }}>Adresse</th>
+                    
+                    <th style={{ 
+                      width: '100px',
+                      padding: '0 16px',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      textAlign: 'left',
+                      borderBottom: '2px solid #e0e0e0',
+                      color: '#333'
+                    }}>Téléphone</th>
+                    
+                    <th style={{ 
+                      width: '150px',
+                      padding: '0 16px',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      textAlign: 'center',
+                      borderBottom: '2px solid #e0e0e0',
+                      color: '#333'
+                    }}>Actions</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {clients.length > 0 ? (
+                    clients.map((client, index) => (
+                      <tr 
+                        key={client.id}
+                        style={{ 
+                          borderBottom: '1px solid #eee',
+                          '&:hover': { backgroundColor: '#f9fafc' }
+                        }}
+                      >
+                        <td style={{ 
+                          padding: '12px 16px',
+                          color: '#555',
+                          fontSize: '0.875rem',
+                          verticalAlign: 'middle'
+                        }}>{index + 1}</td>
+                        
+                        <td style={{ 
+                          padding: '12px 16px',
+                          color: '#333',
+                          fontSize: '0.875rem',
+                          verticalAlign: 'middle'
+                        }}>
+                          <Box display="flex" alignItems="center">
+                            <Avatar 
+                              src={client.avatar} 
+                              sx={{ width: 32, height: 32, mr: 2 }}
+                            >
+                              {client.name?.[0]}
+                            </Avatar>
+                            <Typography variant="body2">
+                              {client.name || 'N/A'}
+                            </Typography>
+                          </Box>
+                        </td>
+                        
+                        <td style={{ 
+                          padding: '12px 16px',
+                          color: '#555',
+                          fontSize: '0.875rem',
+                          verticalAlign: 'middle'
+                        }}>{client.email || 'N/A'}</td>
+                        
+                        <td style={{ 
+                          padding: '12px 16px',
+                          color: '#555',
+                          fontSize: '0.875rem',
+                          verticalAlign: 'middle'
+                        }}>
+                          {client.address ? 
+                            `${client.address.city}, ${client.address.state}` : 
+                            'N/A'}
+                        </td>
+                        
+                        <td style={{ 
+                          padding: '12px 16px',
+                          color: '#555',
+                          fontSize: '0.875rem',
+                          verticalAlign: 'middle'
+                        }}>{client.phone || 'N/A'}</td>
+                        
+                        <td style={{ 
+                          padding: '12px 16px',
+                          textAlign: 'center',
+                          verticalAlign: 'middle'
+                        }}>
+                          <Box sx={{ 
+                            display: 'flex', 
+                            justifyContent: 'center',
+                            gap: '6px'
+                          }}>
+                            <Tooltip title="Modifier">
+                              <IconButton 
+                                size="small"
+                                onClick={() => onUpdate(client.id)}
+                                sx={{ 
+                                  color: '#26a69a',
+                                  '&:hover': { backgroundColor: '#e0f2f1' }
+                                }}
+                              >
+                                <Edit fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Supprimer">
+                              <IconButton 
+                                size="small"
+                                onClick={() => onDelete(client.id)}
+                                sx={{ 
+                                  color: '#ef5350',
+                                  '&:hover': { backgroundColor: '#ffebee' }
+                                }}
+                              >
+                                <Delete fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td 
+                        colSpan="6" 
+                        style={{ 
+                          padding: '24px', 
+                          textAlign: 'center',
+                          color: '#666'
+                        }}
+                      >
+                        <Box sx={{ textAlign: 'center' }}>
+                          <Typography variant="body1">
+                            Aucun client trouvé
+                          </Typography>
+                          <Typography variant="body2" sx={{ mt: 1 }}>
+                            Essayez de modifier vos critères de recherche
+                          </Typography>
+                        </Box>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </Box>
+          </Box>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant="outlined"
+                disabled={currentPage === 1}
+                onClick={() => handlePageChange(1)}
+              >
+                Première
+              </Button>
+              <Button
+                variant="outlined"
+                disabled={currentPage === 1}
+                onClick={() => handlePageChange(currentPage - 1)}
+              >
+                Précédent
+              </Button>
+              
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={currentPage === pageNum ? "contained" : "outlined"}
+                    onClick={() => handlePageChange(pageNum)}
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              })}
+
+              <Button
+                variant="outlined"
+                disabled={currentPage === totalPages}
+                onClick={() => handlePageChange(currentPage + 1)}
+              >
+                Suivant
+              </Button>
+              <Button
+                variant="outlined"
+                disabled={currentPage === totalPages}
+                onClick={() => handlePageChange(totalPages)}
+              >
+                Dernière
+              </Button>
+            </Box>
+          </Box>
+        )}
+      </Box>
+    </DashboardLayout>
   );
 }
+
 CustomersTable.propTypes = {
   rowsPerPage: PropTypes.number,
   onDelete: PropTypes.func.isRequired,
@@ -137,4 +418,3 @@ CustomersTable.propTypes = {
 CustomersTable.defaultProps = {
   rowsPerPage: 10,
 };
-export default CustomersTable;

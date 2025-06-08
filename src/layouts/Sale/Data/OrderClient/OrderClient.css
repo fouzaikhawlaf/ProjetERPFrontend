@@ -1,0 +1,13 @@
+
+.devis-card {
+    transition: transform 0.2s ease-in-out;
+  }
+  
+  .devis-card:hover {
+    transform: scale(1.05);
+    cursor: pointer;
+  }
+  
+  .icon-container {
+    color: #007bff; /* Change icon color */
+  }

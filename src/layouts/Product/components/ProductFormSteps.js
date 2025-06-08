@@ -14,60 +14,69 @@ import {
   FormControl,
   Select,
   MenuItem,
-  IconButton,
+  Avatar
 } from '@mui/material';
-import { Add, Remove } from '@mui/icons-material';
 import DashboardLayout from '../../../examples/LayoutContainers/DashboardLayout';
-
 
 function ProductFormSteps() {
   const [step, setStep] = useState(0);
   const [productType, setProductType] = useState('');
   const [productInfo, setProductInfo] = useState({
-    reference: '',
     name: '',
-    category: '',
-    brand: '',
     priceType: 'TTC',
     tvaRate: '',
     salePrice: '',
+    quantity: '',
+    imagePath: ''
   });
   const [additionalInfo, setAdditionalInfo] = useState({
-    image: '',
+    imageFile: null,
     category: '',
     unit: '',
-    description: '',
+    description: ''
   });
 
-  const handleNext = () => {
-    if (step < 4) setStep(step + 1);
-  };
-
-  const handlePrev = () => {
-    if (step > 0) setStep(step - 1);
-  };
-
+  const handleNext = () => step < 3 && setStep(step + 1);
+  const handlePrev = () => step > 0 && setStep(step - 1);
   const handleChange = (event, newValue) => setStep(newValue);
 
-  const handleProductInfoChange = (field) => (event) =>
+  const handleProductInfoChange = (field) => (event) => {
     setProductInfo({ ...productInfo, [field]: event.target.value });
+  };
 
-  const handleAdditionalInfoChange = (field) => (event) =>
-    setAdditionalInfo({ ...additionalInfo, [field]: event.target.value });
+  const handleAdditionalInfoChange = (field) => (event) => {
+    if (field === 'imageFile') {
+      const file = event.target.files[0];
+      setAdditionalInfo({ 
+        ...additionalInfo, 
+        imageFile: file 
+      });
+      setProductInfo({
+        ...productInfo,
+        imagePath: URL.createObjectURL(file)
+      });
+    } else {
+      setAdditionalInfo({ 
+        ...additionalInfo, 
+        [field]: event.target.value 
+      });
+    }
+  };
 
   const handleSubmit = () => {
-    console.log({
-      productType,
-      productInfo,
-      additionalInfo,
-    });
-    alert('Form submitted!');
+    const formData = new FormData();
+    formData.append('image', additionalInfo.imageFile);
+    formData.append('data', JSON.stringify({
+      ...productInfo,
+      ...additionalInfo
+    }));
+    console.log('Form Data:', formData);
+    alert('Produit créé avec succès !');
   };
 
   return (
     <DashboardLayout>
       <Box sx={{ width: '100%', padding: '20px' }}>
-        {/* Tabs for navigation */}
         <Tabs
           value={step}
           onChange={handleChange}
@@ -77,14 +86,13 @@ function ProductFormSteps() {
           centered
         >
           <Tab label="Type de produit" />
-          <Tab label="Informations du produit" />
-          <Tab label="Informations supplémentaires" />
-          <Tab label="Terminé" />
+          <Tab label="Informations produit" />
+          <Tab label="Détails supplémentaires" />
+          <Tab label="Confirmation" />
         </Tabs>
 
-        {/* Step 1: Product Type */}
         {step === 0 && (
-          <Card elevation={3} style={{ padding: '30px', marginTop: '20px' }}>
+          <Card elevation={3} sx={{ p: 3, mt: 2 }}>
             <Typography variant="h6" gutterBottom>
               Type de produit
             </Typography>
@@ -92,28 +100,23 @@ function ProductFormSteps() {
               row
               value={productType}
               onChange={(e) => setProductType(e.target.value)}
-              style={{ justifyContent: 'center', marginTop: '20px' }}
+              sx={{ justifyContent: 'center', mt: 2 }}
             >
               <FormControlLabel
                 value="Matériel"
                 control={<Radio color="primary" />}
                 label={
                   <Box
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    flexDirection="column"
-                    padding="20px"
-                    border={
-                      productType === 'Matériel'
-                        ? '2px solid #2196f3'
-                        : '1px solid #e0e0e0'
-                    }
-                    borderRadius="8px"
-                    width="200px"
-                    textAlign="center"
+                    sx={{
+                      p: 2,
+                      border: productType === 'Matériel' 
+                        ? '2px solid #1976d2' 
+                        : '1px solid #e0e0e0',
+                      borderRadius: 2,
+                      width: 200,
+                      textAlign: 'center'
+                    }}
                   >
-                    <img src="/path_to_material_icon.svg" alt="Matériel icon" />
                     <Typography>Matériel</Typography>
                   </Box>
                 }
@@ -123,57 +126,47 @@ function ProductFormSteps() {
                 control={<Radio color="primary" />}
                 label={
                   <Box
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    flexDirection="column"
-                    padding="20px"
-                    border={
-                      productType === 'Service'
-                        ? '2px solid #2196f3'
-                        : '1px solid #e0e0e0'
-                    }
-                    borderRadius="8px"
-                    width="200px"
-                    textAlign="center"
+                    sx={{
+                      p: 2,
+                      border: productType === 'Service' 
+                        ? '2px solid #1976d2' 
+                        : '1px solid #e0e0e0',
+                      borderRadius: 2,
+                      width: 200,
+                      textAlign: 'center'
+                    }}
                   >
-                    <img src="/path_to_service_icon.svg" alt="Service icon" />
                     <Typography>Service</Typography>
                   </Box>
                 }
               />
             </RadioGroup>
-
             <Button
               variant="contained"
-              color="primary"
               onClick={handleNext}
               disabled={!productType}
-              style={{ marginTop: '30px' }}
+              sx={{ mt: 3 }}
             >
               Continuer
             </Button>
           </Card>
         )}
 
-        {/* Step 2: Product Information */}
         {step === 1 && (
-          <Card elevation={3} style={{ padding: '30px', marginTop: '20px' }}>
+          <Card elevation={3} sx={{ p: 3, mt: 2 }}>
             <Typography variant="h6" gutterBottom>
-              Informations du produit
+              Informations de base
             </Typography>
-
-            <Grid container spacing={3} style={{ marginTop: '20px' }}>
-              <Grid item xs={6}>
+            <Grid container spacing={3}>
+              <Grid item xs={12} sm={6}>
                 <TextField
                   label="Nom du produit"
-                  variant="outlined"
                   fullWidth
                   value={productInfo.name}
                   onChange={handleProductInfoChange('name')}
                 />
               </Grid>
-              <Grid item xs={6}>
+              <Grid item xs={12} sm={6}>
                 <FormControl fullWidth>
                   <Typography gutterBottom>TVA (%)</Typography>
                   <RadioGroup
@@ -181,7 +174,7 @@ function ProductFormSteps() {
                     value={productInfo.tvaRate}
                     onChange={handleProductInfoChange('tvaRate')}
                   >
-                    {[4, 7, 13, 19, 0].map((rate) => (
+                    {[0, 4, 7, 13, 19].map((rate) => (
                       <FormControlLabel
                         key={rate}
                         value={rate}
@@ -192,9 +185,18 @@ function ProductFormSteps() {
                   </RadioGroup>
                 </FormControl>
               </Grid>
-              <Grid item xs={6}>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Prix de vente"
+                  type="number"
+                  fullWidth
+                  value={productInfo.salePrice}
+                  onChange={handleProductInfoChange('salePrice')}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
                 <FormControl fullWidth>
-                  <Typography gutterBottom>Prix unitaire (TTC ou HT)</Typography>
+                  <Typography gutterBottom>Type de prix</Typography>
                   <Select
                     value={productInfo.priceType}
                     onChange={handleProductInfoChange('priceType')}
@@ -204,111 +206,138 @@ function ProductFormSteps() {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={6}>
-                <TextField
-                  label="Prix de vente"
-                  variant="outlined"
-                  type="number"
-                  fullWidth
-                  value={productInfo.salePrice}
-                  onChange={handleProductInfoChange('salePrice')}
-                />
-              </Grid>
             </Grid>
-
-            <Box display="flex" justifyContent="space-between" marginTop="20px">
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
               <Button onClick={handlePrev} variant="outlined">
                 Retour
               </Button>
-              <Button onClick={handleNext} variant="contained" color="primary">
+              <Button onClick={handleNext} variant="contained">
                 Continuer
               </Button>
             </Box>
           </Card>
         )}
 
-        {/* Step 3: Additional Information */}
         {step === 2 && (
-          <Card elevation={3} style={{ padding: '30px', marginTop: '20px' }}>
+          <Card elevation={3} sx={{ p: 3, mt: 2 }}>
             <Typography variant="h6" gutterBottom>
-              Informations supplémentaires
+              Détails supplémentaires
             </Typography>
-
-            <Grid container spacing={3} style={{ marginTop: '20px' }}>
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <input
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  id="image-upload"
+                  type="file"
+                  onChange={handleAdditionalInfoChange('imageFile')}
+                />
+                <label htmlFor="image-upload">
+                  <Button variant="outlined" component="span">
+                     Uploader l&#39;image
+                  </Button>
+                </label>
+                {additionalInfo.imageFile && (
+                  <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Avatar
+                      src={productInfo.imagePath}
+                      sx={{ width: 56, height: 56, borderRadius: 1 }}
+                      variant="rounded"
+                    />
+                    <Typography variant="body2">
+                      {additionalInfo.imageFile.name}
+                    </Typography>
+                  </Box>
+                )}
+              </Grid>
               <Grid item xs={12}>
                 <TextField
                   label="Description"
-                  variant="outlined"
-                  fullWidth
                   multiline
                   rows={4}
+                  fullWidth
                   value={additionalInfo.description}
                   onChange={handleAdditionalInfoChange('description')}
                 />
               </Grid>
-              <Grid item xs={6}>
+              <Grid item xs={12} sm={6}>
                 <FormControl fullWidth>
-                  <Typography gutterBottom>Catégorie générale</Typography>
+                  <Typography gutterBottom>Catégorie</Typography>
                   <Select
                     value={additionalInfo.category}
                     onChange={handleAdditionalInfoChange('category')}
                   >
-                    <MenuItem value="Electronics">Électronique</MenuItem>
-                    <MenuItem value="Furniture">Mobilier</MenuItem>
-                    {/* Add more categories here */}
+                    <MenuItem value="Électronique">Électronique</MenuItem>
+                    <MenuItem value="Mobilier">Mobilier</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={6}>
+              <Grid item xs={12} sm={6}>
                 <FormControl fullWidth>
                   <Typography gutterBottom>Unité</Typography>
                   <Select
                     value={additionalInfo.unit}
                     onChange={handleAdditionalInfoChange('unit')}
                   >
-                    <MenuItem value="Kg">Kg</MenuItem>
-                    <MenuItem value="Piece">Pièce</MenuItem>
-                    {/* Add more units here */}
+                    <MenuItem value="Pièce">Pièce</MenuItem>
+                    <MenuItem value="Kg">Kilogramme</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  label="Image du produit"
-                  variant="outlined"
-                  fullWidth
-                  type="file"
-                  onChange={handleAdditionalInfoChange('image')}
-                />
-              </Grid>
             </Grid>
-
-            <Box display="flex" justifyContent="space-between" marginTop="20px">
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
               <Button onClick={handlePrev} variant="outlined">
                 Retour
               </Button>
-              <Button onClick={handleNext} variant="contained" color="primary">
+              <Button onClick={handleNext} variant="contained">
                 Continuer
               </Button>
             </Box>
           </Card>
         )}
 
-        {/* Step 4: Completion */}
         {step === 3 && (
-          <Card elevation={3} style={{ padding: '30px', marginTop: '20px' }}>
+          <Card elevation={3} sx={{ p: 3, mt: 2 }}>
             <Typography variant="h6" gutterBottom>
-              Terminé
+              Confirmation finale
             </Typography>
-            <Typography gutterBottom>
-              Votre produit a été configuré avec succès.
+            {productInfo.imagePath && (
+              <Box sx={{ textAlign: 'center', mb: 3 }}>
+                <Avatar
+                  src={productInfo.imagePath}
+                  sx={{ 
+                    width: 150, 
+                    height: 150,
+                    borderRadius: 2,
+                    mx: 'auto',
+                    mb: 2
+                  }}
+                />
+                <Typography variant="body2">
+                   Chemin de l&#39;image : {productInfo.imagePath}
+                </Typography>
+              </Box>
+            )}
+            <Typography sx={{ mb: 2 }}>
+              Nom: {productInfo.name}
             </Typography>
-
-            <Box display="flex" justifyContent="center" marginTop="20px">
-              <Button variant="contained" color="primary" onClick={handleSubmit}>
-                Soumettre
-              </Button>
-            </Box>
+            <Typography sx={{ mb: 2 }}>
+              Prix: {productInfo.salePrice} {productInfo.priceType}
+            </Typography>
+            <Typography sx={{ mb: 2 }}>
+              TVA: {productInfo.tvaRate}%
+            </Typography>
+            <Typography sx={{ mb: 2 }}>
+              Catégorie: {additionalInfo.category}
+            </Typography>
+            <Button 
+              fullWidth 
+              variant="contained" 
+              size="large" 
+              onClick={handleSubmit}
+            >
+              Confirmer la création
+            </Button>
           </Card>
         )}
       </Box>

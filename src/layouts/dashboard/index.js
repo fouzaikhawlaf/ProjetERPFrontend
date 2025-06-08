@@ -7,9 +7,9 @@ import './DashboardCards.css'; // For custom styles
 const Dashboard = () => {
   const cards = [
     { title: 'Orders', description: 'View and manage orders...', icon: 'fa-box', link: '/orders' },
-    { title: 'Customers', description: 'Manage customer data...', icon: 'fa-users', link: '/customers' },
+    { title: 'Clients', description: 'Manage customer data...', icon: 'fa-users', link: '/Clients' },
     { title: 'Invoices', description: 'Track and manage invoices...', icon: 'fa-file-invoice-dollar', link: '/invoices' },
-    { title: 'Supplier Portal', description: 'Manage supplier relationships...', icon: 'fa-truck', link: '/suppliers' },
+    { title: 'Supplier Portal', description: 'Manage supplier relationships...', icon: 'fa-truck', link: '/supplier' },
     { title: 'Projects', description: 'Track project progress...', icon: 'fa-tasks', link: '/ProjectManagment' },
     { title: 'HR', description: 'Handle HR tasks and requests...', icon: 'fa-user-tie', link: '/hr' },
     { title: 'Reports', description: 'Generate and view reports...', icon: 'fa-chart-line', link: '/reports' },

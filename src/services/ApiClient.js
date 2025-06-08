@@ -1,25 +1,22 @@
 import apiErp from "./api";
 
-export const getClients = async (pageNumber = 1, pageSize = 20) => {
+// services/ApiClient.js
+export const getClients = async (pageNumber = 1, pageSize = 1000) => {
   try {
     const response = await apiErp.get('/clients', {
       params: { pageNumber, pageSize },
     });
 
-   console.log("API Response:", response.data.$values);
-
-    // Adjust based on your API response structure
-    const clients = response.data.$values || [];
-   // console.log(clients );
-    const totalCount = response.data?.totalCount || response.data?.data?.totalCount || 0;
-
+    // Handle different response structures
+    const data = response.data;
     return {
-clients,
-      totalCount,
+      clients: data.items || data.$values || data || [],
+      totalCount: data.totalCount || data.length || 0
     };
   } catch (error) {
-    console.error('Error fetching clients:', error.message);
-    throw new Error('Failed to fetch clients');
+    console.error('Error fetching clients:', error);
+    return { clients: [], totalCount: 0 };
+    
   }
 };
 

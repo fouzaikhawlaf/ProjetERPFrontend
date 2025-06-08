@@ -7,7 +7,7 @@ import { Plus as PlusIcon } from '@phosphor-icons/react';
 import { Upload as UploadIcon } from '@phosphor-icons/react';
 import dayjs from 'dayjs';
 import { Link } from 'react-router-dom';
-import { SuppliersTable } from './SuppliersTable';
+import SupplierListTable, { SuppliersTable } from './SuppliersTable';
 import { SuppliersFilters } from './SuppliersFilters';
 import DashboardLayout from '../../../examples/LayoutContainers/DashboardLayout';
 import Snackbar from '@mui/material/Snackbar';
@@ -87,7 +87,7 @@ export default function PageSupplier() {
           </div>
         </Stack>
         <SuppliersFilters />
-        <SuppliersTable
+        <SupplierListTable
           count={paginatedSuppliers.length}
           page={page}
           rows={paginatedSuppliers}
