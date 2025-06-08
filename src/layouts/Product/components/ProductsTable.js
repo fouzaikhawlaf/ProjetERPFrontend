@@ -40,8 +40,9 @@ const ProductsTable = ({
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState(null);
 
-  // Recherche et filtrage côté client
   const filteredRows = useMemo(() => {
     if (!searchQuery) return allProducts;
     
@@ -57,7 +58,6 @@ const ProductsTable = ({
     });
   }, [allProducts, searchQuery]);
 
-  // Pagination
   const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
   const displayedRows = useMemo(() => {
     return filteredRows.slice(
@@ -66,7 +66,6 @@ const ProductsTable = ({
     );
   }, [filteredRows, currentPage, rowsPerPage]);
 
-  // Gestion de la sélection
   const selectAll = () => setSelectedIds(new Set(displayedRows.map((s) => s.id)));
   const deselectAll = () => setSelectedIds(new Set());
   const selectOne = (id) => setSelectedIds(new Set(selectedIds.add(id)));
@@ -79,7 +78,6 @@ const ProductsTable = ({
   const selectedAll = displayedRows.length > 0 && selectedIds.size === displayedRows.length;
   const selectedSome = selectedIds.size > 0 && selectedIds.size < displayedRows.length;
 
-  // Reset à la première page quand la recherche change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery]);
@@ -100,6 +98,24 @@ const ProductsTable = ({
   const handleRefreshClick = () => {
     setSearchQuery('');
     if (onRefresh) onRefresh();
+  };
+
+  const handleDeleteClick = (e, id) => {
+    e.stopPropagation();
+    setProductToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (productToDelete) {
+      onDelete(productToDelete);
+      setDeleteDialogOpen(false);
+    }
+  };
+
+  const cancelDelete = () => {
+    setDeleteDialogOpen(false);
+    setProductToDelete(null);
   };
 
   return (
@@ -209,7 +225,7 @@ const ProductsTable = ({
                       <IconButton color="primary" onClick={(e) => { e.stopPropagation(); onUpdate(row.id); }}>
                         <EditIcon />
                       </IconButton>
-                      <IconButton color="error" onClick={(e) => { e.stopPropagation(); onDelete(row.id); }}>
+                      <IconButton color="error" onClick={(e) => handleDeleteClick(e, row.id)}>
                         <DeleteIcon />
                       </IconButton>
                     </Box>
@@ -268,6 +284,24 @@ const ProductsTable = ({
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)} color="primary">Fermer</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Boîte de dialogue de confirmation de suppression */}
+      <Dialog open={deleteDialogOpen} onClose={cancelDelete}>
+        <DialogTitle>Confirmer la suppression</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1">
+            Êtes-vous sûr de vouloir supprimer ce produit ? Cette action est irréversible.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={cancelDelete} color="primary">
+            Annuler
+          </Button>
+          <Button onClick={confirmDelete} color="error" variant="contained" autoFocus>
+            Supprimer
+          </Button>
         </DialogActions>
       </Dialog>
     </Card>
