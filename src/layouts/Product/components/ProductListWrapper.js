@@ -53,14 +53,14 @@ const ProductListWrapper = () => {
   }, []);
 
   const handleDelete = async (id) => {
-    try {
-      await deleteProduct(id);
-      setAllProducts(prev => prev.filter(product => product.id !== id));
-      showNotification('Produit supprimé avec succès', 'success');
-    } catch (err) {
-      showNotification(`Échec de la suppression: ${err.message}`, 'error');
-    }
-  };
+  try {
+    await deleteProduct(id);
+    setAllProducts(prev => prev.filter(product => product.id !== id));
+    showNotification('Produit supprimé avec succès', 'success'); // Notification de succès
+  } catch (err) {
+    showNotification(`Échec de la suppression: ${err.message}`, 'error'); // Notification d'erreur
+  }
+};
 
   const handleUpdate = async (id) => {
     try {
