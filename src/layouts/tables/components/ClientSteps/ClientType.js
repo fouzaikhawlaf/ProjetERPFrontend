@@ -7,7 +7,11 @@ import businessIcon from 'images/business.png';
 
 import { BrowserRouter as Router, Route, Switch, Link, useHistory } from 'react-router-dom';
 
-function ClientType({ clientType,handleClientTypeChange,formData, setFormData, handleNext }) {
+function ClientType({  formData, updateField, handleNext }) 
+  {
+  const handleClientTypeChange = (type) => {
+    updateField('clientType', type);
+  };
  
 
   return (
@@ -18,7 +22,7 @@ function ClientType({ clientType,handleClientTypeChange,formData, setFormData, h
       </Typography>
       <RadioGroup
         row
-        value={clientType}
+        value={formData.clientType}
         onChange={(e) => handleClientTypeChange(e.target.value)}
         style={{ justifyContent: 'center', marginTop: '20px' }}
       >
@@ -32,7 +36,7 @@ function ClientType({ clientType,handleClientTypeChange,formData, setFormData, h
               justifyContent="center"
               flexDirection="column"
               padding="20px"
-              border={clientType === 'Individuel' ? '2px solid #2196f3' : '1px solid #e0e0e0'}
+              border={formData.clientType === 'Individuel' ? '2px solid #2196f3' : '1px solid #e0e0e0'}
               borderRadius="8px"
               width="200px"
               textAlign="center"
@@ -53,7 +57,7 @@ function ClientType({ clientType,handleClientTypeChange,formData, setFormData, h
               justifyContent="center"
               flexDirection="column"
               padding="20px"
-              border={clientType === 'Professionnel' ? '2px solid #2196f3' : '1px solid #e0e0e0'}
+              border={formData.clientType=== 'Professionnel' ? '2px solid #2196f3' : '1px solid #e0e0e0'}
               borderRadius="8px"
               width="200px"
               textAlign="center"
@@ -69,7 +73,7 @@ function ClientType({ clientType,handleClientTypeChange,formData, setFormData, h
         variant="contained"
         color="primary"
         onClick={handleNext}
-        disabled={!clientType}
+        disabled={!formData.clientType}
         style={{ marginTop: '30px' }}
       >
         Continuer
@@ -79,10 +83,8 @@ function ClientType({ clientType,handleClientTypeChange,formData, setFormData, h
   );
 }
 ClientType.propTypes = {
-    clientType: PropTypes.string.isRequired,
-    formData: PropTypes.object.isRequired,    // Validate formData as an object
-    setFormData: PropTypes.func.isRequired ,   // Validate setFormData as a function
-    handleClientTypeChange: PropTypes.func.isRequired,
-    handleNext: PropTypes.func.isRequired,
-  };
+  formData: PropTypes.object.isRequired,
+  updateField: PropTypes.func.isRequired, // <-- Ajoute cette ligne
+  handleNext: PropTypes.func, // si utilisé
+};
 export default ClientType;

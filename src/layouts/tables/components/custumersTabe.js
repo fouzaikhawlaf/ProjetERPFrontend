@@ -85,7 +85,7 @@ export function CustomersTable({ rowsPerPage = 10, onDelete, onUpdate }) {
             <Button
               variant="contained"
               startIcon={<AddCircle />}
-              onClick={() => window.location.href = "/clients/add"}
+              onClick={() => window.location.href = "/Client-step"}
               sx={{ mr: 2 }}
             >
               Nouveau Client

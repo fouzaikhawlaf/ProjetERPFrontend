@@ -18,16 +18,27 @@ import DashboardLayout from '../../../../examples/LayoutContainers/DashboardLayo
 
 // Ensure this path is correct
 
-function SecondStep({
-  formData,
-  handleClientInfoChange,
-  handleCivilityChange,
-  handleNext,
-  handlePrev,
-}) {
+function SecondStep({ formData, updateField, handleNext, handlePrev }) {
+  const handleChange = (e) => {
+    updateField(e.target.name, e.target.value);
+   
+  };
   // Check if the "Continuer" button should be disabled
+  
+  const handleCivilityChange = (e) => {
+    updateField('civility', e.target.value);
+  };
+
+  const handleClientInfoChange = (e) => {
+    const { name, value } = e.target;
+    updateField(name, value); // ou adapte selon ta logique
+  };
+
   const isNextDisabled =
-    !formData.name || !formData.email || !formData.identifier || !formData.civility;
+    !formData.civility ||
+    !formData.name ||
+    !formData.email ||
+    !formData.identifier;
 
   return (
     <DashboardLayout>
@@ -101,9 +112,9 @@ function SecondStep({
             variant="contained"
             color="primary"
             onClick={handleNext}
-            disabled={isNextDisabled} // Disable if any field is missing
+            disabled={isNextDisabled}
           >
-            Continuer
+            Suivant
           </Button>
         </Box>
       </Card>
@@ -118,10 +129,9 @@ SecondStep.propTypes = {
     email: PropTypes.string,     // Email of the client
     identifier: PropTypes.string, // Unique identifier for the client
   }).isRequired,
-  handleClientInfoChange: PropTypes.func.isRequired,  // Function to handle changes in client information
-  handleCivilityChange: PropTypes.func.isRequired,    // Function to handle civility change (radio button)
-  handleNext: PropTypes.func.isRequired,              // Function to handle "Next" button click
-  handlePrev: PropTypes.func.isRequired,              // Function to handle "Previous" button click
+  updateField: PropTypes.func.isRequired, // <-- Ajoute cette ligne
+  handleNext: PropTypes.func, // si utilisé
+  handlePrev: PropTypes.func, // si utilisé
 };
 
 export default SecondStep;

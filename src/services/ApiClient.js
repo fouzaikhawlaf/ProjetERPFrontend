@@ -28,28 +28,27 @@ export const getClient = async (id) => {
 
 
 export const createClient = async (clientData) => {
-    const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJscy5zdG9yZS50ZWFtQGdtYWlsLmNvbSIsImVtYWlsIjoibHMuc3RvcmUudGVhbUBnbWFpbC5jb20iLCJqdGkiOiI3M2EwOWQ0MS05MTZmLTQ4NGYtOWM2MS1jYzUyY2IxOTExNDkiLCJleHAiOjE3MzI5ODEyODUsImlzcyI6ImxvY2FsaG9zdCIsImF1ZCI6ImxvY2FsaG9zdCJ9.pBmnBmh_WfRe__RlZKXYnLlwBlAOiz6DICn2gW6nGNs';
   try {
-    const token = localStorage.getItem('token'); // Get token from local storage (or another method if different)
-    
+    const token = localStorage.getItem('token');
     const response = await fetch('https://localhost:7298/api/clients', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`, // Add authorization header
+        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(clientData),
     });
 
     if (!response.ok) {
-      throw new Error(`Error: ${response.statusText}`);
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Erreur lors de la création du client');
     }
     return await response.json();
   } catch (error) {
+    console.error('Erreur API:', error);
     throw error;
   }
 };
-
 
 export const updateClient = async (id, clientDto) => {
   const response = await apiErp.put(`/clients/${id}`, clientDto);
