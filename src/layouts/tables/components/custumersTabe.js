@@ -13,64 +13,76 @@ import {
   Avatar,
   Grid,
   Chip,
-  InputAdornment
+  InputAdornment,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions
 } from '@mui/material';
 import { 
   AddCircle,
   Edit,
   Delete,
   Search,
-  Refresh
+  Refresh,
+  Visibility
 } from '@mui/icons-material';
 import DashboardLayout from 'examples/LayoutContainers/DashboardLayout';
-import { getClients } from 'services/ApiClient';
+import { getClients, deleteClient } from 'services/ApiClient';
 import { useSnackbar } from 'notistack';
 
-export function CustomersTable({ rowsPerPage = 10, onDelete, onUpdate }) {
-  const { enqueueSnackbar } = useSnackbar();
+export function CustomersTable({ rowsPerPage = 10, onUpdate }) {
+  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const [clients, setClients] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [deletingId, setDeletingId] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState(null);
+
+  const fetchClients = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await getClients(currentPage, rowsPerPage);
+      
+      // Normaliser les données pour gérer les collections
+      const normalizedClients = (response.clients || []).map(client => {
+        // Fonction pour convertir en tableau si nécessaire
+        const ensureArray = (data) => {
+          if (Array.isArray(data)) return data;
+          if (data?.$values && Array.isArray(data.$values)) return data.$values;
+          return [];
+        };
+
+        return {
+          ...client,
+          phoneNumbers: ensureArray(client.phoneNumbers),
+          addresses: ensureArray(client.addresses)
+        };
+      });
+      
+      setClients(normalizedClients);
+      setTotalCount(response.totalCount || 0);
+    } catch (err) {
+      console.error('Error fetching clients:', err);
+      setError('Failed to load clients');
+      enqueueSnackbar('Erreur lors du chargement des clients', { 
+        variant: 'error',
+        autoHideDuration: 3000
+      });
+      setClients([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchClients = async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const response = await getClients(currentPage, rowsPerPage);
-        
-        // Normaliser les données pour gérer les collections
-        const normalizedClients = (response.clients || []).map(client => {
-          // Fonction pour convertir en tableau si nécessaire
-          const ensureArray = (data) => {
-            if (Array.isArray(data)) return data;
-            if (data?.$values && Array.isArray(data.$values)) return data.$values;
-            return [];
-          };
-
-          return {
-            ...client,
-            phoneNumbers: ensureArray(client.phoneNumbers),
-            addresses: ensureArray(client.addresses)
-          };
-        });
-        
-        setClients(normalizedClients);
-        setTotalCount(response.totalCount || 0);
-      } catch (err) {
-        console.error('Error fetching clients:', err);
-        setError('Failed to load clients');
-        enqueueSnackbar('Error loading clients', { variant: 'error' });
-        setClients([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchClients();
   }, [currentPage, rowsPerPage, enqueueSnackbar]);
 
@@ -83,6 +95,78 @@ export function CustomersTable({ rowsPerPage = 10, onDelete, onUpdate }) {
   const handleSearch = (e) => {
     setSearchQuery(e.target.value);
     // Implémentez la logique de recherche ici
+  };
+
+  // Fonction pour ouvrir la boîte de dialogue de suppression
+  const openDeleteDialog = (client) => {
+    setClientToDelete(client);
+    setDeleteDialogOpen(true);
+  };
+
+  // Fonction pour fermer la boîte de dialogue de suppression
+  const closeDeleteDialog = () => {
+    setDeleteDialogOpen(false);
+    setClientToDelete(null);
+  };
+
+  // Fonction pour supprimer un client
+  const handleDelete = async () => {
+    if (!clientToDelete) return;
+    
+    setDeletingId(clientToDelete.clientID);
+    closeDeleteDialog();
+    
+    try {
+      await deleteClient(clientToDelete.clientID);
+      
+      // Notification de succès avec bouton d'annulation
+      const action = (snackbarId) => (
+        <>
+          <Button 
+            color="secondary" 
+            size="small"
+            onClick={() => {
+              closeSnackbar(snackbarId);
+              fetchClients().catch(console.error);
+            }}
+          >
+            Annuler
+          </Button>
+        </>
+      );
+      
+      enqueueSnackbar('Client supprimé avec succès', { 
+        variant: 'success',
+        autoHideDuration: 5000,
+        action,
+        onClose: () => {
+          // Rafraîchir la liste après la suppression
+          fetchClients();
+        }
+      });
+      
+      // Mise à jour optimiste de la liste
+      setClients(clients.filter(c => c.clientID !== clientToDelete.clientID));
+    } catch (err) {
+      console.error('Error deleting client:', err);
+      
+      // Notification d'erreur
+      enqueueSnackbar('Échec de la suppression du client', { 
+        variant: 'error',
+        autoHideDuration: 3000
+      });
+      
+      // Recharger les données pour s'assurer qu'elles sont à jour
+      fetchClients();
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  // Fonction pour visualiser les détails
+  const handleViewDetails = (id) => {
+    // Naviguer vers la page de détails du client
+    window.location.href = `/clients/${id}`;
   };
 
   // Fonction pour obtenir l'adresse principale (de facturation par défaut)
@@ -116,6 +200,40 @@ export function CustomersTable({ rowsPerPage = 10, onDelete, onUpdate }) {
   return (
     <DashboardLayout>
       <Box sx={{ p: 3 }}>
+        {/* Boîte de dialogue de suppression */}
+        <Dialog
+          open={deleteDialogOpen}
+          onClose={closeDeleteDialog}
+          aria-labelledby="delete-dialog-title"
+        >
+          <DialogTitle id="delete-dialog-title">
+            Confirmer la suppression
+          </DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              Êtes-vous sûr de vouloir supprimer le client {clientToDelete?.name} &#39;?&#39; Cette action est irréversible.
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={closeDeleteDialog} color="primary">
+              Annuler
+            </Button>
+            <Button 
+              onClick={handleDelete} 
+              color="error"
+              variant="contained"
+              disabled={deletingId === clientToDelete?.clientID}
+              startIcon={
+                deletingId === clientToDelete?.clientID ? 
+                <CircularProgress size={20} /> : 
+                <Delete />
+              }
+            >
+              Supprimer
+            </Button>
+          </DialogActions>
+        </Dialog>
+
         {/* Header Section */}
         <Grid container spacing={2} alignItems="center" sx={{ mb: 3 }}>
           <Grid item xs={12} md={6}>
@@ -138,7 +256,13 @@ export function CustomersTable({ rowsPerPage = 10, onDelete, onUpdate }) {
             <Button
               variant="outlined"
               startIcon={<Refresh />}
-              onClick={() => setCurrentPage(1)}
+              onClick={() => {
+                setCurrentPage(1);
+                enqueueSnackbar('Liste des clients actualisée', { 
+                  variant: 'info',
+                  autoHideDuration: 2000
+                });
+              }}
             >
               Actualiser
             </Button>
@@ -374,6 +498,19 @@ export function CustomersTable({ rowsPerPage = 10, onDelete, onUpdate }) {
                               justifyContent: 'center',
                               gap: '6px'
                             }}>
+                              <Tooltip title="Voir détails">
+                                <IconButton 
+                                  size="small"
+                                  onClick={() => handleViewDetails(client.clientID)}
+                                  sx={{ 
+                                    color: '#1976d2',
+                                    '&:hover': { backgroundColor: '#e3f2fd' }
+                                  }}
+                                >
+                                  <Visibility fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                              
                               <Tooltip title="Modifier">
                                 <IconButton 
                                   size="small"
@@ -386,16 +523,23 @@ export function CustomersTable({ rowsPerPage = 10, onDelete, onUpdate }) {
                                   <Edit fontSize="small" />
                                 </IconButton>
                               </Tooltip>
+                              
                               <Tooltip title="Supprimer">
                                 <IconButton 
                                   size="small"
-                                  onClick={() => onDelete(client.clientID)}
+                                  onClick={() => openDeleteDialog(client)}
+                                  disabled={deletingId === client.clientID}
                                   sx={{ 
                                     color: '#ef5350',
-                                    '&:hover': { backgroundColor: '#ffebee' }
+                                    '&:hover': { backgroundColor: '#ffebee' },
+                                    '&:disabled': { opacity: 0.5 }
                                   }}
                                 >
-                                  <Delete fontSize="small" />
+                                  {deletingId === client.clientID ? (
+                                    <CircularProgress size={20} />
+                                  ) : (
+                                    <Delete fontSize="small" />
+                                  )}
                                 </IconButton>
                               </Tooltip>
                             </Box>
@@ -496,7 +640,6 @@ export function CustomersTable({ rowsPerPage = 10, onDelete, onUpdate }) {
 
 CustomersTable.propTypes = {
   rowsPerPage: PropTypes.number,
-  onDelete: PropTypes.func.isRequired,
   onUpdate: PropTypes.func.isRequired,
 };
 
