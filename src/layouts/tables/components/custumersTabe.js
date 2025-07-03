@@ -10,10 +10,10 @@ import {
   CircularProgress,
   TextField,
   Alert,
-  Chip,
+  Avatar,
   Grid,
-  InputAdornment,
-  Avatar
+  Chip,
+  InputAdornment
 } from '@mui/material';
 import { 
   AddCircle,
@@ -41,9 +41,26 @@ export function CustomersTable({ rowsPerPage = 10, onDelete, onUpdate }) {
       setError(null);
 
       try {
-        const { clients, totalCount } = await getClients(currentPage, rowsPerPage);
-        setClients(clients || []);
-        setTotalCount(totalCount || 0);
+        const response = await getClients(currentPage, rowsPerPage);
+        
+        // Normaliser les données pour gérer les collections
+        const normalizedClients = (response.clients || []).map(client => {
+          // Fonction pour convertir en tableau si nécessaire
+          const ensureArray = (data) => {
+            if (Array.isArray(data)) return data;
+            if (data?.$values && Array.isArray(data.$values)) return data.$values;
+            return [];
+          };
+
+          return {
+            ...client,
+            phoneNumbers: ensureArray(client.phoneNumbers),
+            addresses: ensureArray(client.addresses)
+          };
+        });
+        
+        setClients(normalizedClients);
+        setTotalCount(response.totalCount || 0);
       } catch (err) {
         console.error('Error fetching clients:', err);
         setError('Failed to load clients');
@@ -66,6 +83,34 @@ export function CustomersTable({ rowsPerPage = 10, onDelete, onUpdate }) {
   const handleSearch = (e) => {
     setSearchQuery(e.target.value);
     // Implémentez la logique de recherche ici
+  };
+
+  // Fonction pour obtenir l'adresse principale (de facturation par défaut)
+  const getPrimaryAddress = (addresses) => {
+    // Vérifier que addresses est bien un tableau
+    if (!Array.isArray(addresses) || addresses.length === 0) return null;
+    
+    // Chercher une adresse de facturation
+    const billingAddress = addresses.find(a => 
+      a.type && a.type.toLowerCase() === 'billing'
+    );
+    
+    // Sinon prendre la première adresse
+    return billingAddress || addresses[0];
+  };
+
+  // Fonction pour obtenir le numéro de téléphone principal
+  const getPrimaryPhone = (phoneNumbers) => {
+    // Vérifier que phoneNumbers est bien un tableau
+    if (!Array.isArray(phoneNumbers) || phoneNumbers.length === 0) return null;
+    
+    // Chercher un mobile
+    const mobilePhone = phoneNumbers.find(p => 
+      p.type && p.type.toLowerCase() === 'mobile'
+    );
+    
+    // Sinon prendre le premier numéro
+    return mobilePhone || phoneNumbers[0];
   };
 
   return (
@@ -221,103 +266,143 @@ export function CustomersTable({ rowsPerPage = 10, onDelete, onUpdate }) {
 
                 <tbody>
                   {clients.length > 0 ? (
-                    clients.map((client, index) => (
-                      <tr 
-                        key={client.id}
-                        style={{ 
-                          borderBottom: '1px solid #eee',
-                          '&:hover': { backgroundColor: '#f9fafc' }
-                        }}
-                      >
-                        <td style={{ 
-                          padding: '12px 16px',
-                          color: '#555',
-                          fontSize: '0.875rem',
-                          verticalAlign: 'middle'
-                        }}>{index + 1}</td>
-                        
-                        <td style={{ 
-                          padding: '12px 16px',
-                          color: '#333',
-                          fontSize: '0.875rem',
-                          verticalAlign: 'middle'
-                        }}>
-                          <Box display="flex" alignItems="center">
-                            <Avatar 
-                              src={client.avatar} 
-                              sx={{ width: 32, height: 32, mr: 2 }}
-                            >
-                              {client.name?.[0]}
-                            </Avatar>
-                            <Typography variant="body2">
-                              {client.name || 'N/A'}
-                            </Typography>
-                          </Box>
-                        </td>
-                        
-                        <td style={{ 
-                          padding: '12px 16px',
-                          color: '#555',
-                          fontSize: '0.875rem',
-                          verticalAlign: 'middle'
-                        }}>{client.email || 'N/A'}</td>
-                        
-                        <td style={{ 
-                          padding: '12px 16px',
-                          color: '#555',
-                          fontSize: '0.875rem',
-                          verticalAlign: 'middle'
-                        }}>
-                          {client.address ? 
-                            `${client.address.city}, ${client.address.state}` : 
-                            'N/A'}
-                        </td>
-                        
-                        <td style={{ 
-                          padding: '12px 16px',
-                          color: '#555',
-                          fontSize: '0.875rem',
-                          verticalAlign: 'middle'
-                        }}>{client.phone || 'N/A'}</td>
-                        
-                        <td style={{ 
-                          padding: '12px 16px',
-                          textAlign: 'center',
-                          verticalAlign: 'middle'
-                        }}>
-                          <Box sx={{ 
-                            display: 'flex', 
-                            justifyContent: 'center',
-                            gap: '6px'
+                    clients.map((client, index) => {
+                      // Vérifier et convertir les adresses/phones si nécessaire
+                      const safeAddresses = Array.isArray(client.addresses) ? client.addresses : [];
+                      const safePhones = Array.isArray(client.phoneNumbers) ? client.phoneNumbers : [];
+                      
+                      const primaryAddress = getPrimaryAddress(safeAddresses);
+                      const primaryPhone = getPrimaryPhone(safePhones);
+                      
+                      return (
+                        <tr 
+                          key={client.clientID}
+                          style={{ 
+                            borderBottom: '1px solid #eee',
+                            '&:hover': { backgroundColor: '#f9fafc' }
+                          }}
+                        >
+                          <td style={{ 
+                            padding: '12px 16px',
+                            color: '#555',
+                            fontSize: '0.875rem',
+                            verticalAlign: 'middle'
                           }}>
-                            <Tooltip title="Modifier">
-                              <IconButton 
-                                size="small"
-                                onClick={() => onUpdate(client.id)}
+                            {(currentPage - 1) * rowsPerPage + index + 1}
+                          </td>
+                          
+                          <td style={{ 
+                            padding: '12px 16px',
+                            color: '#333',
+                            fontSize: '0.875rem',
+                            verticalAlign: 'middle'
+                          }}>
+                            <Box display="flex" alignItems="center">
+                              <Avatar 
                                 sx={{ 
-                                  color: '#26a69a',
-                                  '&:hover': { backgroundColor: '#e0f2f1' }
+                                  width: 32, 
+                                  height: 32, 
+                                  mr: 2,
+                                  bgcolor: 'primary.main',
+                                  color: 'white'
                                 }}
                               >
-                                <Edit fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Supprimer">
-                              <IconButton 
-                                size="small"
-                                onClick={() => onDelete(client.id)}
-                                sx={{ 
-                                  color: '#ef5350',
-                                  '&:hover': { backgroundColor: '#ffebee' }
-                                }}
-                              >
-                                <Delete fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </Box>
-                        </td>
-                      </tr>
-                    ))
+                                {client.name?.[0]?.toUpperCase() || '?'}
+                              </Avatar>
+                              <Typography variant="body2">
+                                {client.name || 'N/A'}
+                              </Typography>
+                            </Box>
+                          </td>
+                          
+                          <td style={{ 
+                            padding: '12px 16px',
+                            color: '#555',
+                            fontSize: '0.875rem',
+                            verticalAlign: 'middle'
+                          }}>
+                            {client.email || 'N/A'}
+                          </td>
+                          
+                          <td style={{ 
+                            padding: '12px 16px',
+                            color: '#555',
+                            fontSize: '0.875rem',
+                            verticalAlign: 'middle'
+                          }}>
+                            {primaryAddress ? (
+                              <Box>
+                                <div>{primaryAddress.addressLine || 'N/A'}</div>
+                                <div style={{ color: '#777', fontSize: '0.75rem' }}>
+                                  {primaryAddress.postalCode} {primaryAddress.region}
+                                </div>
+                              </Box>
+                            ) : 'N/A'}
+                          </td>
+                          
+                          <td style={{ 
+                            padding: '12px 16px',
+                            color: '#555',
+                            fontSize: '0.875rem',
+                            verticalAlign: 'middle'
+                          }}>
+                            {primaryPhone ? (
+                              <Box>
+                                <div>{primaryPhone.number || 'N/A'}</div>
+                                {primaryPhone.type && (
+                                  <Chip 
+                                    label={primaryPhone.type}
+                                    size="small"
+                                    sx={{ 
+                                      mt: 0.5,
+                                      fontSize: '0.65rem',
+                                      height: '20px'
+                                    }}
+                                  />
+                                )}
+                              </Box>
+                            ) : 'N/A'}
+                          </td>
+                          
+                          <td style={{ 
+                            padding: '12px 16px',
+                            textAlign: 'center',
+                            verticalAlign: 'middle'
+                          }}>
+                            <Box sx={{ 
+                              display: 'flex', 
+                              justifyContent: 'center',
+                              gap: '6px'
+                            }}>
+                              <Tooltip title="Modifier">
+                                <IconButton 
+                                  size="small"
+                                  onClick={() => onUpdate(client.clientID)}
+                                  sx={{ 
+                                    color: '#26a69a',
+                                    '&:hover': { backgroundColor: '#e0f2f1' }
+                                  }}
+                                >
+                                  <Edit fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Supprimer">
+                                <IconButton 
+                                  size="small"
+                                  onClick={() => onDelete(client.clientID)}
+                                  sx={{ 
+                                    color: '#ef5350',
+                                    '&:hover': { backgroundColor: '#ffebee' }
+                                  }}
+                                >
+                                  <Delete fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </Box>
+                          </td>
+                        </tr>
+                      );
+                    })
                   ) : (
                     <tr>
                       <td 
