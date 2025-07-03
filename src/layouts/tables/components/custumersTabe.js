@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import {
   Paper,
@@ -24,12 +24,13 @@ import {
   AddCircle,
   Edit,
   Delete,
-  Search,
+  Search as SearchIcon,
   Refresh,
-  Visibility
+  Visibility,
+  Clear
 } from '@mui/icons-material';
 import DashboardLayout from 'examples/LayoutContainers/DashboardLayout';
-import { getClients, deleteClient } from 'services/ApiClient';
+import { getClients, deleteClient, searchClients } from 'services/ApiClient';
 import { useSnackbar } from 'notistack';
 
 export function CustomersTable({ rowsPerPage = 10, onUpdate }) {
@@ -38,37 +39,71 @@ export function CustomersTable({ rowsPerPage = 10, onUpdate }) {
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [deletingId, setDeletingId] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState(null);
+  const [searchTimeout, setSearchTimeout] = useState(null);
 
-  const fetchClients = async () => {
+  const fetchClients = useCallback(async (page = currentPage, query = '') => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await getClients(currentPage, rowsPerPage);
-      
-      // Normaliser les données pour gérer les collections
-      const normalizedClients = (response.clients || []).map(client => {
-        // Fonction pour convertir en tableau si nécessaire
-        const ensureArray = (data) => {
-          if (Array.isArray(data)) return data;
-          if (data?.$values && Array.isArray(data.$values)) return data.$values;
-          return [];
-        };
+      let response;
+      if (query) {
+        setSearchLoading(true);
+        response = await searchClients(query);
+        
+        // CORRECTION : Extraction du tableau depuis la propriété $values
+        let clientsData = [];
+        if (response && response.$values && Array.isArray(response.$values)) {
+          clientsData = response.$values;
+        } else if (Array.isArray(response)) {
+          clientsData = response;
+        } else if (response) {
+          clientsData = [response];
+        }
+        
+        const normalizedClients = clientsData.map(client => {
+          const ensureArray = (data) => {
+            if (Array.isArray(data)) return data;
+            if (data?.$values && Array.isArray(data.$values)) return data.$values;
+            return [];
+          };
 
-        return {
-          ...client,
-          phoneNumbers: ensureArray(client.phoneNumbers),
-          addresses: ensureArray(client.addresses)
-        };
-      });
-      
-      setClients(normalizedClients);
-      setTotalCount(response.totalCount || 0);
+          return {
+            ...client,
+            phoneNumbers: ensureArray(client.phoneNumbers),
+            addresses: ensureArray(client.addresses)
+          };
+        });
+        
+        setClients(normalizedClients);
+        setTotalCount(normalizedClients.length);
+      } else {
+        response = await getClients(page, rowsPerPage);
+        const clientsData = response.clients || [];
+        
+        const normalizedClients = clientsData.map(client => {
+          const ensureArray = (data) => {
+            if (Array.isArray(data)) return data;
+            if (data?.$values && Array.isArray(data.$values)) return data.$values;
+            return [];
+          };
+
+          return {
+            ...client,
+            phoneNumbers: ensureArray(client.phoneNumbers),
+            addresses: ensureArray(client.addresses)
+          };
+        });
+        
+        setClients(normalizedClients);
+        setTotalCount(response.totalCount || 0);
+      }
     } catch (err) {
       console.error('Error fetching clients:', err);
       setError('Failed to load clients');
@@ -79,12 +114,13 @@ export function CustomersTable({ rowsPerPage = 10, onUpdate }) {
       setClients([]);
     } finally {
       setLoading(false);
+      setSearchLoading(false);
     }
-  };
+  }, [currentPage, rowsPerPage, enqueueSnackbar]);
 
   useEffect(() => {
     fetchClients();
-  }, [currentPage, rowsPerPage, enqueueSnackbar]);
+  }, [fetchClients]);
 
   const totalPages = Math.ceil(totalCount / rowsPerPage);
 
@@ -92,9 +128,30 @@ export function CustomersTable({ rowsPerPage = 10, onUpdate }) {
     setCurrentPage(page);
   };
 
-  const handleSearch = (e) => {
-    setSearchQuery(e.target.value);
-    // Implémentez la logique de recherche ici
+  const handleSearchChange = (e) => {
+    const query = e.target.value;
+    setSearchQuery(query);
+    
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+    
+    if (!query.trim()) {
+      fetchClients();
+      return;
+    }
+    
+    setSearchLoading(true);
+    const timeout = setTimeout(() => {
+      fetchClients(1, query);
+    }, 500);
+    
+    setSearchTimeout(timeout);
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    fetchClients();
   };
 
   // Fonction pour ouvrir la boîte de dialogue de suppression
@@ -119,7 +176,6 @@ export function CustomersTable({ rowsPerPage = 10, onUpdate }) {
     try {
       await deleteClient(clientToDelete.clientID);
       
-      // Notification de succès avec bouton d'annulation
       const action = (snackbarId) => (
         <>
           <Button 
@@ -140,23 +196,17 @@ export function CustomersTable({ rowsPerPage = 10, onUpdate }) {
         autoHideDuration: 5000,
         action,
         onClose: () => {
-          // Rafraîchir la liste après la suppression
           fetchClients();
         }
       });
       
-      // Mise à jour optimiste de la liste
       setClients(clients.filter(c => c.clientID !== clientToDelete.clientID));
     } catch (err) {
       console.error('Error deleting client:', err);
-      
-      // Notification d'erreur
       enqueueSnackbar('Échec de la suppression du client', { 
         variant: 'error',
         autoHideDuration: 3000
       });
-      
-      // Recharger les données pour s'assurer qu'elles sont à jour
       fetchClients();
     } finally {
       setDeletingId(null);
@@ -165,35 +215,24 @@ export function CustomersTable({ rowsPerPage = 10, onUpdate }) {
 
   // Fonction pour visualiser les détails
   const handleViewDetails = (id) => {
-    // Naviguer vers la page de détails du client
     window.location.href = `/clients/${id}`;
   };
 
-  // Fonction pour obtenir l'adresse principale (de facturation par défaut)
+  // Fonction pour obtenir l'adresse principale
   const getPrimaryAddress = (addresses) => {
-    // Vérifier que addresses est bien un tableau
     if (!Array.isArray(addresses) || addresses.length === 0) return null;
-    
-    // Chercher une adresse de facturation
     const billingAddress = addresses.find(a => 
-      a.type && a.type.toLowerCase() === 'billing'
+      a.type && a.type.toLowerCase().includes('billing')
     );
-    
-    // Sinon prendre la première adresse
     return billingAddress || addresses[0];
   };
 
   // Fonction pour obtenir le numéro de téléphone principal
   const getPrimaryPhone = (phoneNumbers) => {
-    // Vérifier que phoneNumbers est bien un tableau
     if (!Array.isArray(phoneNumbers) || phoneNumbers.length === 0) return null;
-    
-    // Chercher un mobile
     const mobilePhone = phoneNumbers.find(p => 
-      p.type && p.type.toLowerCase() === 'mobile'
+      p.type && p.type.toLowerCase().includes('mobile')
     );
-    
-    // Sinon prendre le premier numéro
     return mobilePhone || phoneNumbers[0];
   };
 
@@ -211,7 +250,8 @@ export function CustomersTable({ rowsPerPage = 10, onUpdate }) {
           </DialogTitle>
           <DialogContent>
             <DialogContentText>
-              Êtes-vous sûr de vouloir supprimer le client {clientToDelete?.name} &#39;?&#39; Cette action est irréversible.
+              Êtes-vous sûr de vouloir supprimer le client &quot;{clientToDelete?.name}&quot; ?
+              Cette action est irréversible.
             </DialogContentText>
           </DialogContent>
           <DialogActions>
@@ -241,7 +281,7 @@ export function CustomersTable({ rowsPerPage = 10, onUpdate }) {
               Gestion des Clients
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {clients.length} clients trouvés
+              {searchQuery ? `${clients.length} résultats` : `${totalCount} clients trouvés`}
             </Typography>
           </Grid>
           <Grid item xs={12} md={6} sx={{ textAlign: { md: 'right' } }}>
@@ -257,7 +297,9 @@ export function CustomersTable({ rowsPerPage = 10, onUpdate }) {
               variant="outlined"
               startIcon={<Refresh />}
               onClick={() => {
+                setSearchQuery('');
                 setCurrentPage(1);
+                fetchClients();
                 enqueueSnackbar('Liste des clients actualisée', { 
                   variant: 'info',
                   autoHideDuration: 2000
@@ -275,22 +317,41 @@ export function CustomersTable({ rowsPerPage = 10, onUpdate }) {
           mb: 3, 
           bgcolor: 'background.paper', 
           borderRadius: 1,
-          boxShadow: 1
+          boxShadow: 1,
+          position: 'relative'
         }}>
           <TextField
             fullWidth
             variant="outlined"
             placeholder="Rechercher clients..."
             value={searchQuery}
-            onChange={handleSearch}
+            onChange={handleSearchChange}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <Search color="action" />
+                  <SearchIcon color="action" />
                 </InputAdornment>
               ),
+              endAdornment: searchQuery && (
+                <InputAdornment position="end">
+                  <IconButton onClick={clearSearch} size="small">
+                    <Clear fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              )
             }}
           />
+          {searchLoading && (
+            <CircularProgress 
+              size={24} 
+              sx={{
+                position: 'absolute',
+                right: 40,
+                top: '50%',
+                transform: 'translateY(-50%)'
+              }} 
+            />
+          )}
         </Box>
 
         {/* Content Section */}
@@ -389,9 +450,8 @@ export function CustomersTable({ rowsPerPage = 10, onUpdate }) {
                 </thead>
 
                 <tbody>
-                  {clients.length > 0 ? (
+                  {Array.isArray(clients) && clients.length > 0 ? (
                     clients.map((client, index) => {
-                      // Vérifier et convertir les adresses/phones si nécessaire
                       const safeAddresses = Array.isArray(client.addresses) ? client.addresses : [];
                       const safePhones = Array.isArray(client.phoneNumbers) ? client.phoneNumbers : [];
                       
@@ -412,7 +472,7 @@ export function CustomersTable({ rowsPerPage = 10, onUpdate }) {
                             fontSize: '0.875rem',
                             verticalAlign: 'middle'
                           }}>
-                            {(currentPage - 1) * rowsPerPage + index + 1}
+                            {searchQuery ? index + 1 : (currentPage - 1) * rowsPerPage + index + 1}
                           </td>
                           
                           <td style={{ 
@@ -559,10 +619,12 @@ export function CustomersTable({ rowsPerPage = 10, onUpdate }) {
                       >
                         <Box sx={{ textAlign: 'center' }}>
                           <Typography variant="body1">
-                            Aucun client trouvé
+                            {searchQuery ? 'Aucun résultat trouvé' : 'Aucun client trouvé'}
                           </Typography>
                           <Typography variant="body2" sx={{ mt: 1 }}>
-                            Essayez de modifier vos critères de recherche
+                            {searchQuery 
+                              ? 'Essayez d\'autres termes de recherche' 
+                              : 'Essayez de modifier vos critères de recherche'}
                           </Typography>
                         </Box>
                       </td>
@@ -574,8 +636,8 @@ export function CustomersTable({ rowsPerPage = 10, onUpdate }) {
           </Box>
         )}
 
-        {/* Pagination */}
-        {totalPages > 1 && (
+        {/* Pagination - Masqué pendant la recherche */}
+        {!searchQuery && totalPages > 1 && (
           <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
             <Box sx={{ display: 'flex', gap: 1 }}>
               <Button

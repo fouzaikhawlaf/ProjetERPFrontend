@@ -61,10 +61,9 @@ export const deleteClient = async (id) => {
 };
 
 export const searchClients = async (query) => {
-  const response = await apiErp.get('/clients/search', {
-    params: { query }
-  });
-  return response.data;
+  const response = await apiErp.get('/clients/search', { params: { query } });
+  // Extraction des clients depuis la propriété $values
+  return response.data?.$values || response.data;
 };
 
 export const archiveClient = async (id) => {
