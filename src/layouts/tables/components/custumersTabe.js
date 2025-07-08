@@ -19,7 +19,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogContentText,
-  DialogActions
+  DialogActions,
+  Card
 } from '@mui/material';
 import { 
   AddCircle,
@@ -246,6 +247,7 @@ export function CustomersTable({ rowsPerPage = 10 }) {
 
   return (
     <DashboardLayout>
+        <Card elevation={3} sx={{ p: 2 }}>
       <Box sx={{ p: 3 }}>
         {/* Boîte de dialogue de suppression */}
         <Dialog
@@ -707,6 +709,7 @@ export function CustomersTable({ rowsPerPage = 10 }) {
           </Box>
         )}
       </Box>
+      </Card>
     </DashboardLayout>
   );
 }
