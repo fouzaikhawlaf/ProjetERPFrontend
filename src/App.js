@@ -126,6 +126,7 @@ import { CustomersTable } from 'layouts/tables/components/custumersTabe';
 import OrderClientModule from 'layouts/Sale/Data/OrderClient/OrderCLientModule';
 import CreateClientOrder from './layouts/Sale/Data/OrderClient/OrderClientCreate';
 import DevisProjetForm from 'layouts/Sale/Data/forms/CreerDevisClientProjet ';
+import EditClientPage from 'layouts/tables/components/pages/EditClientPage';
 
 
 
@@ -321,7 +322,8 @@ export default function App() {
        <Route path = "/Vente/OrderCLient"   element= {<OrderClientModule />} />   
        <Route path = "/Vente/OrderCLientService"   element= {<CreateClientOrder />} />   
        <Route path = "/Vente/DevisClientPorjet"   element= {<DevisProjetForm />} />   
-      <Route path = "/produit/ajouter"   element= {<ProductFormSteps />} />      
+      <Route path = "/produit/ajouter"   element= {<ProductFormSteps />} /> 
+      <Route path="/clients/edit/:clientId" element={<EditClientPage />} />    
       </Routes>
     </ThemeProvider>
   );

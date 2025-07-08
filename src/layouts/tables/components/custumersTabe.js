@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import {
   Paper,
@@ -33,7 +34,7 @@ import DashboardLayout from 'examples/LayoutContainers/DashboardLayout';
 import { getClients, deleteClient, searchClients } from 'services/ApiClient';
 import { useSnackbar } from 'notistack';
 
-export function CustomersTable({ rowsPerPage = 10, onUpdate }) {
+export function CustomersTable({ rowsPerPage = 10 }) {
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const [clients, setClients] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -46,6 +47,7 @@ export function CustomersTable({ rowsPerPage = 10, onUpdate }) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState(null);
   const [searchTimeout, setSearchTimeout] = useState(null);
+  const navigate = useNavigate();
 
   const fetchClients = useCallback(async (page = currentPage, query = '') => {
     setLoading(true);
@@ -215,7 +217,13 @@ export function CustomersTable({ rowsPerPage = 10, onUpdate }) {
 
   // Fonction pour visualiser les détails
   const handleViewDetails = (id) => {
-    window.location.href = `/clients/${id}`;
+    navigate(`/clients/${id}`);
+  };
+
+  // AJOUT DE LA FONCTION MANQUANTE POUR CORRIGER L'ERREUR
+  // Fonction pour modifier un client
+  const handleEditClient = (clientId) => {
+    navigate(`/clients/edit/${clientId}`);
   };
 
   // Fonction pour obtenir l'adresse principale
@@ -281,14 +289,17 @@ export function CustomersTable({ rowsPerPage = 10, onUpdate }) {
               Gestion des Clients
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {searchQuery ? `${clients.length} résultats` : `${totalCount} clients trouvés`}
-            </Typography>
+    {/* Modification ici */}
+    {searchQuery 
+      ? `${clients.length} résultat${clients.length !== 1 ? 's' : ''} Trouvé${clients.length !== 1 ? 's' : ''}` 
+      : `${clients.length} client${clients.length !== 1 ? 's' : ''} affiché(s) `}
+  </Typography>
           </Grid>
           <Grid item xs={12} md={6} sx={{ textAlign: { md: 'right' } }}>
             <Button
               variant="contained"
               startIcon={<AddCircle />}
-              onClick={() => window.location.href = "/Client-step"}
+              onClick={() => navigate("/Client-step")}
               sx={{ mr: 2 }}
             >
               Nouveau Client
@@ -574,7 +585,7 @@ export function CustomersTable({ rowsPerPage = 10, onUpdate }) {
                               <Tooltip title="Modifier">
                                 <IconButton 
                                   size="small"
-                                  onClick={() => onUpdate(client.clientID)}
+                                  onClick={() => handleEditClient(client.clientID)}
                                   sx={{ 
                                     color: '#26a69a',
                                     '&:hover': { backgroundColor: '#e0f2f1' }
@@ -700,9 +711,9 @@ export function CustomersTable({ rowsPerPage = 10, onUpdate }) {
   );
 }
 
+// CORRECTION DES PROPTYPES
 CustomersTable.propTypes = {
   rowsPerPage: PropTypes.number,
-  onUpdate: PropTypes.func.isRequired,
 };
 
 CustomersTable.defaultProps = {
