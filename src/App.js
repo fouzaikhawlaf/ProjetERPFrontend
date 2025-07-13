@@ -323,7 +323,8 @@ export default function App() {
        <Route path = "/Vente/OrderCLientService"   element= {<CreateClientOrder />} />   
        <Route path = "/Vente/DevisClientPorjet"   element= {<DevisProjetForm />} />   
       <Route path = "/produit/ajouter"   element= {<ProductFormSteps />} /> 
-      <Route path="/clients/edit/:clientId" element={<EditClientPage />} />    
+      <Route path="/clients/edit/:clientId" element={<EditClientPage />} />   
+   
       </Routes>
     </ThemeProvider>
   );

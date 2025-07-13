@@ -1,25 +1,35 @@
 import apiErp from "./api";
 
 // services/ApiClient.js
-export const getClients = async (pageNumber = 1, pageSize = 1000) => {
+export const getClients = async (pageNumber = 1, pageSize = 10, isArchived = false, getCountsOnly = false) => {
   try {
     const response = await apiErp.get('/clients', {
-      params: { pageNumber, pageSize },
+      params: {  
+        page: pageNumber,
+        pageSize: pageSize,
+        isArchived: isArchived ? 1 : 0,
+        getCountsOnly: getCountsOnly ? 1 : 0
+      }
     });
 
     // Handle different response structures
     const data = response.data;
     return {
       clients: data.items || data.$values || data || [],
-      totalCount: data.totalCount || data.length || 0
+      totalCount: data.totalCount || (Array.isArray(data) ? data.length : 0),
+      activeCount: data.activeCount || 0,
+      archivedCount: data.archivedCount || 0
     };
   } catch (error) {
     console.error('Error fetching clients:', error);
-    return { clients: [], totalCount: 0 };
-    
+    return { 
+      clients: [], 
+      totalCount: 0,
+      activeCount: 0,
+      archivedCount: 0
+    };
   }
 };
-
 
 export const getClient = async (id) => {
   const response = await apiErp.get(`/clients/${id}`);

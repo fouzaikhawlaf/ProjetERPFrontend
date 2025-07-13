@@ -9,35 +9,34 @@ import {
   Tooltip,
   Box,
   CircularProgress,
-  TextField,
   Alert,
   Avatar,
   Grid,
   Chip,
-  InputAdornment,
-  Card
+  Card,
+  Tabs,
+  Tab
 } from '@mui/material';
 import { 
   AddCircle,
   Edit,
   Delete,
-  Search as SearchIcon,
   Refresh,
   Visibility,
-  Clear,
-  Archive
+  Archive,
+  Unarchive
 } from '@mui/icons-material';
 import DashboardLayout from 'examples/LayoutContainers/DashboardLayout';
 import { getClients, deleteClient, searchClients, archiveClient } from 'services/ApiClient';
 import toast, { Toaster } from 'react-hot-toast';
 import ClientDetailsModal from './ClientDetailsModal';
 import DeleteClientDialog from './DeleteClientDialog';
+import SearchBar from './SearchBar';
 import ArchiveClientDialog from './ArchiveClientDialog';
 
 export function CustomersTable({ rowsPerPage = 10 }) {
-  const [clients, setClients] = useState([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [activeClients, setActiveClients] = useState([]);
+  const [archivedClients, setArchivedClients] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -51,26 +50,33 @@ export function CustomersTable({ rowsPerPage = 10 }) {
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [clientToArchive, setClientToArchive] = useState(null);
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('active');
+  
+  // Filtrer les clients en fonction de l'onglet actif
+  const currentClients = activeTab === 'active' 
+    ? activeClients.filter(c => !c.isArchived) 
+    : archivedClients.filter(c => c.isArchived);
 
-  const fetchClients = useCallback(async (page = currentPage, query = '') => {
+  const fetchClients = useCallback(async (query = '') => {
     setLoading(true);
     setError(null);
 
     try {
-      let response;
       if (query) {
         setSearchLoading(true);
-        response = await searchClients(query);
+        const searchResponse = await searchClients(query);
         
+        // Handle search response structure
         let clientsData = [];
-        if (response && response.$values && Array.isArray(response.$values)) {
-          clientsData = response.$values;
-        } else if (Array.isArray(response)) {
-          clientsData = response;
-        } else if (response) {
-          clientsData = [response];
+        if (searchResponse && searchResponse.$values && Array.isArray(searchResponse.$values)) {
+          clientsData = searchResponse.$values;
+        } else if (Array.isArray(searchResponse)) {
+          clientsData = searchResponse;
+        } else if (searchResponse) {
+          clientsData = [searchResponse];
         }
         
+        // Normalize client data
         const normalizedClients = clientsData.map(client => {
           const ensureArray = (data) => {
             if (Array.isArray(data)) return data;
@@ -81,17 +87,25 @@ export function CustomersTable({ rowsPerPage = 10 }) {
           return {
             ...client,
             phoneNumbers: ensureArray(client.phoneNumbers),
-            addresses: ensureArray(client.addresses)
+            addresses: ensureArray(client.addresses),
+            // Conserver le statut d'archivage original
+            isArchived: client.isArchived
           };
         });
         
-        setClients(normalizedClients);
-        setTotalCount(normalizedClients.length);
+        // Mettre à jour les listes avec les résultats de recherche
+        setActiveClients(normalizedClients.filter(c => !c.isArchived));
+        setArchivedClients(normalizedClients.filter(c => c.isArchived));
       } else {
-        response = await getClients(page, rowsPerPage);
-        const clientsData = response.clients || [];
-        
-        const normalizedClients = clientsData.map(client => {
+        // Fetch active and archived clients separately
+        const [activeResponse, archivedResponse] = await Promise.all([
+          getClients(1, 10000, false), // Active clients
+          getClients(1, 10000, true)    // Archived clients
+        ]);
+
+        // Extract and normalize active clients
+        const activeClientsData = activeResponse.clients || [];
+        const normalizedActive = activeClientsData.map(client => {
           const ensureArray = (data) => {
             if (Array.isArray(data)) return data;
             if (data?.$values && Array.isArray(data.$values)) return data.$values;
@@ -101,36 +115,54 @@ export function CustomersTable({ rowsPerPage = 10 }) {
           return {
             ...client,
             phoneNumbers: ensureArray(client.phoneNumbers),
-            addresses: ensureArray(client.addresses)
+            addresses: ensureArray(client.addresses),
+            // Forcer le statut actif
+            isArchived: false
           };
         });
-        
-        setClients(normalizedClients);
-        setTotalCount(response.totalCount || 0);
+
+        // Extract and normalize archived clients
+        const archivedClientsData = archivedResponse.clients || [];
+        const normalizedArchived = archivedClientsData.map(client => {
+          const ensureArray = (data) => {
+            if (Array.isArray(data)) return data;
+            if (data?.$values && Array.isArray(data.$values)) return data.$values;
+            return [];
+          };
+
+          return {
+            ...client,
+            phoneNumbers: ensureArray(client.phoneNumbers),
+            addresses: ensureArray(client.addresses),
+            // Forcer le statut archivé
+            isArchived: true
+          };
+        });
+
+        setActiveClients(normalizedActive);
+        setArchivedClients(normalizedArchived);
       }
     } catch (err) {
       console.error('Error fetching clients:', err);
       setError('Failed to load clients');
       toast.error('Erreur lors du chargement des clients');
-      setClients([]);
+      setActiveClients([]);
+      setArchivedClients([]);
     } finally {
       setLoading(false);
       setSearchLoading(false);
     }
-  }, [currentPage, rowsPerPage]);
+  }, []);
 
   useEffect(() => {
     fetchClients();
   }, [fetchClients]);
 
-  const totalPages = Math.ceil(totalCount / rowsPerPage);
-
-  const handlePageChange = (page) => {
-    setCurrentPage(page);
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
   };
 
-  const handleSearchChange = (e) => {
-    const query = e.target.value;
+  const handleSearchChange = (query) => {
     setSearchQuery(query);
     
     if (searchTimeout) {
@@ -144,7 +176,7 @@ export function CustomersTable({ rowsPerPage = 10 }) {
     
     setSearchLoading(true);
     const timeout = setTimeout(() => {
-      fetchClients(1, query);
+      fetchClients(query);
     }, 500);
     
     setSearchTimeout(timeout);
@@ -173,19 +205,20 @@ export function CustomersTable({ rowsPerPage = 10 }) {
     try {
       await deleteClient(clientToDelete.clientID);
       
-      // Mise à jour locale de l'état
-      setClients(clients.filter(c => c.clientID !== clientToDelete.clientID));
+      // Supprimer de la liste appropriée
+      if (clientToDelete.isArchived) {
+        setArchivedClients(prev => prev.filter(c => c.clientID !== clientToDelete.clientID));
+      } else {
+        setActiveClients(prev => prev.filter(c => c.clientID !== clientToDelete.clientID));
+      }
       
-      // Notification de succès
       toast.success(`Client "${clientToDelete.name}" supprimé avec succès`);
-      
-      return clientToDelete.name;
     } catch (err) {
       console.error('Error deleting client:', err);
       toast.error('Échec de la suppression du client');
-      throw err;
     } finally {
       setDeletingId(null);
+      closeDeleteDialog();
     }
   };
 
@@ -218,28 +251,323 @@ export function CustomersTable({ rowsPerPage = 10 }) {
     setDetailsModalOpen(true);
   };
 
-  // Fonctions pour l'archivage
-  const openArchiveDialog = (client) => {
-    setClientToArchive(client);
-    setArchiveDialogOpen(true);
-  };
-
-  const closeArchiveDialog = () => {
-    setArchiveDialogOpen(false);
-    setClientToArchive(null);
-  };
-
-  const handleArchive = async () => {
+  const handleArchiveToggle = async () => {
     if (!clientToArchive) return;
     
     try {
       await archiveClient(clientToArchive.clientID);
-      fetchClients();
-      toast.success(`Client "${clientToArchive.name}" archivé avec succès`);
+      
+      // Mettre à jour le statut d'archivage
+      const updatedClient = { ...clientToArchive, isArchived: !clientToArchive.isArchived };
+      
+      if (clientToArchive.isArchived) {
+        // Désarchiver: déplacer des archivés vers actifs
+        setArchivedClients(prev => prev.filter(c => c.clientID !== clientToArchive.clientID));
+        setActiveClients(prev => [...prev, updatedClient]);
+      } else {
+        // Archiver: déplacer des actifs vers archivés
+        setActiveClients(prev => prev.filter(c => c.clientID !== clientToArchive.clientID));
+        setArchivedClients(prev => [...prev, updatedClient]);
+      }
+      
+      toast.success(`Client "${clientToArchive.name}" ${clientToArchive.isArchived ? 'désarchivé' : 'archivé'} avec succès`);
+      setArchiveDialogOpen(false);
     } catch (err) {
-      console.error('Error archiving client:', err);
-      toast.error('Échec de l\'archivage du client');
+      console.error('Error toggling archive status:', err);
+      toast.error(`Échec de l'opération d'archivage`);
     }
+  };
+
+  const renderClientTable = (clients) => {
+    return (
+      <Box 
+        component={Paper} 
+        elevation={0} 
+        sx={{ 
+          border: '1px solid #e0e0e0',
+          borderRadius: '4px',
+          overflow: 'hidden',
+          mt: 2
+        }}
+      >
+        {clients.length === 0 ? (
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              height: '300px',
+              textAlign: 'center',
+              p: 4
+            }}
+          >
+            <Archive sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
+            <Typography variant="h5" gutterBottom>
+              Aucun client trouvé
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              {searchQuery 
+                ? 'Aucun résultat pour votre recherche' 
+                : 'Aucun client dans cette catégorie'}
+            </Typography>
+          </Box>
+        ) : (
+          <Box sx={{ overflowX: 'auto' }}>
+            <table style={{ 
+              width: '100%',
+              borderCollapse: 'collapse',
+              minWidth: '1000px'
+            }}>
+              <thead>
+                <tr style={{ 
+                  backgroundColor: '#f5f7fa',
+                  height: '60px'
+                }}>
+                  <th style={{ 
+                    width: '50px',
+                    padding: '0 16px',
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                    textAlign: 'left',
+                    borderBottom: '2px solid #e0e0e0',
+                    color: '#333'
+                  }}>#</th>
+                  
+                  <th style={{ 
+                    width: '200px',
+                    padding: '0 16px',
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                    textAlign: 'left',
+                    borderBottom: '2px solid #e0e0e0',
+                    color: '#333'
+                  }}>Client</th>
+                  
+                  <th style={{ 
+                    width: '200px',
+                    padding: '0 16px',
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                    textAlign: 'left',
+                    borderBottom: '2px solid #e0e0e0',
+                    color: '#333'
+                  }}>Email</th>
+                  
+                  <th style={{ 
+                    width: '150px',
+                    padding: '0 16px',
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                    textAlign: 'left',
+                    borderBottom: '2px solid #e0e0e0',
+                    color: '#333'
+                  }}>Adresse</th>
+                  
+                  <th style={{ 
+                    width: '100px',
+                    padding: '0 16px',
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                    textAlign: 'left',
+                    borderBottom: '2px solid #e0e0e0',
+                    color: '#333'
+                  }}>Téléphone</th>
+                  
+                  <th style={{ 
+                    width: '150px',
+                    padding: '0 16px',
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                    textAlign: 'center',
+                    borderBottom: '2px solid #e0e0e0',
+                    color: '#333'
+                  }}>Actions</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {clients.map((client, index) => {
+                  const safeAddresses = Array.isArray(client.addresses) ? client.addresses : [];
+                  const safePhones = Array.isArray(client.phoneNumbers) ? client.phoneNumbers : [];
+                  
+                  const primaryAddress = getPrimaryAddress(safeAddresses);
+                  const primaryPhone = getPrimaryPhone(safePhones);
+                  
+                  return (
+                    <tr 
+                      key={client.clientID}
+                      style={{ 
+                        borderBottom: '1px solid #eee',
+                        backgroundColor: activeTab === 'archived' ? '#fafafa' : '#fff',
+                        '&:hover': { backgroundColor: '#f9fafc' }
+                      }}
+                    >
+                      <td style={{ 
+                        padding: '12px 16px',
+                        color: '#555',
+                        fontSize: '0.875rem',
+                        verticalAlign: 'middle'
+                      }}>
+                        {index + 1}
+                      </td>
+                      
+                      <td style={{ 
+                        padding: '12px 16px',
+                        color: '#333',
+                        fontSize: '0.875rem',
+                        verticalAlign: 'middle'
+                      }}>
+                        <Box display="flex" alignItems="center">
+                          <Avatar 
+                            sx={{ 
+                              width: 32, 
+                              height: 32, 
+                              mr: 2,
+                              bgcolor: activeTab === 'archived' ? '#bdbdbd' : '#42a5f5',
+                              color: 'white'
+                            }}
+                          >
+                            {client.name?.[0]?.toUpperCase() || '?'}
+                          </Avatar>
+                          <Typography variant="body2">
+                            {client.name || 'N/A'}
+                          </Typography>
+                        </Box>
+                      </td>
+                      
+                      <td style={{ 
+                        padding: '12px 16px',
+                        color: '#555',
+                        fontSize: '0.875rem',
+                        verticalAlign: 'middle'
+                      }}>
+                        {client.email || 'N/A'}
+                      </td>
+                      
+                      <td style={{ 
+                        padding: '12px 16px',
+                        color: '#555',
+                        fontSize: '0.875rem',
+                        verticalAlign: 'middle'
+                      }}>
+                        {primaryAddress ? (
+                          <Box>
+                            <div>{primaryAddress.addressLine || 'N/A'}</div>
+                            <div style={{ color: '#777', fontSize: '0.75rem' }}>
+                              {primaryAddress.postalCode} {primaryAddress.region}
+                            </div>
+                          </Box>
+                        ) : 'N/A'}
+                      </td>
+                      
+                      <td style={{ 
+                        padding: '12px 16px',
+                        color: '#555',
+                        fontSize: '0.875rem',
+                        verticalAlign: 'middle'
+                      }}>
+                        {primaryPhone ? (
+                          <Box>
+                            <div>{primaryPhone.number || 'N/A'}</div>
+                            {primaryPhone.type && (
+                              <Chip 
+                                label={primaryPhone.type}
+                                size="small"
+                                sx={{ 
+                                  mt: 0.5,
+                                  fontSize: '0.65rem',
+                                  height: '20px'
+                                }}
+                              />
+                            )}
+                          </Box>
+                        ) : 'N/A'}
+                      </td>
+                      
+                      <td style={{ 
+                        padding: '12px 16px',
+                        textAlign: 'center',
+                        verticalAlign: 'middle'
+                      }}>
+                        <Box sx={{ 
+                          display: 'flex', 
+                          justifyContent: 'center',
+                          gap: '6px'
+                        }}>
+                          <Tooltip title="Voir détails">
+                            <IconButton 
+                              size="small"
+                              onClick={() => handleViewAllDetails(client)}
+                              sx={{ 
+                                color: '#1976d2',
+                                '&:hover': { backgroundColor: '#e3f2fd' }
+                              }}
+                            >
+                              <Visibility fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          
+                          <Tooltip title="Modifier">
+                            <IconButton 
+                              size="small"
+                              onClick={() => handleEditClient(client.clientID)}
+                              sx={{ 
+                                color: '#26a69a',
+                                '&:hover': { backgroundColor: '#e0f2f1' }
+                              }}
+                            >
+                              <Edit fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          
+                          <Tooltip title={activeTab === 'archived' ? "Désarchiver" : "Archiver"}>
+                            <IconButton 
+                              size="small"
+                              onClick={() => {
+                                setClientToArchive(client);
+                                setArchiveDialogOpen(true);
+                              }}
+                              sx={{ 
+                                color: activeTab === 'archived' ? '#4caf50' : '#ff9800',
+                                '&:hover': { 
+                                  backgroundColor: activeTab === 'archived' ? '#e8f5e9' : '#fff3e0' 
+                                }
+                              }}
+                            >
+                              {activeTab === 'archived' ? <Unarchive fontSize="small" /> : <Archive fontSize="small" />}
+                            </IconButton>
+                          </Tooltip>
+
+                          <Tooltip title="Supprimer">
+                            <IconButton 
+                              size="small"
+                              onClick={() => openDeleteDialog(client)}
+                              disabled={deletingId === client.clientID}
+                              sx={{ 
+                                color: '#ef5350',
+                                '&:hover': { backgroundColor: '#ffebee' },
+                                '&:disabled': { opacity: 0.5 }
+                              }}
+                            >
+                              {deletingId === client.clientID ? (
+                                <CircularProgress size={20} />
+                              ) : (
+                                <Delete fontSize="small" />
+                              )}
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </Box>
+        )}
+      </Box>
+    );
   };
 
   return (
@@ -287,9 +615,9 @@ export function CustomersTable({ rowsPerPage = 10 }) {
           
           <ArchiveClientDialog
             open={archiveDialogOpen}
-            onClose={closeArchiveDialog}
+            onClose={() => setArchiveDialogOpen(false)}
             clientToArchive={clientToArchive}
-            onArchive={handleArchive}
+            onArchive={handleArchiveToggle}
           />
           
           <Grid container spacing={2} alignItems="center" sx={{ mb: 3 }}>
@@ -298,9 +626,7 @@ export function CustomersTable({ rowsPerPage = 10 }) {
                 Gestion des Clients
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {searchQuery 
-                  ? `${clients.length} résultat${clients.length !== 1 ? 's' : ''} Trouvé${clients.length !== 1 ? 's' : ''}` 
-                  : `${clients.length} client${clients.length !== 1 ? 's' : ''} affiché(s) `}
+                {activeClients.filter(c => !c.isArchived).length} client(s) actif(s) • {archivedClients.filter(c => c.isArchived).length} client(s) archivé(s)
               </Typography>
             </Grid>
             <Grid item xs={12} md={6} sx={{ textAlign: { md: 'right' } }}>
@@ -317,7 +643,6 @@ export function CustomersTable({ rowsPerPage = 10 }) {
                 startIcon={<Refresh />}
                 onClick={() => {
                   setSearchQuery('');
-                  setCurrentPage(1);
                   fetchClients();
                   toast.success('Liste des clients actualisée');
                 }}
@@ -327,47 +652,44 @@ export function CustomersTable({ rowsPerPage = 10 }) {
             </Grid>
           </Grid>
 
-          <Box sx={{ 
-            p: 2, 
-            mb: 3, 
-            bgcolor: 'background.paper', 
-            borderRadius: 1,
-            boxShadow: 1,
-            position: 'relative'
-          }}>
-            <TextField
-              fullWidth
-              variant="outlined"
-              placeholder="Rechercher clients..."
-              value={searchQuery}
-              onChange={handleSearchChange}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon color="action" />
-                  </InputAdornment>
-                ),
-                endAdornment: searchQuery && (
-                  <InputAdornment position="end">
-                    <IconButton onClick={clearSearch} size="small">
-                      <Clear fontSize="small" />
-                    </IconButton>
-                  </InputAdornment>
-                )
-              }}
+          {/* Tabs pour basculer entre actifs et archivés */}
+          <Tabs 
+            value={activeTab} 
+            onChange={handleTabChange}
+            sx={{ 
+              mb: 3,
+              borderBottom: 1,
+              borderColor: 'divider'
+            }}
+          >
+            <Tab 
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Unarchive sx={{ mr: 1 }} />
+                  Clients Actifs ({activeClients.filter(c => !c.isArchived).length})
+                </Box>
+              } 
+              value="active" 
+              sx={{ fontWeight: 'bold' }}
             />
-            {searchLoading && (
-              <CircularProgress 
-                size={24} 
-                sx={{
-                  position: 'absolute',
-                  right: 40,
-                  top: '50%',
-                  transform: 'translateY(-50%)'
-                }} 
-              />
-            )}
-          </Box>
+            <Tab 
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Archive sx={{ mr: 1 }} />
+                  Clients Archivés ({archivedClients.filter(c => c.isArchived).length})
+                </Box>
+              } 
+              value="archived" 
+              sx={{ fontWeight: 'bold' }}
+            />
+          </Tabs>
+
+          <SearchBar 
+            searchQuery={searchQuery} 
+            onSearchChange={handleSearchChange} 
+            onClearSearch={clearSearch} 
+            searchLoading={searchLoading}
+          />
 
           {error && (
             <Alert severity="error" sx={{ mb: 3 }}>
@@ -380,349 +702,7 @@ export function CustomersTable({ rowsPerPage = 10 }) {
               <CircularProgress size={60} />
             </Box>
           ) : (
-            <Box 
-              component={Paper} 
-              elevation={0} 
-              sx={{ 
-                border: '1px solid', 
-                borderColor: 'divider', 
-                borderRadius: 2,
-                overflow: 'hidden'
-              }}
-            >
-              <Box sx={{ overflowX: 'auto' }}>
-                <table style={{ 
-                  width: '100%',
-                  borderCollapse: 'collapse',
-                  minWidth: '1000px'
-                }}>
-                  <thead>
-                    <tr style={{ 
-                      backgroundColor: '#f5f7fa',
-                      height: '60px'
-                    }}>
-                      <th style={{ 
-                        width: '50px',
-                        padding: '0 16px',
-                        fontWeight: 600,
-                        fontSize: '0.875rem',
-                        textAlign: 'left',
-                        borderBottom: '2px solid #e0e0e0',
-                        color: '#333'
-                      }}>#</th>
-                      
-                      <th style={{ 
-                        width: '200px',
-                        padding: '0 16px',
-                        fontWeight: 600,
-                        fontSize: '0.875rem',
-                        textAlign: 'left',
-                        borderBottom: '2px solid #e0e0e0',
-                        color: '#333'
-                      }}>Client</th>
-                      
-                      <th style={{ 
-                        width: '200px',
-                        padding: '0 16px',
-                        fontWeight: 600,
-                        fontSize: '0.875rem',
-                        textAlign: 'left',
-                        borderBottom: '2px solid #e0e0e0',
-                        color: '#333'
-                      }}>Email</th>
-                      
-                      <th style={{ 
-                        width: '150px',
-                        padding: '0 16px',
-                        fontWeight: 600,
-                        fontSize: '0.875rem',
-                        textAlign: 'left',
-                        borderBottom: '2px solid #e0e0e0',
-                        color: '#333'
-                      }}>Adresse</th>
-                      
-                      <th style={{ 
-                        width: '100px',
-                        padding: '0 16px',
-                        fontWeight: 600,
-                        fontSize: '0.875rem',
-                        textAlign: 'left',
-                        borderBottom: '2px solid #e0e0e0',
-                        color: '#333'
-                      }}>Téléphone</th>
-                      
-                      <th style={{ 
-                        width: '150px',
-                        padding: '0 16px',
-                        fontWeight: 600,
-                        fontSize: '0.875rem',
-                        textAlign: 'center',
-                        borderBottom: '2px solid #e0e0e0',
-                        color: '#333'
-                      }}>Actions</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {Array.isArray(clients) && clients.length > 0 ? (
-                      clients.map((client, index) => {
-                        const safeAddresses = Array.isArray(client.addresses) ? client.addresses : [];
-                        const safePhones = Array.isArray(client.phoneNumbers) ? client.phoneNumbers : [];
-                        
-                        const primaryAddress = getPrimaryAddress(safeAddresses);
-                        const primaryPhone = getPrimaryPhone(safePhones);
-                        
-                        return (
-                          <tr 
-                            key={client.clientID}
-                            style={{ 
-                              borderBottom: '1px solid #eee',
-                              '&:hover': { backgroundColor: '#f9fafc' }
-                            }}
-                          >
-                            <td style={{ 
-                              padding: '12px 16px',
-                              color: '#555',
-                              fontSize: '0.875rem',
-                              verticalAlign: 'middle'
-                            }}>
-                              {searchQuery ? index + 1 : (currentPage - 1) * rowsPerPage + index + 1}
-                            </td>
-                            
-                            <td style={{ 
-                              padding: '12px 16px',
-                              color: '#333',
-                              fontSize: '0.875rem',
-                              verticalAlign: 'middle'
-                            }}>
-                              <Box display="flex" alignItems="center">
-                                <Avatar 
-                                  sx={{ 
-                                    width: 32, 
-                                    height: 32, 
-                                    mr: 2,
-                                    bgcolor: 'primary.main',
-                                    color: 'white'
-                                  }}
-                                >
-                                  {client.name?.[0]?.toUpperCase() || '?'}
-                                </Avatar>
-                                <Typography variant="body2">
-                                  {client.name || 'N/A'}
-                                </Typography>
-                              </Box>
-                            </td>
-                            
-                            <td style={{ 
-                              padding: '12px 16px',
-                              color: '#555',
-                              fontSize: '0.875rem',
-                              verticalAlign: 'middle'
-                            }}>
-                              {client.email || 'N/A'}
-                            </td>
-                            
-                            <td style={{ 
-                              padding: '12px 16px',
-                              color: '#555',
-                              fontSize: '0.875rem',
-                              verticalAlign: 'middle'
-                            }}>
-                              {primaryAddress ? (
-                                <Box>
-                                  <div>{primaryAddress.addressLine || 'N/A'}</div>
-                                  <div style={{ color: '#777', fontSize: '0.75rem' }}>
-                                    {primaryAddress.postalCode} {primaryAddress.region}
-                                  </div>
-                                </Box>
-                              ) : 'N/A'}
-                            </td>
-                            
-                            <td style={{ 
-                              padding: '12px 16px',
-                              color: '#555',
-                              fontSize: '0.875rem',
-                              verticalAlign: 'middle'
-                            }}>
-                              {primaryPhone ? (
-                                <Box>
-                                  <div>{primaryPhone.number || 'N/A'}</div>
-                                  {primaryPhone.type && (
-                                    <Chip 
-                                      label={primaryPhone.type}
-                                      size="small"
-                                      sx={{ 
-                                        mt: 0.5,
-                                        fontSize: '0.65rem',
-                                        height: '20px'
-                                      }}
-                                    />
-                                  )}
-                                </Box>
-                              ) : 'N/A'}
-                            </td>
-                            
-                            <td style={{ 
-                              padding: '12px 16px',
-                              textAlign: 'center',
-                              verticalAlign: 'middle'
-                            }}>
-                              <Box sx={{ 
-                                display: 'flex', 
-                                justifyContent: 'center',
-                                gap: '6px'
-                              }}>
-                                <Tooltip title="Voir détails">
-                                  <IconButton 
-                                    size="small"
-                                    onClick={() => handleViewAllDetails(client)}
-                                    sx={{ 
-                                      color: '#1976d2',
-                                      '&:hover': { backgroundColor: '#e3f2fd' }
-                                    }}
-                                  >
-                                    <Visibility fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                                
-                                <Tooltip title="Modifier">
-                                  <IconButton 
-                                    size="small"
-                                    onClick={() => handleEditClient(client.clientID)}
-                                    sx={{ 
-                                      color: '#26a69a',
-                                      '&:hover': { backgroundColor: '#e0f2f1' }
-                                    }}
-                                  >
-                                    <Edit fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                                
-                                {/* Bouton d'archivage */}
-                                {!client.isArchived && (
-                                  <Tooltip title="Archiver">
-                                    <IconButton 
-                                      size="small"
-                                      onClick={() => openArchiveDialog(client)}
-                                      sx={{ 
-                                        color: '#ff9800',
-                                        '&:hover': { backgroundColor: '#fff3e0' }
-                                      }}
-                                    >
-                                      <Archive fontSize="small" />
-                                    </IconButton>
-                                  </Tooltip>
-                                )}
-
-                                <Tooltip title="Supprimer">
-                                  <IconButton 
-                                    size="small"
-                                    onClick={() => openDeleteDialog(client)}
-                                    disabled={deletingId === client.clientID}
-                                    sx={{ 
-                                      color: '#ef5350',
-                                      '&:hover': { backgroundColor: '#ffebee' },
-                                      '&:disabled': { opacity: 0.5 }
-                                    }}
-                                  >
-                                    {deletingId === client.clientID ? (
-                                      <CircularProgress size={20} />
-                                    ) : (
-                                      <Delete fontSize="small" />
-                                    )}
-                                  </IconButton>
-                                </Tooltip>
-                              </Box>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    ) : (
-                      <tr>
-                        <td 
-                          colSpan="6" 
-                          style={{ 
-                            padding: '24px', 
-                            textAlign: 'center',
-                            color: '#666'
-                          }}
-                        >
-                          <Box sx={{ textAlign: 'center' }}>
-                            <Typography variant="body1">
-                              {searchQuery ? 'Aucun résultat trouvé' : 'Aucun client trouvé'}
-                            </Typography>
-                            <Typography variant="body2" sx={{ mt: 1 }}>
-                              {searchQuery 
-                                ? 'Essayez d\'autres termes de recherche' 
-                                : 'Essayez de modifier vos critères de recherche'}
-                            </Typography>
-                          </Box>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </Box>
-            </Box>
-          )}
-
-          {!searchQuery && totalPages > 1 && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button
-                  variant="outlined"
-                  disabled={currentPage === 1}
-                  onClick={() => handlePageChange(1)}
-                >
-                  Première
-                </Button>
-                <Button
-                  variant="outlined"
-                  disabled={currentPage === 1}
-                  onClick={() => handlePageChange(currentPage - 1)}
-                >
-                  Précédent
-                </Button>
-                
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum;
-                  if (totalPages <= 5) {
-                    pageNum = i + 1;
-                  } else if (currentPage <= 3) {
-                    pageNum = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
-                  } else {
-                    pageNum = currentPage - 2 + i;
-                  }
-
-                  return (
-                    <Button
-                      key={pageNum}
-                      variant={currentPage === pageNum ? "contained" : "outlined"}
-                      onClick={() => handlePageChange(pageNum)}
-                    >
-                      {pageNum}
-                    </Button>
-                  );
-                })}
-
-                <Button
-                  variant="outlined"
-                  disabled={currentPage === totalPages}
-                  onClick={() => handlePageChange(currentPage + 1)}
-                >
-                  Suivant
-                </Button>
-                <Button
-                  variant="outlined"
-                  disabled={currentPage === totalPages}
-                  onClick={() => handlePageChange(totalPages)}
-                >
-                  Dernière
-                </Button>
-              </Box>
-            </Box>
+            renderClientTable(currentClients)
           )}
         </Box>
       </Card>
