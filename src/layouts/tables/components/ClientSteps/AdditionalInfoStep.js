@@ -10,12 +10,12 @@ function AdditionalInfoStep({ formData, updateField, handlePrev, handleNext }) {
   
   return (
     <DashboardLayout>
-      <Card elevation={3} style={{ padding: '30px', marginTop: '20px' }}>
+      <Card elevation={3} style={{ padding: '20px', marginTop: '20px' }}>
         <Typography variant="h6" gutterBottom>
           Informations supplémentaires
         </Typography>
 
-        <Grid container spacing={3} sx={{ marginTop: '20px' }}>
+        <Grid container spacing={2} sx={{ marginTop: '15px' }}>
           {/* Notes Section */}
           <Grid item xs={12}>
             <TextField
@@ -24,10 +24,20 @@ function AdditionalInfoStep({ formData, updateField, handlePrev, handleNext }) {
               variant="outlined"
               fullWidth
               multiline
-              rows={4}
+              minRows={2}
+              maxRows={4}
               value={formData.notes || ''}
               onChange={handleChange}
-              placeholder="Ajoutez des notes sur le client..."
+              placeholder="Notes sur le client..."
+              sx={{
+                '& .MuiInputBase-root': {
+                  height: 'auto',
+                },
+                '& .MuiInputBase-inputMultiline': {
+                  minHeight: '60px',
+                  lineHeight: '1.5',
+                }
+              }}
             />
           </Grid>
 
@@ -39,10 +49,20 @@ function AdditionalInfoStep({ formData, updateField, handlePrev, handleNext }) {
               variant="outlined"
               fullWidth
               multiline
-              rows={4}
+              minRows={2}
+              maxRows={4}
               value={formData.preferences || ''}
               onChange={handleChange}
-              placeholder="Ajoutez les préférences du client..."
+              placeholder="Préférences du client..."
+              sx={{
+                '& .MuiInputBase-root': {
+                  height: 'auto',
+                },
+                '& .MuiInputBase-inputMultiline': {
+                  minHeight: '60px',
+                  lineHeight: '1.5',
+                }
+              }}
             />
           </Grid>
         </Grid>
