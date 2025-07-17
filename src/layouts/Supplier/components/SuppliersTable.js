@@ -12,7 +12,6 @@ import {
   Alert,
   Avatar,
   Grid,
-  Chip,
   Card,
   Tabs,
   Tab
@@ -34,7 +33,8 @@ import {
   getSuppliersWithAddresses, 
   deleteSupplier, 
   archiveSupplier,
-  searchSuppliers
+  searchSuppliers,
+  getArchivedSuppliers
 } from 'services/supplierApi';
 import toast, { Toaster } from 'react-hot-toast';
 import SupplierDetailsModal from './SupplierDetailsModal';
@@ -135,7 +135,7 @@ export function SupplierListTable({ rowsPerPage = 10 }) {
   // Fonction pour normaliser les données des fournisseurs
   const normalizeSupplierData = (supplier) => {
     return {
-      id: supplier.supplierID, // Utilisation de supplierID comme identifiant principal
+      id: supplier.supplierID,
       ...supplier,
       addresses: Array.isArray(supplier.addresses) 
         ? supplier.addresses 
@@ -144,74 +144,112 @@ export function SupplierListTable({ rowsPerPage = 10 }) {
     };
   };
 
-  const fetchSuppliers = useCallback(async (query = '') => {
+  // Fonction pour charger les fournisseurs archivés
+  const fetchArchivedSuppliers = useCallback(async () => {
     setLoading(true);
-    setError(null);
-
     try {
-      if (query) {
-        setSearchLoading(true);
-        const searchResponse = await searchSuppliers(query);
-        
-        // Gérer la structure de réponse
-        let suppliersData = [];
-        if (searchResponse && searchResponse.$values && Array.isArray(searchResponse.$values)) {
-          suppliersData = searchResponse.$values;
-        } else if (Array.isArray(searchResponse)) {
-          suppliersData = searchResponse;
-        } else if (searchResponse) {
-          suppliersData = [searchResponse];
-        }
-        
-        // Normaliser les données
-        const normalizedSuppliers = suppliersData.map(normalizeSupplierData);
-        
-        // Mettre à jour les listes
-        setActiveSuppliers(normalizedSuppliers.filter(s => !s.isArchived));
-        setArchivedSuppliers(normalizedSuppliers.filter(s => s.isArchived));
-      } else {
-        // Récupérer les fournisseurs actifs et archivés
-        const [activeResponse, archivedResponse] = await Promise.all([
-          getSuppliersWithAddresses(false), // Fournisseurs actifs
-          getSuppliersWithAddresses(true)   // Fournisseurs archivés
-        ]);
+      const response = await getArchivedSuppliers();
+      const archivedSuppliersData = response || [];
+      
+      const normalizedArchived = archivedSuppliersData.map(supplier => {
+        const ensureArray = (data) => {
+          if (Array.isArray(data)) return data;
+          if (data?.$values && Array.isArray(data.$values)) return data.$values;
+          return [];
+        };
 
-        // Normaliser les fournisseurs actifs
-        const activeSuppliersData = (activeResponse.$values || []).map(normalizeSupplierData);
-        const normalizedActive = activeSuppliersData.map(supplier => {
-          return {
-            ...supplier,
-            addresses: Array.isArray(supplier.addresses) 
-              ? supplier.addresses 
-              : (supplier.addresses?.$values || []),
-            isArchived: false
-          };
-        });
+        return {
+          id: supplier.supplierID,
+          ...supplier,
+          addresses: ensureArray(supplier.addresses),
+          isArchived: true
+        };
+      });
 
-        // Normaliser les fournisseurs archivés
-        const archivedSuppliersData = (archivedResponse.$values || []).map(normalizeSupplierData);
-        const normalizedArchived = archivedSuppliersData.map(supplier => {
-          return {
-            ...supplier,
-            addresses: Array.isArray(supplier.addresses) 
-              ? supplier.addresses 
-              : (supplier.addresses?.$values || []),
-            isArchived: true
-          };
-        });
-
-        setActiveSuppliers(normalizedActive);
-        setArchivedSuppliers(normalizedArchived);
-      }
+      setArchivedSuppliers(normalizedArchived);
     } catch (err) {
-      console.error('Erreur lors de la récupération des fournisseurs:', err);
-      setError('Échec du chargement des fournisseurs');
-      toast.error('Erreur lors du chargement des fournisseurs');
+      console.error('Erreur lors de la récupération des fournisseurs archivés:', err);
+      setError('Échec du chargement des fournisseurs archivés');
+      toast.error('Erreur lors du chargement des fournisseurs archivés');
     } finally {
       setLoading(false);
-      setSearchLoading(false);
     }
   }, []);
+
+  const fetchSuppliers = useCallback(async (query = '') => {
+  setLoading(true);
+  setError(null);
+
+  try {
+    if (query) {
+      setSearchLoading(true);
+      const searchResponse = await searchSuppliers(query);
+      
+      // Gestion des différentes structures de réponse
+      let suppliersData = [];
+      if (searchResponse && searchResponse.$values && Array.isArray(searchResponse.$values)) {
+        suppliersData = searchResponse.$values;
+      } else if (Array.isArray(searchResponse)) {
+        suppliersData = searchResponse;
+      } else if (searchResponse) {
+        suppliersData = [searchResponse];
+      }
+      
+      // Fonction de normalisation cohérente
+      const normalize = (supplier) => ({
+        id: supplier.supplierID,
+        ...supplier,
+        addresses: Array.isArray(supplier.addresses) 
+          ? supplier.addresses 
+          : (supplier.addresses?.$values || []),
+        isArchived: !!supplier.isArchived
+      });
+      
+      // Appliquer la normalisation
+      const normalizedSuppliers = suppliersData.map(normalize);
+      
+      // Mettre à jour les listes
+      setActiveSuppliers(normalizedSuppliers.filter(s => !s.isArchived));
+      setArchivedSuppliers(normalizedSuppliers.filter(s => s.isArchived));
+    } else {
+      // Récupérer les fournisseurs actifs et archivés
+      const [activeResponse, archivedResponse] = await Promise.all([
+        getSuppliersWithAddresses(false), // Fournisseurs actifs
+        getArchivedSuppliers()            // Fournisseurs archivés via la fonction corrigée
+      ]);
+
+      // Fonction de normalisation unique
+      const normalize = (supplier) => ({
+        id: supplier.supplierID,
+        ...supplier,
+        addresses: Array.isArray(supplier.addresses) 
+          ? supplier.addresses 
+          : (supplier.addresses?.$values || []),
+        isArchived: !!supplier.isArchived
+      });
+
+      // Appliquer la normalisation aux deux jeux de données avec fallback
+      const normalizedActive = (
+        (activeResponse.$values || activeResponse || [])
+      ).map(normalize);
+
+      const normalizedArchived = (
+        (archivedResponse || [])
+      ).map(normalize);
+
+      // Filtrer et mettre à jour les états
+      setActiveSuppliers(normalizedActive.filter(s => !s.isArchived));
+      setArchivedSuppliers(normalizedArchived.filter(s => s.isArchived));
+    }
+  } catch (err) {
+    console.error('Erreur lors de la récupération des fournisseurs:', err);
+    setError('Échec du chargement des fournisseurs');
+    toast.error('Erreur lors du chargement des fournisseurs');
+  } finally {
+    setLoading(false);
+    setSearchLoading(false);
+  }
+}, []);
 
   useEffect(() => {
     fetchSuppliers();
@@ -219,6 +257,11 @@ export function SupplierListTable({ rowsPerPage = 10 }) {
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
+    
+    // Si on passe à l'onglet des fournisseurs archivés et qu'ils ne sont pas encore chargés
+    if (newValue === 'archived' && archivedSuppliers.length === 0) {
+      fetchArchivedSuppliers();
+    }
   };
 
   const handleSearchChange = (query) => {
@@ -507,7 +550,7 @@ export function SupplierListTable({ rowsPerPage = 10 }) {
                               {supplier.name || 'N/A'}
                             </Typography>
                             <Typography variant="body2" color="text.secondary" fontSize="0.75rem">
-                              phone: {supplier.phone} {/* Afficher l'ID pour vérification */}
+                              Phone {supplier.phone}
                             </Typography>
                           </Box>
                         </Box>

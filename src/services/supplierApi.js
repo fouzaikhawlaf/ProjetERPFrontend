@@ -81,6 +81,32 @@ export const deleteSupplier = async (id) => {
   }
 };
 
+// Mettre à jour getArchivedSuppliers pour gérer différentes structures
+export const getArchivedSuppliers = async () => {
+  try {
+    const response = await apiErp.get('/Suppliers/archived');
+    
+    // Gestion des différentes structures de réponse
+    if (Array.isArray(response.data)) {
+      return response.data;
+    } 
+    if (response.data?.$values && Array.isArray(response.data.$values)) {
+      return response.data.$values;
+    }
+    if (response.data) {
+      return [response.data]; // Convertir en tableau si objet unique
+    }
+    
+    return []; // Fallback si aucune donnée
+  } catch (error) {
+    console.error('Error fetching archived suppliers:', error);
+    throw error;
+  }
+};
+
+
+
+
 
 
 
