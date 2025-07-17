@@ -55,38 +55,8 @@ export default function PageSupplier() {
   return (
     <DashboardLayout>
       <Stack spacing={3}>
-        <Stack direction="row" spacing={3}>
-          <Stack spacing={1} sx={{ flex: '1 1 auto' }}>
-            <Typography variant="h4">Suppliers</Typography>
-            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-              <Button color="inherit" startIcon={<UploadIcon fontSize="var(--icon-fontSize-md)" />} onClick={handleImport}>
-                Import
-              </Button>
-              <Button color="inherit" startIcon={<DownloadIcon fontSize="var(--icon-fontSize-md)" />} onClick={handleExport}>
-                Export
-              </Button>
-              <IconButton onClick={handleMenuClick}>
-                <MoreVertIcon />
-              </IconButton>
-              <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
-                <MenuItem onClick={handleMenuClose}>Option 1</MenuItem>
-                <MenuItem onClick={handleMenuClose}>Option 2</MenuItem>
-              </Menu>
-            </Stack>
-          </Stack>
-          <div>
-            <Button
-              component={Link}
-              to="/SupplierForm"
-              startIcon={<PlusIcon />}
-              variant="contained"
-              sx={{ backgroundColor: '#1976d2', color: '#fff' }}
-            >
-              Add
-            </Button>
-          </div>
-        </Stack>
-        <SuppliersFilters />
+        
+        
         <SupplierListTable
           count={paginatedSuppliers.length}
           page={page}

@@ -55,16 +55,34 @@ export const updateSupplier = async (id, supplierData) => {
     }
 };
 
-// Function to delete a supplier
+
+
 export const deleteSupplier = async (id) => {
-    try {
-        const response = await apiErp.delete(`/suppliers/${id}`);
-        return response.data;
-    } catch (error) {
-        console.error('Error deleting supplier:', error);
-        throw error;
+  console.log(`[DEBUG] Deleting supplier with ID: ${id}`);
+  
+  try {
+    const response = await apiErp.delete(`/Suppliers/${id}`);
+    
+    console.log(`[DEBUG] Delete successful for ID ${id}`, response);
+    
+    if (response.status >= 200 && response.status < 300) {
+      return response.data;
+    } else {
+      throw new Error(`Delete failed with status: ${response.status}`);
     }
+  } catch (error) {
+    console.error(`[ERROR] Delete failed for ID ${id}:`, {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    });
+    
+    throw error;
+  }
 };
+
+
+
 
 // Function to search suppliers
 export const searchSuppliers = async (query) => {

@@ -1,363 +1,774 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import {
-  Card,
-  Box,
-  Checkbox,
-  Button,
-  CircularProgress,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Paper,
+  Button,
   Typography,
-  Pagination,
-  PaginationItem,
+  IconButton,
   Tooltip,
+  Box,
+  CircularProgress,
+  Alert,
+  Avatar,
   Grid,
-  TextField,
-  InputAdornment
+  Chip,
+  Card,
+  Tabs,
+  Tab
 } from '@mui/material';
-import {
-  Delete as DeleteIcon,
-  Edit as EditIcon,
-  Visibility as VisibilityIcon,
-  FirstPage,
-  LastPage,
-  NavigateBefore,
-  NavigateNext,
+import { 
   AddCircle,
+  Edit,
+  Delete,
   Refresh,
-  Search
+  Visibility,
+  Archive,
+  Unarchive,
+  Business,
+  Clear as ClearIcon,
+  Search as SearchIcon
 } from '@mui/icons-material';
-import { getSuppliersWithAddresses, deleteSupplier } from 'services/supplierApi';
 import DashboardLayout from 'examples/LayoutContainers/DashboardLayout';
+import { 
+  getSuppliersWithAddresses, 
+  deleteSupplier, 
+  archiveSupplier,
+  searchSuppliers
+} from 'services/supplierApi';
+import toast, { Toaster } from 'react-hot-toast';
+import SupplierDetailsModal from './SupplierDetailsModal';
+import DeleteConfirmationModal from './DeleteConfirmationModal';
 
-export function SupplierListTable({ rowsPerPage = 10, onDelete, onUpdate }) {
-  const [selectedIds, setSelectedIds] = useState(new Set());
-  const [currentPage, setCurrentPage] = useState(1);
-  const [suppliers, setSuppliers] = useState([]);
-  const [filteredSuppliers, setFilteredSuppliers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedSupplier, setSelectedSupplier] = useState(null);
-  const [openDialog, setOpenDialog] = useState(false);
+// Composant SearchBar
+const SearchBar = ({ searchQuery, onSearchChange, onClearSearch, searchLoading }) => (
+  <Box sx={{ 
+    position: 'relative', 
+    mb: 3,
+    backgroundColor: 'background.paper',
+    borderRadius: 1,
+    boxShadow: 1,
+    p: 1.5
+  }}>
+    <input
+      type="text"
+      value={searchQuery}
+      onChange={(e) => onSearchChange(e.target.value)}
+      placeholder="Rechercher des fournisseurs..."
+      style={{
+        width: '100%',
+        padding: '12px 20px 12px 40px',
+        borderRadius: '4px',
+        border: '1px solid #e0e0e0',
+        fontSize: '0.875rem',
+        outline: 'none',
+        transition: 'border 0.3s',
+        '&:focus': {
+          borderColor: '#1976d2',
+          boxShadow: '0 0 0 2px rgba(25, 118, 210, 0.2)'
+        }
+      }}
+    />
+    <SearchIcon sx={{
+      position: 'absolute',
+      left: '15px',
+      top: '50%',
+      transform: 'translateY(-50%)',
+      color: '#9e9e9e'
+    }} />
+    {searchLoading && (
+      <CircularProgress 
+        size={20} 
+        sx={{
+          position: 'absolute',
+          right: '15px',
+          top: '50%',
+          transform: 'translateY(-50%)'
+        }} 
+      />
+    )}
+    {searchQuery && !searchLoading && (
+      <IconButton
+        onClick={onClearSearch}
+        sx={{
+          position: 'absolute',
+          right: '10px',
+          top: '50%',
+          transform: 'translateY(-50%)'
+        }}
+      >
+        <ClearIcon fontSize="small" />
+      </IconButton>
+    )}
+  </Box>
+);
+
+SearchBar.propTypes = {
+  searchQuery: PropTypes.string.isRequired,
+  onSearchChange: PropTypes.func.isRequired,
+  onClearSearch: PropTypes.func.isRequired,
+  searchLoading: PropTypes.bool
+};
+
+export function SupplierListTable({ rowsPerPage = 10 }) {
+  const [activeSuppliers, setActiveSuppliers] = useState([]);
+  const [archivedSuppliers, setArchivedSuppliers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const selectAllRef = useRef(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [supplierToDelete, setSupplierToDelete] = useState(null);
+  const [searchTimeout, setSearchTimeout] = useState(null);
+  const [selectedSupplier, setSelectedSupplier] = useState(null);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [archivingId, setArchivingId] = useState(null);
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('active');
+  
+  // Filtrer les fournisseurs en fonction de l'onglet actif
+  const currentSuppliers = activeTab === 'active' 
+    ? activeSuppliers.filter(s => !s.isArchived) 
+    : archivedSuppliers.filter(s => s.isArchived);
 
-  useEffect(() => {
-    const fetchSuppliers = async () => {
-      try {
-        const data = await getSuppliersWithAddresses();
-        const suppliersArray = data.$values || [];
-        const suppliersWithAddressesArray = suppliersArray.map((supplier) => ({
-          ...supplier,
-          addresses: supplier.addresses?.$values || [],
-        }));
-        setSuppliers(suppliersWithAddressesArray);
-        setFilteredSuppliers(suppliersWithAddressesArray);
-      } catch (error) {
-        console.error('Error fetching suppliers:', error);
-      } finally {
-        setLoading(false);
-      }
+  // Fonction pour normaliser les données des fournisseurs
+  const normalizeSupplierData = (supplier) => {
+    return {
+      id: supplier.supplierID, // Utilisation de supplierID comme identifiant principal
+      ...supplier,
+      addresses: Array.isArray(supplier.addresses) 
+        ? supplier.addresses 
+        : (supplier.addresses?.$values || []),
+      isArchived: supplier.isArchived || false
     };
+  };
 
-    fetchSuppliers();
+  const fetchSuppliers = useCallback(async (query = '') => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (query) {
+        setSearchLoading(true);
+        const searchResponse = await searchSuppliers(query);
+        
+        // Gérer la structure de réponse
+        let suppliersData = [];
+        if (searchResponse && searchResponse.$values && Array.isArray(searchResponse.$values)) {
+          suppliersData = searchResponse.$values;
+        } else if (Array.isArray(searchResponse)) {
+          suppliersData = searchResponse;
+        } else if (searchResponse) {
+          suppliersData = [searchResponse];
+        }
+        
+        // Normaliser les données
+        const normalizedSuppliers = suppliersData.map(normalizeSupplierData);
+        
+        // Mettre à jour les listes
+        setActiveSuppliers(normalizedSuppliers.filter(s => !s.isArchived));
+        setArchivedSuppliers(normalizedSuppliers.filter(s => s.isArchived));
+      } else {
+        // Récupérer les fournisseurs actifs et archivés
+        const [activeResponse, archivedResponse] = await Promise.all([
+          getSuppliersWithAddresses(false), // Fournisseurs actifs
+          getSuppliersWithAddresses(true)   // Fournisseurs archivés
+        ]);
+
+        // Normaliser les fournisseurs actifs
+        const activeSuppliersData = (activeResponse.$values || []).map(normalizeSupplierData);
+        const normalizedActive = activeSuppliersData.map(supplier => {
+          return {
+            ...supplier,
+            addresses: Array.isArray(supplier.addresses) 
+              ? supplier.addresses 
+              : (supplier.addresses?.$values || []),
+            isArchived: false
+          };
+        });
+
+        // Normaliser les fournisseurs archivés
+        const archivedSuppliersData = (archivedResponse.$values || []).map(normalizeSupplierData);
+        const normalizedArchived = archivedSuppliersData.map(supplier => {
+          return {
+            ...supplier,
+            addresses: Array.isArray(supplier.addresses) 
+              ? supplier.addresses 
+              : (supplier.addresses?.$values || []),
+            isArchived: true
+          };
+        });
+
+        setActiveSuppliers(normalizedActive);
+        setArchivedSuppliers(normalizedArchived);
+      }
+    } catch (err) {
+      console.error('Erreur lors de la récupération des fournisseurs:', err);
+      setError('Échec du chargement des fournisseurs');
+      toast.error('Erreur lors du chargement des fournisseurs');
+    } finally {
+      setLoading(false);
+      setSearchLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredSuppliers(suppliers);
-    } else {
-      const filtered = suppliers.filter(supplier =>
-        supplier.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        supplier.contactPerson.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        supplier.email.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setFilteredSuppliers(filtered);
+    fetchSuppliers();
+  }, [fetchSuppliers]);
+
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+  };
+
+  const handleSearchChange = (query) => {
+    setSearchQuery(query);
+    
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
     }
-    setCurrentPage(1);
-  }, [searchQuery, suppliers]);
-
-  const totalPages = Math.ceil(filteredSuppliers.length / rowsPerPage);
-  const displayedSuppliers = filteredSuppliers.slice(
-    (currentPage - 1) * rowsPerPage,
-    currentPage * rowsPerPage
-  );
-
-  // Selection handlers
-  const selectAll = () => setSelectedIds(new Set(displayedSuppliers.map((s) => s.id)));
-  const deselectAll = () => setSelectedIds(new Set());
-  const selectOne = (id) => setSelectedIds(new Set(selectedIds.add(id)));
-  const deselectOne = (id) => {
-    const newSelectedIds = new Set(selectedIds);
-    newSelectedIds.delete(id);
-    setSelectedIds(newSelectedIds);
-  };
-
-  const selectedAll = displayedSuppliers.length > 0 && selectedIds.size === displayedSuppliers.length;
-  const selectedSome = selectedIds.size > 0 && selectedIds.size < displayedSuppliers.length;
-
-  useEffect(() => {
-    if (selectAllRef.current) {
-      selectAllRef.current.indeterminate = selectedSome;
+    
+    if (!query.trim()) {
+      fetchSuppliers();
+      return;
     }
-  }, [selectedSome]);
-
-  const handlePageChange = (event, page) => {
-    setCurrentPage(page);
+    
+    setSearchLoading(true);
+    const timeout = setTimeout(() => {
+      fetchSuppliers(query);
+    }, 500);
+    
+    setSearchTimeout(timeout);
   };
 
-  const handleViewDetails = (supplier) => {
-    setSelectedSupplier(supplier);
-    setOpenDialog(true);
-  };
-
-  const handleCloseDialog = () => setOpenDialog(false);
-
-  const handleDeleteSupplier = async (id) => {
-    try {
-      await deleteSupplier(id);
-      setSuppliers(prev => prev.filter(supplier => supplier.id !== id));
-    } catch (error) {
-      console.error('Error deleting supplier:', error);
-    }
-  };
-
-  const handleSearch = (event) => {
-    setSearchQuery(event.target.value);
-  };
-
-  const handleRefresh = () => {
+  const clearSearch = () => {
     setSearchQuery('');
-    setCurrentPage(1);
+    fetchSuppliers();
   };
 
-  if (loading) {
+  const openDeleteDialog = (supplier) => {
+    setSupplierToDelete(supplier);
+    setDeleteDialogOpen(true);
+  };
+
+  const closeDeleteDialog = () => {
+    setDeleteDialogOpen(false);
+    setSupplierToDelete(null);
+    setDeletingId(null);
+  };
+
+  const handleDelete = async () => {
+    if (!supplierToDelete) return;
+    
+    setDeletingId(supplierToDelete.id);
+    
+    try {
+      await deleteSupplier(supplierToDelete.id);
+      
+      // Mettre à jour les listes
+      if (supplierToDelete.isArchived) {
+        setArchivedSuppliers(prev => prev.filter(s => s.id !== supplierToDelete.id));
+      } else {
+        setActiveSuppliers(prev => prev.filter(s => s.id !== supplierToDelete.id));
+      }
+      
+      toast.success(`Fournisseur "${supplierToDelete.name}" supprimé avec succès`);
+    } catch (err) {
+      console.error('Erreur lors de la suppression du fournisseur:', err);
+      
+      // Gestion spécifique des erreurs 404
+      if (err.response && err.response.status === 404) {
+        toast.error("Fournisseur introuvable. Il a peut-être déjà été supprimé.");
+        
+        // Actualiser la liste des fournisseurs
+        fetchSuppliers();
+      } else {
+        // Afficher un message d'erreur détaillé
+        let errorMessage = "Échec de la suppression du fournisseur";
+        if (err.response) {
+          errorMessage = err.response.data?.message || 
+                        err.response.data?.title ||
+                        `Erreur ${err.response.status}: ${err.response.statusText}`;
+        } else if (err.request) {
+          errorMessage = "Pas de réponse du serveur";
+        } else {
+          errorMessage = err.message;
+        }
+        
+        toast.error(errorMessage);
+      }
+    } finally {
+      closeDeleteDialog();
+    }
+  };
+
+  const handleEditSupplier = (supplierId) => {
+    navigate(`/suppliers/edit/${supplierId}`);
+  };
+
+  const getPrimaryAddress = (addresses) => {
+    if (!Array.isArray(addresses) || addresses.length === 0) return null;
+    return addresses[0];
+  };
+
+  const handleArchiveToggle = async (supplier) => {
+    if (!supplier) return;
+    
+    setArchivingId(supplier.id);
+    
+    try {
+      await archiveSupplier(supplier.id);
+      
+      // Mettre à jour le statut d'archivage
+      const updatedSupplier = { ...supplier, isArchived: !supplier.isArchived };
+      
+      if (supplier.isArchived) {
+        // Désarchiver: déplacer des archivés vers actifs
+        setArchivedSuppliers(prev => prev.filter(s => s.id !== supplier.id));
+        setActiveSuppliers(prev => [...prev, updatedSupplier]);
+      } else {
+        // Archiver: déplacer des actifs vers archivés
+        setActiveSuppliers(prev => prev.filter(s => s.id !== supplier.id));
+        setArchivedSuppliers(prev => [...prev, updatedSupplier]);
+      }
+      
+      toast.success(`Fournisseur "${supplier.name}" ${supplier.isArchived ? 'désarchivé' : 'archivé'} avec succès`);
+    } catch (err) {
+      console.error('Erreur lors de l\'archivage du fournisseur:', err);
+      
+      let errorMessage = "Échec de l'opération d'archivage";
+      if (err.response) {
+        errorMessage = err.response.data?.message || 
+                      err.response.data?.title ||
+                      `Erreur ${err.response.status}: ${err.response.statusText}`;
+      } else if (err.request) {
+        errorMessage = "Pas de réponse du serveur";
+      } else {
+        errorMessage = err.message;
+      }
+      
+      toast.error(errorMessage);
+    } finally {
+      setArchivingId(null);
+    }
+  };
+
+  const renderSupplierTable = (suppliers) => {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
-        <CircularProgress />
+      <Box 
+        component={Paper} 
+        elevation={0} 
+        sx={{ 
+          border: '1px solid #e0e0e0',
+          borderRadius: '4px',
+          overflow: 'hidden',
+          mt: 2
+        }}
+      >
+        {suppliers.length === 0 ? (
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              height: '300px',
+              textAlign: 'center',
+              p: 4
+            }}
+          >
+            <Business sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
+            <Typography variant="h5" gutterBottom>
+              Aucun fournisseur trouvé
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              {searchQuery 
+                ? 'Aucun résultat pour votre recherche' 
+                : 'Aucun fournisseur dans cette catégorie'}
+            </Typography>
+          </Box>
+        ) : (
+          <Box sx={{ overflowX: 'auto' }}>
+            <table style={{ 
+              width: '100%',
+              borderCollapse: 'collapse',
+              minWidth: '1000px'
+            }}>
+              <thead>
+                <tr style={{ 
+                  backgroundColor: '#f5f7fa',
+                  height: '60px'
+                }}>
+                  <th style={{ 
+                    width: '50px',
+                    padding: '0 16px',
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                    textAlign: 'left',
+                    borderBottom: '2px solid #e0e0e0',
+                    color: '#333'
+                  }}>#</th>
+                  
+                  <th style={{ 
+                    width: '200px',
+                    padding: '0 16px',
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                    textAlign: 'left',
+                    borderBottom: '2px solid #e0e0e0',
+                    color: '#333'
+                  }}>Fournisseur</th>
+                  
+                  <th style={{ 
+                    width: '200px',
+                    padding: '0 16px',
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                    textAlign: 'left',
+                    borderBottom: '2px solid #e0e0e0',
+                    color: '#333'
+                  }}>Email</th>
+                  
+                  <th style={{ 
+                    width: '150px',
+                    padding: '0 16px',
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                    textAlign: 'left',
+                    borderBottom: '2px solid #e0e0e0',
+                    color: '#333'
+                  }}>Adresse</th>
+                  
+                  <th style={{ 
+                    width: '100px',
+                    padding: '0 16px',
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                    textAlign: 'left',
+                    borderBottom: '2px solid #e0e0e0',
+                    color: '#333'
+                  }}>Téléphone</th>
+                  
+                  <th style={{ 
+                    width: '150px',
+                    padding: '0 16px',
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                    textAlign: 'center',
+                    borderBottom: '2px solid #e0e0e0',
+                    color: '#333'
+                  }}>Actions</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {suppliers.map((supplier, index) => {
+                  const safeAddresses = Array.isArray(supplier.addresses) ? supplier.addresses : [];
+                  const primaryAddress = getPrimaryAddress(safeAddresses);
+                  
+                  return (
+                    <tr 
+                      key={supplier.id}
+                      style={{ 
+                        borderBottom: '1px solid #eee',
+                        backgroundColor: activeTab === 'archived' ? '#fafafa' : '#fff',
+                        '&:hover': { backgroundColor: '#f9fafc' }
+                      }}
+                    >
+                      <td style={{ 
+                        padding: '12px 16px',
+                        color: '#555',
+                        fontSize: '0.875rem',
+                        verticalAlign: 'middle'
+                      }}>
+                        {index + 1}
+                      </td>
+                      
+                      <td style={{ 
+                        padding: '12px 16px',
+                        color: '#333',
+                        fontSize: '0.875rem',
+                        verticalAlign: 'middle'
+                      }}>
+                        <Box display="flex" alignItems="center">
+                          <Avatar 
+                            sx={{ 
+                              width: 32, 
+                              height: 32, 
+                              mr: 2,
+                              bgcolor: activeTab === 'archived' ? '#bdbdbd' : '#42a5f5',
+                              color: 'white'
+                            }}
+                          >
+                            {supplier.name?.[0]?.toUpperCase() || '?'}
+                          </Avatar>
+                          <Box>
+                            <Typography variant="body2" fontWeight="medium">
+                              {supplier.name || 'N/A'}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" fontSize="0.75rem">
+                              phone: {supplier.phone} {/* Afficher l'ID pour vérification */}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </td>
+                      
+                      <td style={{ 
+                        padding: '12px 16px',
+                        color: '#555',
+                        fontSize: '0.875rem',
+                        verticalAlign: 'middle'
+                      }}>
+                        {supplier.email || 'N/A'}
+                      </td>
+                      
+                      <td style={{ 
+                        padding: '12px 16px',
+                        color: '#555',
+                        fontSize: '0.875rem',
+                        verticalAlign: 'middle'
+                      }}>
+                        {primaryAddress ? (
+                          <Box>
+                            <div>{primaryAddress.addressLine1 || 'N/A'}</div>
+                            <div style={{ color: '#777', fontSize: '0.75rem' }}>
+                              {primaryAddress.city}, {primaryAddress.country}
+                            </div>
+                          </Box>
+                        ) : 'N/A'}
+                      </td>
+                      
+                      <td style={{ 
+                        padding: '12px 16px',
+                        color: '#555',
+                        fontSize: '0.875rem',
+                        verticalAlign: 'middle'
+                      }}>
+                        {supplier.phone || 'N/A'}
+                      </td>
+                      
+                      <td style={{ 
+                        padding: '12px 16px',
+                        textAlign: 'center',
+                        verticalAlign: 'middle'
+                      }}>
+                        <Box sx={{ 
+                          display: 'flex', 
+                          justifyContent: 'center',
+                          gap: '6px'
+                        }}>
+                          <Tooltip title="Voir détails">
+                            <IconButton 
+                              size="small"
+                              onClick={() => {
+                                setSelectedSupplier(supplier);
+                                setDetailsModalOpen(true);
+                              }}
+                              sx={{ 
+                                color: '#1976d2',
+                                '&:hover': { backgroundColor: '#e3f2fd' }
+                              }}
+                            >
+                              <Visibility fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          
+                          <Tooltip title="Modifier">
+                            <IconButton 
+                              size="small"
+                              onClick={() => handleEditSupplier(supplier.id)}
+                              sx={{ 
+                                color: '#26a69a',
+                                '&:hover': { backgroundColor: '#e0f2f1' }
+                              }}
+                            >
+                              <Edit fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          
+                          <Tooltip title={activeTab === 'archived' ? "Désarchiver" : "Archiver"}>
+                            <IconButton 
+                              size="small"
+                              onClick={() => handleArchiveToggle(supplier)}
+                              disabled={archivingId === supplier.id}
+                              sx={{ 
+                                color: activeTab === 'archived' ? '#4caf50' : '#ff9800',
+                                '&:hover': { 
+                                  backgroundColor: activeTab === 'archived' ? '#e8f5e9' : '#fff3e0' 
+                                },
+                                '&:disabled': { opacity: 0.5 }
+                              }}
+                            >
+                              {archivingId === supplier.id ? (
+                                <CircularProgress size={20} />
+                              ) : activeTab === 'archived' ? (
+                                <Unarchive fontSize="small" />
+                              ) : (
+                                <Archive fontSize="small" />
+                              )}
+                            </IconButton>
+                          </Tooltip>
+
+                          <Tooltip title="Supprimer">
+                            <IconButton 
+                              size="small"
+                              onClick={() => openDeleteDialog(supplier)}
+                              disabled={deletingId === supplier.id}
+                              sx={{ 
+                                color: '#ef5350',
+                                '&:hover': { backgroundColor: '#ffebee' },
+                                '&:disabled': { opacity: 0.5 }
+                              }}
+                            >
+                              {deletingId === supplier.id ? (
+                                <CircularProgress size={20} />
+                              ) : (
+                                <Delete fontSize="small" />
+                              )}
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </Box>
+        )}
       </Box>
     );
-  }
+  };
 
   return (
     <DashboardLayout>
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+            borderRadius: '8px',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+          },
+          success: {
+            iconTheme: {
+              primary: '#4caf50',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#f44336',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
+      
       <Card elevation={3} sx={{ p: 2 }}>
-        {/* Header Section */}
-        <Grid container spacing={2} alignItems="center" sx={{ mb: 3 }}>
-          <Grid item xs={12} md={6}>
-            <Typography variant="h4" fontWeight="bold">
-              Gestion des Fournisseurs
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {filteredSuppliers.length} fournisseur{filteredSuppliers.length !== 1 ? 's' : ''} trouvé{filteredSuppliers.length !== 1 ? 's' : ''}
-            </Typography>
-          </Grid>
-          <Grid item xs={12} md={6} sx={{ textAlign: { md: 'right' } }}>
-            <Button
-              variant="contained"
-              startIcon={<AddCircle />}
-              onClick={() => window.location.href = "/SupplierForm"}
-              sx={{ mr: 2 }}
-            >
-              Nouveau Fournisseur
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<Refresh />}
-              onClick={handleRefresh}
-            >
-              Actualiser
-            </Button>
-          </Grid>
-        </Grid>
-
-        {/* Search Section */}
-        <Box sx={{ 
-          p: 2, 
-          mb: 3, 
-          bgcolor: 'background.paper', 
-          borderRadius: 1,
-          boxShadow: 1
-        }}>
-          <TextField
-            fullWidth
-            variant="outlined"
-            placeholder="Rechercher fournisseurs..."
-            value={searchQuery}
-            onChange={handleSearch}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search color="action" />
-                </InputAdornment>
-              ),
-            }}
+        <Box sx={{ p: 3 }}>
+          <DeleteConfirmationModal
+            open={deleteDialogOpen}
+            onClose={closeDeleteDialog}
+            onConfirm={handleDelete}
+            title="Supprimer le fournisseur"
+            message="Êtes-vous sûr de vouloir supprimer définitivement ce fournisseur ?"
+            loading={deletingId !== null}
           />
-        </Box>
+          
+          <SupplierDetailsModal
+            supplier={selectedSupplier}
+            open={detailsModalOpen}
+            onClose={() => setDetailsModalOpen(false)}
+          />
+          
+          <Grid container spacing={2} alignItems="center" sx={{ mb: 3 }}>
+            <Grid item xs={12} md={6}>
+              <Typography variant="h4" fontWeight="bold">
+                Gestion des Fournisseurs
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {activeSuppliers.filter(s => !s.isArchived).length} fournisseur(s) actif(s) • {archivedSuppliers.filter(s => s.isArchived).length} fournisseur(s) archivé(s)
+              </Typography>
+            </Grid>
+            <Grid item xs={12} md={6} sx={{ textAlign: { md: 'right' } }}>
+              <Button
+                variant="contained"
+                startIcon={<AddCircle />}
+                onClick={() => navigate("/SupplierForm")}
+                sx={{ mr: 2 }}
+              >
+                Nouveau Fournisseur
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<Refresh />}
+                onClick={() => {
+                  setSearchQuery('');
+                  fetchSuppliers();
+                  toast.success('Liste des fournisseurs actualisée');
+                }}
+              >
+                Actualiser
+              </Button>
+            </Grid>
+          </Grid>
 
-        {/* Table Section - Version compacte */}
-        <Paper sx={{ overflowX: 'auto' }}>
-          <Box component="table" sx={{ 
-            width: '100%', 
-            borderCollapse: 'collapse',
-            minWidth: '600px'
-          }}>
-            <Box component="thead" sx={{ backgroundColor: '#f5f7fa' }}>
-              <Box component="tr">
-                <Box component="th" sx={{ padding: '12px', textAlign: 'left', width: '50px' }}>
-                  <Checkbox
-                    inputRef={selectAllRef}
-                    checked={selectedAll}
-                    indeterminate={selectedSome}
-                    onChange={(e) => e.target.checked ? selectAll() : deselectAll()}
-                    size="small"
-                  />
+          {/* Onglets pour basculer entre actifs et archivés */}
+          <Tabs 
+            value={activeTab} 
+            onChange={handleTabChange}
+            sx={{ 
+              mb: 3,
+              borderBottom: 1,
+              borderColor: 'divider'
+            }}
+          >
+            <Tab 
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Unarchive sx={{ mr: 1 }} />
+                  Fournisseurs Actifs ({activeSuppliers.filter(s => !s.isArchived).length})
                 </Box>
-                <Box component="th" sx={{ padding: '12px', textAlign: 'left', fontWeight: 600, minWidth: '200px' }}>Nom</Box>
-                <Box component="th" sx={{ padding: '12px', textAlign: 'left', fontWeight: 600, minWidth: '150px' }}>Contact</Box>
-                <Box component="th" sx={{ padding: '12px', textAlign: 'left', fontWeight: 600, minWidth: '150px' }}>Email</Box>
-                <Box component="th" sx={{ padding: '12px', textAlign: 'left', fontWeight: 600, width: '120px' }}>Actions</Box>
-              </Box>
-            </Box>
-            <Box component="tbody">
-              {displayedSuppliers.map((supplier) => {
-                const isSelected = selectedIds.has(supplier.id);
-                return (
-                  <Box 
-                    component="tr"
-                    key={supplier.id} 
-                    hover 
-                    sx={{ 
-                      '&:hover': { backgroundColor: '#f9fafc' },
-                      backgroundColor: isSelected ? '#e3f2fd' : 'inherit'
-                    }}
-                  >
-                    <Box component="td" sx={{ padding: '12px' }}>
-                      <Checkbox
-                        checked={isSelected}
-                        onChange={(e) => e.target.checked ? selectOne(supplier.id) : deselectOne(supplier.id)}
-                        size="small"
-                      />
-                    </Box>
-                    <Box component="td" sx={{ padding: '12px' }}>{supplier.name}</Box>
-                    <Box component="td" sx={{ padding: '12px' }}>{supplier.contactPerson}</Box>
-                    <Box component="td" sx={{ padding: '12px' }}>{supplier.email}</Box>
-                    <Box component="td" sx={{ padding: '12px' }}>
-                      <Box sx={{ display: 'flex', gap: '4px' }}>
-                        <Tooltip title="Modifier">
-                          <IconButton
-                            color="primary"
-                            onClick={() => onUpdate(supplier.id)}
-                            size="small"
-                            sx={{ p: '6px' }}
-                          >
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Supprimer">
-                          <IconButton
-                            color="error"
-                            onClick={() => handleDeleteSupplier(supplier.id)}
-                            size="small"
-                            sx={{ p: '6px' }}
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Voir détails">
-                          <IconButton
-                            color="info"
-                            onClick={() => handleViewDetails(supplier)}
-                            size="small"
-                            sx={{ p: '6px' }}
-                          >
-                            <VisibilityIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
-                    </Box>
-                  </Box>
-                );
-              })}
-            </Box>
-          </Box>
-        </Paper>
-
-        {filteredSuppliers.length === 0 && (
-          <Box sx={{ p: 4, textAlign: 'center' }}>
-            <Typography variant="body1">
-              {searchQuery ? 'Aucun fournisseur trouvé pour cette recherche' : 'Aucun fournisseur enregistré'}
-            </Typography>
-          </Box>
-        )}
-
-        {filteredSuppliers.length > 0 && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-            <Pagination
-              count={totalPages}
-              page={currentPage}
-              onChange={handlePageChange}
-              color="primary"
-              showFirstButton
-              showLastButton
-              renderItem={(item) => (
-                <PaginationItem
-                  slots={{ 
-                    first: FirstPage, 
-                    last: LastPage,
-                    previous: NavigateBefore, 
-                    next: NavigateNext 
-                  }}
-                  {...item}
-                />
-              )}
+              } 
+              value="active" 
+              sx={{ fontWeight: 'bold' }}
             />
-          </Box>
-        )}
+            <Tab 
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Archive sx={{ mr: 1 }} />
+                  Fournisseurs Archivés ({archivedSuppliers.filter(s => s.isArchived).length})
+                </Box>
+              } 
+              value="archived" 
+              sx={{ fontWeight: 'bold' }}
+            />
+          </Tabs>
 
-        <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md">
-          <DialogTitle>Détails du fournisseur</DialogTitle>
-          <DialogContent dividers>
-            {selectedSupplier && (
-              <Box sx={{ p: 2 }}>
-                <Grid container spacing={3}>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="h6" gutterBottom>Informations de base</Typography>
-                    <Typography><strong>Nom:</strong> {selectedSupplier.name}</Typography>
-                    <Typography><strong>Contact:</strong> {selectedSupplier.contactPerson}</Typography>
-                    <Typography><strong>Email:</strong> {selectedSupplier.email}</Typography>
-                    <Typography><strong>Téléphone:</strong> {selectedSupplier.phone}</Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="h6" gutterBottom>Adresses</Typography>
-                    {selectedSupplier.addresses?.length > 0 ? (
-                      selectedSupplier.addresses.map((address, index) => (
-                        <Box key={index} sx={{ mb: 2 }}>
-                          <Typography><strong>Adresse {index + 1}:</strong></Typography>
-                          <Typography>{address.addressLine1}</Typography>
-                          {address.addressLine2 && <Typography>{address.addressLine2}</Typography>}
-                          <Typography>{address.city}, {address.state} {address.postalCode}</Typography>
-                          <Typography>{address.country}</Typography>
-                        </Box>
-                      ))
-                    ) : (
-                      <Typography>Aucune adresse enregistrée</Typography>
-                    )}
-                  </Grid>
-                </Grid>
-              </Box>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseDialog} color="primary">
-              Fermer
-            </Button>
-          </DialogActions>
-        </Dialog>
+          <SearchBar 
+            searchQuery={searchQuery} 
+            onSearchChange={handleSearchChange} 
+            onClearSearch={clearSearch} 
+            searchLoading={searchLoading}
+          />
+
+          {error && (
+            <Alert severity="error" sx={{ mb: 3 }}>
+              {error}
+            </Alert>
+          )}
+
+          {loading ? (
+            <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px">
+              <CircularProgress size={60} />
+            </Box>
+          ) : (
+            renderSupplierTable(currentSuppliers)
+          )}
+        </Box>
       </Card>
     </DashboardLayout>
   );
@@ -365,8 +776,6 @@ export function SupplierListTable({ rowsPerPage = 10, onDelete, onUpdate }) {
 
 SupplierListTable.propTypes = {
   rowsPerPage: PropTypes.number,
-  onDelete: PropTypes.func.isRequired,
-  onUpdate: PropTypes.func.isRequired,
 };
 
 SupplierListTable.defaultProps = {
