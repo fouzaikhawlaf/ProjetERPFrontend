@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import {
   Paper,
@@ -619,7 +620,8 @@ export function SupplierListTable({ rowsPerPage = 10 }) {
                           <Tooltip title="Modifier">
                             <IconButton 
                               size="small"
-                              onClick={() => handleEditSupplier(supplier.id)}
+                               component={Link} // Transforme en lien
+                              to={`/suppliers/edit/${supplier.id}`} // Nouvelle route
                               sx={{ 
                                 color: '#26a69a',
                                 '&:hover': { backgroundColor: '#e0f2f1' }
