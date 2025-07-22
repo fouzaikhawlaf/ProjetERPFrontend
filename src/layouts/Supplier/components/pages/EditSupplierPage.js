@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getSupplierById, updateSupplier } from 'services/supplierApi';
-
 import { useSnackbar } from 'notistack';
 import DashboardLayout from '../../../../examples/LayoutContainers/DashboardLayout';
-import { CircularProgress, Box } from '@mui/material'; // Ajout de Box ici
+import { CircularProgress, Box } from '@mui/material';
 import Step1SupplierInfo from '../supplierSteps/Step1SupplierInfo';
 import Step2SupplierAddress from '../supplierSteps/Step2ContactDetails';
 import PreviewSupplierStep from '../PreviewSupplierStep';
@@ -14,9 +13,9 @@ function EditSupplierPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
   
-  // État initial du fournisseur
   const [supplierInfo, setSupplierInfo] = useState({
     name: '',
     code: '',
@@ -32,7 +31,6 @@ function EditSupplierPage() {
       try {
         const supplier = await getSupplierById(supplierId);
         
-        // Normaliser les données de l'API
         const normalizedAddresses = supplier.addresses?.$values || supplier.addresses || [];
         
         setSupplierInfo({
@@ -63,7 +61,6 @@ function EditSupplierPage() {
   }, [supplierId, enqueueSnackbar]);
 
   const handleNext = () => {
-    // Validation des étapes
     switch (step) {
       case 0:
         if (!supplierInfo.name || !supplierInfo.email || !supplierInfo.phone) {
@@ -94,25 +91,21 @@ function EditSupplierPage() {
 
   const handleEdit = (section) => {
     switch (section) {
-      case 'supplierInfo':
-        setStep(0);
-        break;
-      case 'address':
-        setStep(1);
-        break;
-      default:
-        break;
+      case 'supplierInfo': setStep(0); break;
+      case 'address': setStep(1); break;
+      default: break;
     }
   };
 
+  // Fonction corrigée avec le crochet manquant
   const handleSubmit = async () => {
+    setIsSubmitting(true);
     try {
-      // Préparer les données pour l'API
       const updateData = {
         ...supplierInfo,
         addresses: supplierInfo.addresses.map(addr => ({
           ...addr,
-          addressID: addr.addressID || 0 // Garder l'ID existant ou 0 pour nouvelles adresses
+          addressID: addr.addressID || 0
         }))
       };
       
@@ -122,7 +115,9 @@ function EditSupplierPage() {
     } catch (error) {
       console.error('Failed to update supplier', error);
       enqueueSnackbar('Échec de la mise à jour du fournisseur', { variant: 'error' });
-    }
+    } finally {
+      setIsSubmitting(false);
+    } // Correction ici - ajout du crochet fermant
   };
 
   if (loading) {
@@ -162,6 +157,7 @@ function EditSupplierPage() {
             handlePrev={handlePrev}
             handleEdit={handleEdit}
             handleSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
             isEditMode={true}
           />
         )}
