@@ -76,7 +76,7 @@ import ProfilePage from "./layouts/profile";
 import ManagerProfilePage from "./layouts/profile/data/ManagerProfilePage";
 import AdminProfilePage from "./layouts/profile/data/AdminProfilePage";
 import ProfileDashboard from "./layouts/profile/data/UserForm";
-import ProductListWrapper from './layouts/Product/components/ProductListWrapper';
+
 import DashboardCards from "layouts/profile/data/adminDashboard/DashboardCards";
 import ProjectDashboard from "layouts/Projects/components/ProjectDashboard";
 import ProjectList from "./layouts/Projects/components/ProjectList";

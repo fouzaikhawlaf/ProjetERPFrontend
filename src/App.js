@@ -85,7 +85,7 @@ import SuccessPage from "./layouts/Product/components/ProductSteps/SuccessPage";
 import SupplierFormStepsDb from "./layouts/Supplier/components/supplierSteps/SupplierFormSteps";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css'; // Assurez-vous que les styles sont inclus
-import ProductListWrapper from './layouts/Product/components/ProductListWrapper'; // Your wrapper component
+
 import SignInPage from "./layouts/authentication/sign-up";
 import SignIn from "./layouts/authentication/sign-in";
 import OrdersTable from 'layouts/Sale/Data/Tables/OrdersTable';
@@ -128,6 +128,8 @@ import CreateClientOrder from './layouts/Sale/Data/OrderClient/OrderClientCreate
 import DevisProjetForm from 'layouts/Sale/Data/forms/CreerDevisClientProjet ';
 import EditClientPage from 'layouts/tables/components/pages/EditClientPage';
 import EditSupplierPage from 'layouts/Supplier/components/pages/EditSupplierPage';
+import ProductsTable from 'layouts/Product/components/ProductsTable';
+
 
 
 
@@ -286,7 +288,7 @@ export default function App() {
         <Route path = "/Produit" element ={<ProductFormStepsPD/>}/>
         <Route path = "/SupplierForm" element ={<SupplierFormStepsDb/>}/>
         <Route path="/success" element={<SuccessPage/>} />
-        <Route path="/products" element={<ProductListWrapper />} />
+        <Route path="/products" element={<ProductsTable />} />
         <Route path="/orders" element={<OrdersTable />} />
         <Route path="/devis" element={<DevisTable />} />
         <Route path="/deliveries" element={<DeliveriesTable />} />
