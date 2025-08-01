@@ -9,6 +9,7 @@ import ProductInfoStep from '../ProductSteps/ProductInfoStep';
 import AdditionalInfoStep from '../ProductSteps/AdditionalInfoStep';
 import PreviewStep from '../ProductSteps/Preview';
 import SuccessPage from '../ProductSteps/SuccessPage';
+import DashboardLayout from 'examples/LayoutContainers/DashboardLayout';
 
 function UpdateProductForm() {
   const { productId } = useParams();
@@ -146,6 +147,8 @@ function UpdateProductForm() {
   }
 
   return (
+    <DashboardLayout>
+          <Box sx={{ width: '100%', padding: '20px' }}>
     <div>
       {currentStep === 1 && (
         <ProductTypeStep
@@ -193,6 +196,8 @@ function UpdateProductForm() {
         />
       )}
     </div>
+    </Box>
+    </DashboardLayout>
   );
 }
 
