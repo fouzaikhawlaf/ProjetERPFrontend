@@ -66,7 +66,7 @@ import BankAccountDashboard from "./layouts/billing/components/BankAccountDashbo
 import Page from "./layouts/tables/components";
 import { SignInForm } from "./layouts/authentication/sign-up";
 import PageSupplier from "./layouts/Supplier/components";
-import PageProduct from "./layouts/Product/components";
+
 import SignInPage from "./layouts/authentication/sign-up";
 import Dashboardlayout from "./layouts/Projects/components/Dashboardlayout";
 import EmployeeDashboard from "./layouts/employee/components/EmployeeDashboard";

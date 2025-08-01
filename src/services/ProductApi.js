@@ -78,3 +78,13 @@ export const archiveProduct = async (productId) => {
     throw error;
   }
 };
+// In ProductApi.js
+export const getProduct = async (productId) => {
+  try {
+    const response = await apiErp.get(`/Product/${productId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching product:', error);
+    throw error;
+  }
+};

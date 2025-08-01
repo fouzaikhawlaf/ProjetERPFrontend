@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+
 import PropTypes from 'prop-types';
 import {
   Card,
@@ -269,9 +270,12 @@ const ProductsTable = ({
     setActiveTab(newValue);
   };
 
-  const handleEditProduct = (productId) => {
-    navigate(`/products/edit/${productId}`);
-  };
+// Modifiez la fonction handleEditProduct
+const handleEditProduct = (product) => {
+  navigate(`/products/edit/${product.id}`, {
+    state: { product } // Passez le produit complet dans l'état de navigation
+  });
+};
 
   return (
     <DashboardLayout>
@@ -640,7 +644,7 @@ const ProductsTable = ({
                               <Tooltip title="Modifier">
                                 <IconButton
                                   size="small"
-                                  onClick={() => handleEditProduct(row.id)}
+                                  onClick={() => handleEditProduct(row)}
                                   sx={{ 
                                     color: '#26a69a',
                                     '&:hover': { backgroundColor: '#e0f2f1' }

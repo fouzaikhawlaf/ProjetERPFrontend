@@ -1,69 +1,55 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'; // Icône de succès
-import { Box, Typography, Button, Container } from '@mui/material'; // Utilisation de MUI pour un design cohérent
-import DashboardLayout from '../../../../examples/LayoutContainers/DashboardLayout';
+import { Box, Typography, Button } from '@mui/material';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import PropTypes from 'prop-types';
+import { Link } from 'react-router-dom';
 
-
-const SuccessPage = () => {
-  const navigate = useNavigate();
-
+const SuccessPage = ({ onEditAgain }) => {
   return (
-    <DashboardLayout>
-    <Container
-      maxWidth="sm"
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100vh',
-        backgroundColor: '#f5f5f5',
-        borderRadius: '10px',
-        boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.2)',
-      }}
-    >
-      <Box textAlign="center">
-        <CheckCircleOutlineIcon style={{ fontSize: 100, color: '#4caf50' }} />
-        <Typography
-          variant="h4"
-          style={{
-            marginTop: '20px',
-            color: '#333',
-            fontWeight: 'bold',
-            fontFamily: 'Roboto, sans-serif',
-          }}
-        >
-          Produit créé avec succès !
-        </Typography>
-        <Typography
-          variant="body1"
-          style={{
-            marginTop: '10px',
-            color: '#555',
-            fontFamily: 'Roboto, sans-serif',
-          }}
-        >
-          Votre produit a été ajouté à la liste avec succès. Vous pouvez maintenant revenir pour voir ou gérer les produits.
-        </Typography>
+    <Box sx={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: '60vh',
+      textAlign: 'center',
+      p: 3
+    }}>
+      <CheckCircleIcon sx={{ fontSize: 80, color: 'success.main', mb: 3 }} />
+      
+      <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold' }}>
+        Produit mis à jour avec succès !
+      </Typography>
+      
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 4, maxWidth: 500 }}>
+        Votre produit a été mis à jour avec succès dans le système.
+      </Typography>
+      
+      <Box sx={{ display: 'flex', gap: 2 }}>
         <Button
           variant="contained"
-          color="success"
-          style={{
-            marginTop: '30px',
-            padding: '10px 20px',
-            fontWeight: 'bold',
-            textTransform: 'uppercase',
-            fontSize: '14px',
-          }}
-          onClick={() => navigate('/produitService')}
+          color="primary"
+          component={Link}
+          to="/products"
+          sx={{ px: 4, py: 1.5 }}
         >
-          Voir la liste des produits
+          Retour à la liste des produits
+        </Button>
+        
+        <Button
+          variant="outlined"
+          onClick={onEditAgain}
+          sx={{ px: 4, py: 1.5 }}
+        >
+          Modifier à nouveau
         </Button>
       </Box>
-    </Container>
-    </DashboardLayout>
+    </Box>
   );
+};
+
+SuccessPage.propTypes = {
+  onEditAgain: PropTypes.func.isRequired,
 };
 
 export default SuccessPage;

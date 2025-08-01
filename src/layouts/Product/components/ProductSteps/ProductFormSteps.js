@@ -3,17 +3,15 @@ import { Box, Tabs, Tab } from '@mui/material';
 import ProductTypeStep from './ProductTypeStep';
 import ProductInfoStep from './ProductInfoStep';
 import AdditionalInfoStep from './AdditionalInfoStep';
-import CompletionStep from './CompletionStep';
-
-import { createProduct } from 'services/ProductApi'; // Import de la fonction createProduct depuis votre service
 import PreviewStep from './Preview';
+import { createProduct } from 'services/ProductApi';
 import PropTypes from 'prop-types';
 import SuccessPage from './SuccessPage';
 import DashboardLayout from '../../../../examples/LayoutContainers/DashboardLayout';
 
-function ProductFormStepsPD ({ handleEdit })  {
+function ProductFormStepsPD() {
   const [step, setStep] = useState(0);
- const [productType, setProductType] = useState(0); // 0=Produit, 1=Service
+  const [productType, setProductType] = useState(0);
   const [productInfo, setProductInfo] = useState({
     reference: '',
     name: '',
@@ -24,10 +22,10 @@ function ProductFormStepsPD ({ handleEdit })  {
     salePrice: '',
   });
   const [additionalInfo, setAdditionalInfo] = useState({
-    
+    description: '',
     category: '',
     unit: '',
-
+    image: '',
   });
 
   const handleNext = () => {
@@ -40,109 +38,52 @@ function ProductFormStepsPD ({ handleEdit })  {
 
   const handleChange = (event, newValue) => setStep(newValue);
 
-  const handleProductInfoChange = (field) => (event) =>
-    setProductInfo({ ...productInfo, [field]: event.target.value });
+  // Conversion automatique des champs numériques
+  const handleProductInfoChange = (field) => (event) => {
+    let value = event.target.value;
+    
+    if (field === 'salePrice' || field === 'tvaRate') {
+      value = value === '' ? '' : Number(value);
+    }
+    
+    setProductInfo({ ...productInfo, [field]: value });
+  };
 
-  const handleAdditionalInfoChange = (field) => (event) =>
+  const handleAdditionalInfoChange = (field) => (event) => {
     setAdditionalInfo({ ...additionalInfo, [field]: event.target.value });
+  };
 
-
-    const validateProduct = (product) => {
-      // Vérification du champ "Name"
-      if (!product.name || product.name.trim() === '') {
-        return "Le nom du produit est requis.";
-      }
-      if (product.name.length > 100) {
-        return "Le nom ne doit pas dépasser 100 caractères.";
-      }
-    
-      // Vérification du taux de TVA
-      if (isNaN(product.tvaRate) || product.tvaRate < 0 || product.tvaRate > 100) {
-        return "Le taux de TVA doit être un nombre compris entre 0 et 100.";
-      }
-    
-      // Vérification du prix
-      if (isNaN(product.salePrice) || product.salePrice <= 0) {
-        return "Le prix doit être supérieur à 0.";
-      }
-    
-      // Vérification des champs supplémentaires
-      if (!product.priceType || product.priceType.trim() === '') {
-        return "Le type de prix est requis.";
-      }
-      if (!product.category || product.category.trim() === '') {
-        return "La catégorie est requise.";
-      }
-      if (!product.unit || product.unit.trim() === '') {
-        return "L'unité est requise.";
-      }
-    
-      // Aucune erreur trouvée
-      return null;
+  const handleSubmit = async () => {
+    const productData = {
+      productType,
+      ...productInfo,
+      ...additionalInfo,
     };
-    
-    const handleSubmit = async () => {
-      // Préparation des données
-      const productData = {
-        productType,
-        name: productInfo.name || '', // Fallback pour éviter les valeurs nulles/indéfinies
-        tvaRate: productInfo.tvaRate || 0,
-        priceType: productInfo.priceType || '',
-        salePrice: productInfo.salePrice || 0,
-        description: additionalInfo.description || '',
-        category: additionalInfo.category || '',
-        unit: additionalInfo.unit || '',
-      };
-    
-      const handleEdit = (section) => {
-        switch (section) {
-          case 'productType':
-            setStep(0); // Redirect to product type step
-            break;
-          case 'productInfo':
-            setStep(1); // Redirect to product info step
-            break;
-          case 'additionalInfo':
-            setStep(2); // Redirect to additional info step
-            break;
-          default:
-            break;
-        }
-      };
-      
 
-
-
-
-      // Validation des données
-      const error = validateProduct(productData);
-      if (error) {
-        alert(error); // Affiche une alerte avec le message d'erreur
-        console.error(error);
-        return; // Stoppe l'exécution si une erreur est détectée
+    try {
+      const response = await createProduct(productData);
+      if (response) {
+        setStep(4); // Aller à l'étape de succès
       }
-    
-      console.log('Données envoyées :', productData);
-    
-      try {
-        // Envoi des données via le service
-        const response = await createProduct(productData);
-        if (response) {
-          alert('Produit créé avec succès!');
-          console.log('Response data:', response);
-        }
-      } catch (error) {
-        console.error('Erreur:', error);
-        // Gestion des erreurs de l'API ou du réseau
-        if (error.response && error.response.data) {
-          alert(`Erreur: ${error.response.data.message || 'Une erreur s\'est produite.'}`);
-        } else {
-          alert('Une erreur réseau ou serveur s\'est produite.');
-        }
+    } catch (error) {
+      console.error('Erreur:', error);
+      if (error.response && error.response.data) {
+        alert(`Erreur: ${error.response.data.message || 'Une erreur s\'est produite.'}`);
+      } else {
+        alert('Une erreur réseau ou serveur s\'est produite.');
       }
-    };
-    
-  
+    }
+  };
+
+  const handleEdit = (section) => {
+    switch (section) {
+      case 'productType': setStep(0); break;
+      case 'productInfo': setStep(1); break;
+      case 'additionalInfo': setStep(2); break;
+      default: break;
+    }
+  };
+
   return (
     <DashboardLayout>
       <Box sx={{ width: '100%', padding: '20px' }}>
@@ -154,10 +95,10 @@ function ProductFormStepsPD ({ handleEdit })  {
           textColor="primary"
           centered
         >
-          <Tab label="Type de produit hh" />
+          <Tab label="Type de produit" />
           <Tab label="Informations du produit" />
           <Tab label="Informations supplémentaires" />
-          <Tab label="Aperçu" /> {/* New tab for preview */}
+          <Tab label="Aperçu" />
           <Tab label="Terminé" />
         </Tabs>
 
@@ -186,22 +127,19 @@ function ProductFormStepsPD ({ handleEdit })  {
         )}
         {step === 3 && (
           <PreviewStep
-            productType={productType}
+            productType={productType === 0 ? "Produit" : "Service"}
             productInfo={productInfo}
             additionalInfo={additionalInfo}
             handlePrev={handlePrev}
-            handleNext={handleNext}
             handleSubmit={handleSubmit}
-            handleEdit={handleEdit} // Pass handleEdit function
+            handleEdit={handleEdit}
+            mode="create" // Mode create spécifié
           />
-          )}
-        {step === 4 && <SuccessPage handleSubmit={handleSubmit} />}
+        )}
+        {step === 4 && <SuccessPage />}
       </Box>
     </DashboardLayout>
   );
 }
-ProductFormStepsPD.propTypes = {
-  handleEdit: PropTypes.func.isRequired, // Indique que handleEdit est une fonction obligatoire
-};
 
 export default ProductFormStepsPD;
