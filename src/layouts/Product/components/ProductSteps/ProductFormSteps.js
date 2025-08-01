@@ -1,32 +1,42 @@
 import React, { useState } from 'react';
-import { Box, Tabs, Tab } from '@mui/material';
-import ProductTypeStep from './ProductTypeStep';
+import { 
+  Box, 
+  Tabs, 
+  Tab,
+  CircularProgress,
+  useTheme
+} from '@mui/material';
+
+import { createProduct } from 'services/ProductApi';
+import SuccessPage from './SuccessPage';
+import DashboardLayout from '../../../../examples/LayoutContainers/DashboardLayout';
+import { useSnackbar } from 'notistack';
 import ProductInfoStep from './ProductInfoStep';
 import AdditionalInfoStep from './AdditionalInfoStep';
 import PreviewStep from './Preview';
-import { createProduct } from 'services/ProductApi';
-import PropTypes from 'prop-types';
-import SuccessPage from './SuccessPage';
-import DashboardLayout from '../../../../examples/LayoutContainers/DashboardLayout';
+import ProductTypeStep from './ProductTypeStep';
 
 function ProductFormStepsPD() {
   const [step, setStep] = useState(0);
   const [productType, setProductType] = useState(0);
   const [productInfo, setProductInfo] = useState({
-    reference: '',
     name: '',
     category: '',
     brand: '',
-    priceType: 'TTC',
-    tvaRate: '',
+    priceType: 'Fixed',
+    tvaRate: 19, // Valeur par défaut
     salePrice: '',
+    stockQuantity: 0,
   });
   const [additionalInfo, setAdditionalInfo] = useState({
     description: '',
-    category: '',
-    unit: '',
+    unit: 'pièce',
     image: '',
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+  const { enqueueSnackbar } = useSnackbar();
+  const theme = useTheme();
 
   const handleNext = () => {
     if (step < 3) setStep(step + 1);
@@ -38,41 +48,107 @@ function ProductFormStepsPD() {
 
   const handleChange = (event, newValue) => setStep(newValue);
 
-  // Conversion automatique des champs numériques
-  const handleProductInfoChange = (field) => (event) => {
-    let value = event.target.value;
+  const handleProductInfoChange = (field) => (e) => {
+    const value = e.target.value;
     
-    if (field === 'salePrice' || field === 'tvaRate') {
-      value = value === '' ? '' : Number(value);
+    // CORRECTION: Gestion sécurisée des champs numériques
+    if (['tvaRate', 'salePrice', 'stockQuantity'].includes(field)) {
+      // Permet à l'utilisateur de vider le champ
+      if (value === '') {
+        setProductInfo(prev => ({ ...prev, [field]: '' }));
+        return;
+      }
+      
+      // Conversion numérique adaptée au type de champ
+      const numericValue = field === 'stockQuantity' 
+        ? parseInt(value, 10) 
+        : parseFloat(value);
+        
+      // Ne met à jour que si la conversion est valide
+      if (!isNaN(numericValue)) {
+        setProductInfo(prev => ({ ...prev, [field]: numericValue }));
+      }
+    } else {
+      setProductInfo(prev => ({ ...prev, [field]: value }));
     }
-    
-    setProductInfo({ ...productInfo, [field]: value });
   };
 
-  const handleAdditionalInfoChange = (field) => (event) => {
-    setAdditionalInfo({ ...additionalInfo, [field]: event.target.value });
+  const handleAdditionalInfoChange = (field) => (e) => {
+    setAdditionalInfo(prev => ({ ...prev, [field]: e.target.value }));
   };
 
   const handleSubmit = async () => {
-    const productData = {
-      productType,
-      ...productInfo,
-      ...additionalInfo,
-    };
-
+    setIsSubmitting(true);
+    setError(null);
+    
     try {
+      // Validation finale
+      const errors = {};
+      
+      if (!productInfo.name.trim()) {
+        errors.name = "Le nom du produit est requis";
+      }
+      
+      // CORRECTION: Utilisation directe des valeurs numériques
+      if (productInfo.salePrice <= 0) {
+        errors.price = "Le prix doit être supérieur à 0";
+      }
+      
+      if (productInfo.tvaRate < 0) {
+        errors.tva = "Le taux de TVA est invalide";
+      }
+      
+      if (productInfo.stockQuantity < 0) {
+        errors.quantity = "La quantité est invalide";
+      }
+      
+      if (Object.keys(errors).length > 0) {
+        Object.values(errors).forEach(error => 
+          enqueueSnackbar(error, { variant: 'error' })
+        );
+        return;
+      }
+
+      // CORRECTION: Préparation des données pour l'API
+      const productData = {
+        name: productInfo.name,
+        description: additionalInfo.description,
+        price: productInfo.salePrice, // Champ 'price' avec la valeur de salePrice
+        taxRate: productInfo.tvaRate, // Taux entier (ex: 19)
+        tvaRate: convertTvaRate(productInfo.tvaRate), // Conversion en enum
+        priceType: productInfo.priceType,
+        category: productInfo.category,
+        unit: additionalInfo.unit,
+        isArchived: false,
+        itemTypeArticle: parseInt(productType),
+        stockQuantity: productInfo.stockQuantity
+      };
+
       const response = await createProduct(productData);
       if (response) {
-        setStep(4); // Aller à l'étape de succès
+        setStep(4);
+        enqueueSnackbar('Produit créé avec succès', { variant: 'success' });
       }
     } catch (error) {
       console.error('Erreur:', error);
-      if (error.response && error.response.data) {
-        alert(`Erreur: ${error.response.data.message || 'Une erreur s\'est produite.'}`);
-      } else {
-        alert('Une erreur réseau ou serveur s\'est produite.');
-      }
+      const errorMessage = error.response?.data?.message || error.message || 'Échec de la création du produit';
+      setError(errorMessage);
+      enqueueSnackbar(errorMessage, { variant: 'error' });
+    } finally {
+      setIsSubmitting(false);
     }
+  };
+
+  // CORRECTION: Fonction de conversion TVA
+  const convertTvaRate = (rate) => {
+    // Mapping des taux TVA vers les valeurs d'enum backend
+    const rateMap = {
+      0: 0,    // Zero
+      5.5: 1,  // Reduced
+      10: 2,   // Intermediate
+      19: 3    // Standard
+    };
+    return rateMap[rate] ?? 3; // Par défaut: Standard
   };
 
   const handleEdit = (section) => {
@@ -86,7 +162,11 @@ function ProductFormStepsPD() {
 
   return (
     <DashboardLayout>
-      <Box sx={{ width: '100%', padding: '20px' }}>
+      <Box sx={{ 
+        width: '100%', 
+        padding: '20px',
+        backgroundColor: theme.palette.background.default
+      }}>
         <Tabs
           value={step}
           onChange={handleChange}
@@ -94,6 +174,7 @@ function ProductFormStepsPD() {
           indicatorColor="primary"
           textColor="primary"
           centered
+          sx={{ mb: 3 }}
         >
           <Tab label="Type de produit" />
           <Tab label="Informations du produit" />
@@ -109,6 +190,7 @@ function ProductFormStepsPD() {
             handleNext={handleNext}
           />
         )}
+        
         {step === 1 && (
           <ProductInfoStep
             productInfo={productInfo}
@@ -117,6 +199,7 @@ function ProductFormStepsPD() {
             handleNext={handleNext}
           />
         )}
+        
         {step === 2 && (
           <AdditionalInfoStep
             additionalInfo={additionalInfo}
@@ -125,6 +208,7 @@ function ProductFormStepsPD() {
             handleNext={handleNext}
           />
         )}
+        
         {step === 3 && (
           <PreviewStep
             productType={productType === 0 ? "Produit" : "Service"}
@@ -133,9 +217,12 @@ function ProductFormStepsPD() {
             handlePrev={handlePrev}
             handleSubmit={handleSubmit}
             handleEdit={handleEdit}
-            mode="create" // Mode create spécifié
+            isSubmitting={isSubmitting}
+            error={error}
+            mode="create"
           />
         )}
+        
         {step === 4 && <SuccessPage />}
       </Box>
     </DashboardLayout>

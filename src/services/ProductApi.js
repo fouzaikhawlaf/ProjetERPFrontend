@@ -1,5 +1,6 @@
 import apiErp from './api';
 
+
 export const createProduct = async (productData) => {
   try {
     const response = await apiErp.post('/Product', productData, {
@@ -10,11 +11,24 @@ export const createProduct = async (productData) => {
     });
     return response.data;
   } catch (error) {
-    // Améliorer le logging
-    console.error('Server response:', error.response?.data); 
-    throw new Error(error.response?.data?.Errors[0]?.Message || error.message);
+    // Amélioration du logging d'erreur
+    console.error('Erreur API:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message
+    });
+    
+    // Meilleure extraction du message d'erreur
+    const errorMessage = error.response?.data?.Errors?.[0]?.Message 
+      || error.response?.data?.message 
+      || error.message 
+      || 'Erreur inconnue';
+    
+    throw new Error(errorMessage);
   }
 };
+
+
 
 
 export const getProducts = async () => {

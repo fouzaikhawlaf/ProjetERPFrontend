@@ -28,19 +28,13 @@ const ProductInfoStep = ({ productInfo, handleProductInfoChange, handlePrev, han
     }
     
     // Correction: conversion en nombre pour la validation
-    const salePrice = Number(productInfo.salePrice);
-    if (!productInfo.salePrice || isNaN(salePrice) || salePrice <= 0) {
+    const salePrice = parseFloat(productInfo.salePrice);
+    if (isNaN(salePrice) || salePrice <= 0) {
       newErrors.salePrice = "Le prix doit être supérieur à 0";
     }
     
     if (productInfo.tvaRate === null || productInfo.tvaRate === undefined) {
       newErrors.tvaRate = "La TVA est requise";
-    }
-    
-    // Validation de la quantité
-    const quantity = Number(productInfo.stockQuantity);
-    if (isNaN(quantity) || quantity < 0) {
-      newErrors.stockQuantity = "La quantité doit être un nombre positif";
     }
     
     setErrors(newErrors);
@@ -74,14 +68,14 @@ const ProductInfoStep = ({ productInfo, handleProductInfoChange, handlePrev, han
         
         <Grid item xs={12} md={6}>
           <TextField
-            label="Quantité en stock"
+            label="Quantité en stock *"
             variant="outlined"
             type="number"
             fullWidth
             value={productInfo.stockQuantity}
             onChange={handleProductInfoChange('stockQuantity')}
             error={!!errors.stockQuantity}
-            helperText={errors.stockQuantity}
+            helperText={errors.stockQuantity || "Nombre d'articles disponibles"}
             InputProps={{ 
               inputProps: { 
                 min: 0
@@ -128,7 +122,7 @@ const ProductInfoStep = ({ productInfo, handleProductInfoChange, handlePrev, han
         
         <Grid item xs={12} md={6}>
           <TextField
-            label="Prix de vente *"
+            label="Prix de vente (TTC) *"
             variant="outlined"
             type="number"
             fullWidth
@@ -182,12 +176,12 @@ const ProductInfoStep = ({ productInfo, handleProductInfoChange, handlePrev, han
 ProductInfoStep.propTypes = {
   productInfo: PropTypes.shape({
     name: PropTypes.string.isRequired,
-    stockQuantity: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     category: PropTypes.string,
     brand: PropTypes.string,
     tvaRate: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
     priceType: PropTypes.string.isRequired,
     salePrice: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    stockQuantity: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   }).isRequired,
   handleProductInfoChange: PropTypes.func.isRequired,
   handlePrev: PropTypes.func.isRequired,

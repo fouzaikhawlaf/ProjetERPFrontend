@@ -26,15 +26,13 @@ const PreviewStep = ({
   mode = 'create'
 }) => {
   const handleFormSubmit = async () => {
-    if (!productInfo.name || !productInfo.salePrice || !productInfo.tvaRate) {
-      toast.error('Veuillez remplir tous les champs obligatoires.');
-      return;
-    }
-
     try {
-      await handleSubmit(); // Appel direct à la fonction de soumission du parent
+      // Appel direct à la fonction de soumission du parent
+      await handleSubmit(); 
     } catch (error) {
       console.error('Erreur lors de la soumission du produit:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Erreur inconnue';
+      toast.error(`Échec de la soumission: ${errorMessage}`);
     }
   };
 
@@ -78,7 +76,7 @@ const PreviewStep = ({
           </Grid>
           <Grid item xs={12} sm={6}>
             <Typography variant="subtitle1">
-              <strong>Référence:</strong> {productInfo.reference}
+              <strong>Quantité:</strong> {productInfo.stockQuantity}
             </Typography>
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -93,12 +91,12 @@ const PreviewStep = ({
           </Grid>
           <Grid item xs={12} sm={6}>
             <Typography variant="subtitle1">
-              <strong>Marque:</strong> {productInfo.brand}
+              <strong>Marque:</strong> {productInfo.brand || 'Non spécifié'}
             </Typography>
           </Grid>
           <Grid item xs={12} sm={6}>
             <Typography variant="subtitle1">
-              <strong>Catégorie:</strong> {productInfo.category}
+              <strong>Catégorie:</strong> {productInfo.category || 'Non spécifié'}
             </Typography>
           </Grid>
         </Grid>
@@ -112,7 +110,7 @@ const PreviewStep = ({
           <Grid item xs={12}>
             <Box display="flex" justifyContent="space-between" alignItems="center">
               <Typography variant="subtitle1">
-                <strong>Description:</strong> {additionalInfo.description}
+                <strong>Description:</strong> {additionalInfo.description || 'Aucune description'}
               </Typography>
               <IconButton onClick={() => handleEdit('additionalInfo')}>
                 <Edit />
@@ -121,7 +119,7 @@ const PreviewStep = ({
           </Grid>
           <Grid item xs={6}>
             <Typography variant="subtitle1">
-              <strong>Unité:</strong> {additionalInfo.unit}
+              <strong>Unité:</strong> {additionalInfo.unit || 'Non spécifié'}
             </Typography>
           </Grid>
           <Grid item xs={6}>
@@ -160,13 +158,13 @@ const PreviewStep = ({
 PreviewStep.propTypes = {
   productType: PropTypes.string.isRequired,
   productInfo: PropTypes.shape({
-    reference: PropTypes.string,
     name: PropTypes.string,
     category: PropTypes.string,
     brand: PropTypes.string,
     salePrice: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     tvaRate: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     priceType: PropTypes.string,
+    stockQuantity: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   }).isRequired,
   additionalInfo: PropTypes.shape({
     description: PropTypes.string,
