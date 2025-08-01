@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getProduct, updateProduct } from 'services/ProductApi';
-
 import { useSnackbar } from 'notistack';
 import { CircularProgress, Box } from '@mui/material';
 import ProductTypeStep from '../ProductSteps/ProductTypeStep';
@@ -27,8 +26,8 @@ function UpdateProductForm() {
     image: '',
     unit: '',
     description: '',
-    stockQuantity: 0, // Ajout du champ manquant
-    isArchived: false // Ajout du champ manquant
+    stockQuantity: 0,
+    isArchived: false
   });
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,7 +39,7 @@ function UpdateProductForm() {
         setLoading(true);
         const product = await getProduct(productId);
         
-        // Conversion correcte des valeurs
+        // CORRECTION: Chargement correct des valeurs TVA
         setFormData({
           productType: product.itemTypeArticle?.toString() || '0',
           reference: product.reference || '',
@@ -48,7 +47,8 @@ function UpdateProductForm() {
           category: product.category || '',
           brand: product.brand || '',
           priceType: product.priceType || 'TTC',
-          tvaRate: product.taxRate ? (product.taxRate * 100).toString() : '0', // Convertir en pourcentage
+          // Charger taxRate directement (déjà en pourcentage entier)
+          tvaRate: product.taxRate?.toString() || '19',
           salePrice: product.price?.toString() || '0',
           image: product.image || '',
           unit: product.unit || '',
@@ -80,18 +80,14 @@ function UpdateProductForm() {
     setIsSubmitting(true);
     
     try {
-      // Conversion numérique
-      const salePrice = parseFloat(formData.salePrice);
-      const tvaRate = parseFloat(formData.tvaRate);
+      // CORRECTION: Conversion numérique sécurisée
+      const salePrice = parseFloat(formData.salePrice) || 0;
+      const tvaRate = parseFloat(formData.tvaRate) || 19;
+      const stockQuantity = parseInt(formData.stockQuantity) || 0;
       
       // Validation
       if (!formData.name || formData.name.trim() === '') {
         enqueueSnackbar('Le nom du produit est requis', { variant: 'error' });
-        return;
-      }
-      
-      if (isNaN(salePrice)) {
-        enqueueSnackbar('Le prix doit être un nombre valide', { variant: 'error' });
         return;
       }
       
@@ -100,19 +96,21 @@ function UpdateProductForm() {
         return;
       }
 
-      // Préparer les données pour l'API
+      // CORRECTION: Format des données aligné sur le backend
       const payload = {
         name: formData.name,
         description: formData.description,
         price: salePrice,
-        taxRate: tvaRate / 100, // Convertir en décimal (ex: 19% => 0.19)
-        tvaRate: convertTvaRate(tvaRate), // Convertir en valeur enum
+        taxRate: tvaRate, // ENTIER (19), pas décimal
+        tvaRate: convertTvaRate(tvaRate), // ENUM (entier)
         priceType: formData.priceType,
         category: formData.category,
         unit: formData.unit,
         isArchived: formData.isArchived,
         itemTypeArticle: parseInt(formData.productType),
-        stockQuantity: parseInt(formData.stockQuantity) || 0
+        stockQuantity: stockQuantity,
+        reference: formData.reference,
+        image: formData.image
       };
 
       await updateProduct(productId, payload);
@@ -120,22 +118,22 @@ function UpdateProductForm() {
       nextStep();
     } catch (error) {
       console.error('Failed to update product', error);
-      const errorMessage = error.response?.data?.message || 'Échec de la mise à jour du produit';
+      const errorMessage = error.response?.data?.message || error.message || 'Échec de la mise à jour du produit';
       enqueueSnackbar(errorMessage, { variant: 'error' });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Helper pour convertir le taux TVA en valeur d'enum
+  // CORRECTION: Même fonction de conversion que pour la création
   const convertTvaRate = (rate) => {
     const rateMap = {
-      0: 'Zero',
-      5.5: 'Reduced',
-      10: 'Intermediate',
-      19: 'Standard'
+      0: 0,    // Zero
+      5.5: 1,  // Reduced
+      10: 2,   // Intermediate
+      19: 3    // Standard
     };
-    return rateMap[rate] || 'Standard';
+    return rateMap[rate] ?? 3; // Standard par défaut
   };
 
   if (loading) {
@@ -148,55 +146,55 @@ function UpdateProductForm() {
 
   return (
     <DashboardLayout>
-          <Box sx={{ width: '100%', padding: '20px' }}>
-    <div>
-      {currentStep === 1 && (
-        <ProductTypeStep
-          productType={formData.productType}
-          setProductType={(value) => updateField('productType', value)}
-          handleNext={nextStep}
-        />
-      )}
-      
-      {currentStep === 2 && (
-        <ProductInfoStep
-          productInfo={formData}
-          handleProductInfoChange={(field) => (e) => updateField(field, e.target.value)}
-          handleNext={nextStep}
-          handlePrev={prevStep}
-        />
-      )}
-      
-      {currentStep === 3 && (
-        <AdditionalInfoStep
-          additionalInfo={formData}
-          handleAdditionalInfoChange={(field) => (e) => updateField(field, e.target.value)}
-          handleNext={nextStep}
-          handlePrev={prevStep}
-        />
-      )}
-      
-      {currentStep === 4 && (
-        <PreviewStep
-          productType={formData.productType === '0' ? 'Produit' : 'Service'}
-          productInfo={formData}
-          additionalInfo={formData}
-          handleEdit={(step) => goToStep(step === 'productType' ? 1 : step === 'productInfo' ? 2 : 3)}
-          handlePrev={prevStep}
-          handleSubmit={handleSubmit}
-          isSubmitting={isSubmitting}
-          mode="update"
-        />
-      )}
-      
-      {currentStep === 5 && (
-        <SuccessPage 
-          onContinue={() => navigate('/products')} 
-          onEditAgain={() => goToStep(1)}
-        />
-      )}
-    </div>
-    </Box>
+      <Box sx={{ width: '100%', padding: '20px' }}>
+        <div>
+          {currentStep === 1 && (
+            <ProductTypeStep
+              productType={formData.productType}
+              setProductType={(value) => updateField('productType', value)}
+              handleNext={nextStep}
+            />
+          )}
+          
+          {currentStep === 2 && (
+            <ProductInfoStep
+              productInfo={formData}
+              handleProductInfoChange={(field) => (e) => updateField(field, e.target.value)}
+              handleNext={nextStep}
+              handlePrev={prevStep}
+            />
+          )}
+          
+          {currentStep === 3 && (
+            <AdditionalInfoStep
+              additionalInfo={formData}
+              handleAdditionalInfoChange={(field) => (e) => updateField(field, e.target.value)}
+              handleNext={nextStep}
+              handlePrev={prevStep}
+            />
+          )}
+          
+          {currentStep === 4 && (
+            <PreviewStep
+              productType={formData.productType === '0' ? 'Produit' : 'Service'}
+              productInfo={formData}
+              additionalInfo={formData}
+              handleEdit={(step) => goToStep(step === 'productType' ? 1 : step === 'productInfo' ? 2 : 3)}
+              handlePrev={prevStep}
+              handleSubmit={handleSubmit}
+              isSubmitting={isSubmitting}
+              mode="update"
+            />
+          )}
+          
+          {currentStep === 5 && (
+            <SuccessPage 
+              onContinue={() => navigate('/products')} 
+              onEditAgain={() => goToStep(1)}
+            />
+          )}
+        </div>
+      </Box>
     </DashboardLayout>
   );
 }
