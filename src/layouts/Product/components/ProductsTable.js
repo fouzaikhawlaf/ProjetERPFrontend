@@ -1,16 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-
+import { useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import {
   Card,
   Box,
   Button,
   IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Paper,
   Typography,
   Pagination,
@@ -28,92 +23,22 @@ import {
   Edit as EditIcon,
   AddCircle,
   Refresh,
-  Search,
   Inventory,
   Visibility,
-  Clear as ClearIcon,
   Archive,
   Unarchive
 } from '@mui/icons-material';
 import DashboardLayout from 'examples/LayoutContainers/DashboardLayout';
 import toast, { Toaster } from 'react-hot-toast';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
-import ProductDetailsModal from './ProductDetailsModal'; // Import du nouveau composant
+import ProductDetailsModal from './ProductDetailsModal';
 import { 
   getProducts, 
   deleteProduct as apiDeleteProduct, 
-  archiveProduct as apiArchiveProduct 
-} from 'services/ProductApi'; // Importez vos fonctions API
-
-// Composant SearchBar
-const SearchBar = ({ searchQuery, onSearchChange, onClearSearch, searchLoading }) => (
-  <Box sx={{ 
-    position: 'relative', 
-    mb: 3,
-    backgroundColor: 'background.paper',
-    borderRadius: 1,
-    boxShadow: 1,
-    p: 1.5
-  }}>
-    <input
-      type="text"
-      value={searchQuery}
-      onChange={(e) => onSearchChange(e.target.value)}
-      placeholder="Rechercher des produits..."
-      style={{
-        width: '100%',
-        padding: '12px 20px 12px 40px',
-        borderRadius: '4px',
-        border: '1px solid #e0e0e0',
-        fontSize: '0.875rem',
-        outline: 'none',
-        transition: 'border 0.3s',
-        '&:focus': {
-          borderColor: '#1976d2',
-          boxShadow: '0 0 0 2px rgba(25, 118, 210, 0.2)'
-        }
-      }}
-    />
-    <Search sx={{
-      position: 'absolute',
-      left: '15px',
-      top: '50%',
-      transform: 'translateY(-50%)',
-      color: '#9e9e9e'
-    }} />
-    {searchLoading && (
-      <CircularProgress 
-        size={20} 
-        sx={{
-          position: 'absolute',
-          right: '15px',
-          top: '50%',
-          transform: 'translateY(-50%)'
-        }} 
-      />
-    )}
-    {searchQuery && !searchLoading && (
-      <IconButton
-        onClick={onClearSearch}
-        sx={{
-          position: 'absolute',
-          right: '10px',
-          top: '50%',
-          transform: 'translateY(-50%)'
-        }}
-      >
-        <ClearIcon fontSize="small" />
-      </IconButton>
-    )}
-  </Box>
-);
-
-SearchBar.propTypes = {
-  searchQuery: PropTypes.string.isRequired,
-  onSearchChange: PropTypes.func.isRequired,
-  onClearSearch: PropTypes.func.isRequired,
-  searchLoading: PropTypes.bool
-};
+  archiveProduct as apiArchiveProduct,
+  searchProducts
+} from 'services/ProductApi';
+import SearchBar from './SearchBar';
 
 const ProductsTable = ({ 
   rowsPerPage = 10
@@ -123,7 +48,6 @@ const ProductsTable = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
-  const [openDialog, setOpenDialog] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState(null);
@@ -132,22 +56,47 @@ const ProductsTable = ({
   const [activeTab, setActiveTab] = useState('active');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
- const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   
-
-  // Charger les produits
-  const fetchProducts = async () => {
+  // Charger les produits - VERSION CORRIGÉE
+  const fetchProducts = async (query = '') => {
     setLoading(true);
     setError(null);
     try {
-      const products = await getProducts();
+      let response;
+      
+      if (query) {
+        response = await searchProducts(query);
+      } else {
+        response = await getProducts();
+      }
+      
+      // CORRECTION: Gestion robuste de différents formats de réponse
+      let products = [];
+      
+      if (Array.isArray(response)) {
+        products = response;
+      } 
+      else if (response?.$values && Array.isArray(response.$values)) {
+        products = response.$values;
+      }
+      else if (response?.products && Array.isArray(response.products)) {
+        products = response.products;
+      }
+      else if (typeof response === 'object' && response !== null) {
+        // Si c'est un seul objet produit, le mettre dans un tableau
+        products = [response];
+      }
+      
       setAllProducts(products);
     } catch (err) {
       console.error('Erreur lors du chargement des produits:', err);
       setError('Échec du chargement des produits');
       toast.error('Erreur lors du chargement des produits');
+      setAllProducts([]); // Garantir un tableau même en cas d'erreur
     } finally {
       setLoading(false);
+      setSearchLoading(false);
     }
   };
 
@@ -163,19 +112,33 @@ const ProductsTable = ({
   }, [allProducts, activeTab]);
 
   const filteredRows = useMemo(() => {
-    if (!searchQuery) return currentProducts;
+  if (!searchQuery) return currentProducts;
+  
+  const query = searchQuery.toLowerCase();
+  
+  return currentProducts.filter(product => {
+    // Recherche dans les champs textuels
+    const textMatch = 
+      (product.name?.toLowerCase().includes(query)) ||
+      (product.description?.toLowerCase().includes(query)) ||
+      (product.category?.toLowerCase().includes(query)) ||
+      (product.reference?.toLowerCase().includes(query));
     
-    const query = searchQuery.toLowerCase();
-    return currentProducts.filter(row => {
-      const name = String(row?.name || '').toLowerCase();
-      const itemTypeArticle = String(row?.itemTypeArticle || '').toLowerCase();
-      const reference = String(row?.reference || '').toLowerCase();
+    // Recherche dans les champs numériques
+    const priceMatch = 
+      (product.price?.toString().includes(query)) ||
+      (product.price?.toFixed(2).includes(query));
       
-      return name.includes(query) || 
-             itemTypeArticle.includes(query) || 
-             reference.includes(query);
-    });
-  }, [currentProducts, searchQuery]);
+    const taxRateMatch = 
+      (product.taxRate?.toString().includes(query)) ||
+      (product.taxRate?.toFixed(2).includes(query));
+      
+    const stockMatch = 
+      product.stockQuantity?.toString().includes(query);
+    
+    return textMatch || priceMatch || taxRateMatch || stockMatch;
+  });
+}, [currentProducts, searchQuery]);
 
   const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
   const displayedRows = useMemo(() => {
@@ -198,13 +161,16 @@ const ProductsTable = ({
     setDetailsModalOpen(true);
   };
 
-  const handleSearchChange = (query) => {
+   const handleSearchChange = (query) => {
     setSearchQuery(query);
     setSearchLoading(true);
     
-    setTimeout(() => {
+    // CORRECTION: Délai réduit pour une meilleure réactivité
+    const searchTimer = setTimeout(() => {
       setSearchLoading(false);
-    }, 500);
+    }, 300);
+    
+    return () => clearTimeout(searchTimer);
   };
 
   const handleRefreshClick = () => {
@@ -223,7 +189,7 @@ const ProductsTable = ({
     try {
       await apiDeleteProduct(productId);
       toast.success('Produit supprimé avec succès');
-      await fetchProducts();
+      await fetchProducts(searchQuery);
     } catch (err) {
       console.error('Erreur lors de la suppression:', err);
       toast.error('Échec de la suppression');
@@ -238,7 +204,7 @@ const ProductsTable = ({
     try {
       await apiArchiveProduct(productId);
       toast.success('Statut d\'archivage mis à jour');
-      await fetchProducts();
+      await fetchProducts(searchQuery);
     } catch (err) {
       console.error('Erreur lors de l\'archivage:', err);
       toast.error('Échec de la mise à jour de l\'archivage');
@@ -259,6 +225,7 @@ const ProductsTable = ({
 
   const clearSearch = () => {
     setSearchQuery('');
+    fetchProducts();
   };
 
   const handleArchiveToggle = async (product) => {
@@ -270,12 +237,11 @@ const ProductsTable = ({
     setActiveTab(newValue);
   };
 
-// Modifiez la fonction handleEditProduct
-const handleEditProduct = (product) => {
-  navigate(`/products/edit/${product.id}`, {
-    state: { product } // Passez le produit complet dans l'état de navigation
-  });
-};
+  const handleEditProduct = (product) => {
+    navigate(`/products/edit/${product.id}`, {
+      state: { product }
+    });
+  };
 
   return (
     <DashboardLayout>
@@ -315,11 +281,11 @@ const handleEditProduct = (product) => {
             loading={deletingId !== null}
           />
           
-           <ProductDetailsModal
-        product={selectedProduct}
-        open={detailsModalOpen}
-        onClose={() => setDetailsModalOpen(false)}
-      />
+          <ProductDetailsModal
+            product={selectedProduct}
+            open={detailsModalOpen}
+            onClose={() => setDetailsModalOpen(false)}
+          />
 
           <Grid container spacing={2} alignItems="center" sx={{ mb: 3 }}>
             <Grid item xs={12} md={6}>
@@ -349,7 +315,6 @@ const handleEditProduct = (product) => {
             </Grid>
           </Grid>
 
-          {/* Onglets pour basculer entre actifs et archivés */}
           <Tabs 
             value={activeTab} 
             onChange={handleTabChange}

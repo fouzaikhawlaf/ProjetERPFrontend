@@ -52,17 +52,30 @@ export const getProducts = async () => {
   }
 };
 
-
+// ProductApi.js
 export const searchProducts = async (query) => {
   try {
-    const response = await apiErp.get(`/Product/search?query=${query}`);
+    // Envoyer le paramètre de recherche comme nombre si possible
+    const params = {
+      query: isNaN(query) ? query : parseFloat(query)
+    };
+
+    const response = await apiErp.get('/Product/search', { params });
     return response.data;
   } catch (error) {
-    console.error('Error searching products:', error);
-    throw error;
+    console.error('Error searching products:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message
+    });
+    
+    const errorMessage = error.response?.data?.message 
+      || error.message 
+      || 'Erreur lors de la recherche';
+    
+    throw new Error(errorMessage);
   }
 };
-
 export const updateProduct = async (productId, updatedData) => {
   try {
     const response = await apiErp.put(`/Product/${productId}`, updatedData);
