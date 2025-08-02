@@ -436,7 +436,7 @@ const ProductsTable = ({
                           textAlign: 'left',
                           borderBottom: '2px solid #e0e0e0',
                           color: '#333'
-                        }}>Type</th>
+                        }}>Description</th>
                         
                         <th style={{ 
                           width: '150px',
@@ -535,7 +535,7 @@ const ProductsTable = ({
                             verticalAlign: 'middle'
                           }}>
                             <Chip 
-                              label={row?.itemTypeArticle || 'Inconnu'} 
+                              label={row?.description || 'Inconnu'} 
                               size="small" 
                               sx={{ 
                                 bgcolor: 'primary.light', 
