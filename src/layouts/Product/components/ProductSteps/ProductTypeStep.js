@@ -6,20 +6,33 @@ import serviceIcon from 'images/service.png';
 import ProductIcon from 'images/product.png';
 
 const ProductTypeStep = ({ productType, setProductType, handleNext }) => {
+  const handleTypeChange = (e) => {
+    const selectedType = parseInt(e.target.value);
+    setProductType(selectedType);
+  };
+
+  const handleContinue = () => {
+    if (productType === null || productType === undefined) {
+      alert('Veuillez sélectionner un type de produit');
+      return;
+    }
+    handleNext();
+  };
+
   return (
-    <Card elevation={3} style={{ padding: '30px', marginTop: '20px' }}>
-      <Typography variant="h6" gutterBottom>
+    <Card elevation={3} style={{ padding: '30px', marginTop: '20px', borderRadius: '12px' }}>
+      <Typography variant="h5" gutterBottom style={{ textAlign: 'center' }}>
         Type de produit
       </Typography>
       
       <RadioGroup
         row
         value={productType}
-        onChange={(e) => setProductType(parseInt(e.target.value))}
-        style={{ justifyContent: 'center', marginTop: '20px' }}
+        onChange={handleTypeChange}
+        style={{ justifyContent: 'center', marginTop: '20px', gap: '20px' }}
       >
         <FormControlLabel
-          value="0"
+          value={0}
           control={<Radio color="primary" />}
           label={
             <Box
@@ -32,19 +45,27 @@ const ProductTypeStep = ({ productType, setProductType, handleNext }) => {
               borderRadius="8px"
               width="200px"
               textAlign="center"
+              bgcolor={productType === 0 ? '#e3f2fd' : 'transparent'}
+              sx={{
+                transition: 'all 0.3s',
+                '&:hover': { transform: 'scale(1.05)', boxShadow: 2 }
+              }}
             >
               <img 
                 src={ProductIcon} 
                 alt="product icon"
                 style={{ width: '80px', height: '80px', objectFit: 'contain' }} 
               />
-              <Typography>Produit</Typography>
+              <Typography variant="subtitle1" mt={1}>Produit Physique</Typography>
+              <Typography variant="body2" color="textSecondary" mt={1}>
+                Articles tangibles avec stock
+              </Typography>
             </Box>
           }
         />
         
         <FormControlLabel
-          value="1"
+          value={1}
           control={<Radio color="primary" />}
           label={
             <Box
@@ -57,35 +78,49 @@ const ProductTypeStep = ({ productType, setProductType, handleNext }) => {
               borderRadius="8px"
               width="200px"
               textAlign="center"
+              bgcolor={productType === 1 ? '#e3f2fd' : 'transparent'}
+              sx={{
+                transition: 'all 0.3s',
+                '&:hover': { transform: 'scale(1.05)', boxShadow: 2 }
+              }}
             >
               <img 
                 src={serviceIcon} 
                 alt="service icon"
                 style={{ width: '80px', height: '80px', objectFit: 'contain' }} 
               />
-              <Typography>Service</Typography>
+              <Typography variant="subtitle1" mt={1}>Service</Typography>
+              <Typography variant="body2" color="textSecondary" mt={1}>
+                Prestations sans stock physique
+              </Typography>
             </Box>
           }
         />
       </RadioGroup>
 
-      <Button
-        variant="contained"
-        color="primary"
-        onClick={handleNext}
-        disabled={productType === null}
-        style={{ marginTop: '30px' }}
-      >
-        Continuer
-      </Button>
+      <Box display="flex" justifyContent="center" mt={4}>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleContinue}
+          disabled={productType === null}
+          style={{ padding: '10px 30px', borderRadius: '8px', fontWeight: 'bold' }}
+        >
+          Continuer
+        </Button>
+      </Box>
     </Card>
   );
 };
 
 ProductTypeStep.propTypes = {
-  productType: PropTypes.number.isRequired,
+  productType: PropTypes.number,
   setProductType: PropTypes.func.isRequired,
   handleNext: PropTypes.func.isRequired,
+};
+
+ProductTypeStep.defaultProps = {
+  productType: null,
 };
 
 export default ProductTypeStep;

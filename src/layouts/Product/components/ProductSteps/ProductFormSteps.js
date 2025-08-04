@@ -120,7 +120,7 @@ function ProductFormStepsPD() {
         category: productInfo.category,
         unit: additionalInfo.unit,
         isArchived: false,
-        itemTypeArticle: parseInt(productType),
+        itemTypeArticle: productType ,// ✅ Plus propre
         stockQuantity: productInfo.stockQuantity
       };
 
@@ -211,7 +211,7 @@ function ProductFormStepsPD() {
         
         {step === 3 && (
           <PreviewStep
-            productType={productType === 0 ? "Produit" : "Service"}
+           productType={productType} // ✅ Envoie le nombre (0/1)
             productInfo={productInfo}
             additionalInfo={additionalInfo}
             handlePrev={handlePrev}

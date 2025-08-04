@@ -15,7 +15,7 @@ import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 const PreviewStep = ({
-  productType,
+  productType, // Maintenant un nombre (0 = produit, 1 = service)
   productInfo,
   additionalInfo,
   handlePrev,
@@ -27,7 +27,6 @@ const PreviewStep = ({
 }) => {
   const handleFormSubmit = async () => {
     try {
-      // Appel direct à la fonction de soumission du parent
       await handleSubmit(); 
     } catch (error) {
       console.error('Erreur lors de la soumission du produit:', error);
@@ -36,10 +35,13 @@ const PreviewStep = ({
     }
   };
 
+  // CORRECTION: Convertir le type numérique en libellé
+  const productTypeLabel = productType === 1 ? "Service" : "Produit";
+
   return (
     <Card elevation={3} style={{ padding: '30px', marginTop: '20px', borderRadius: '12px' }}>
       <Typography variant="h5" gutterBottom style={{ textAlign: 'center' }}>
-        Aperçu du produit
+        Aperçu du {productTypeLabel.toLowerCase()}
       </Typography>
 
       {error && (
@@ -51,7 +53,7 @@ const PreviewStep = ({
       <Card elevation={1} style={{ padding: '20px', marginTop: '20px', borderRadius: '8px' }}>
         <Box display="flex" justifyContent="space-between" alignItems="center">
           <Typography variant="subtitle1">
-            <strong>Type de produit:</strong> {productType}
+            <strong>Type:</strong> {productTypeLabel}
           </Typography>
           <IconButton onClick={() => handleEdit('productType')}>
             <Edit />
@@ -61,7 +63,7 @@ const PreviewStep = ({
 
       <Card elevation={1} style={{ padding: '20px', marginTop: '20px', borderRadius: '8px' }}>
         <Typography variant="h6" gutterBottom>
-          Informations du produit
+          Informations principales
         </Typography>
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6}>
@@ -74,11 +76,16 @@ const PreviewStep = ({
               </IconButton>
             </Box>
           </Grid>
-          <Grid item xs={12} sm={6}>
-            <Typography variant="subtitle1">
-              <strong>Quantité:</strong> {productInfo.stockQuantity}
-            </Typography>
-          </Grid>
+          
+          {/* CORRECTION: Afficher la quantité uniquement pour les produits */}
+          {productType === 0 && (
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle1">
+                <strong>Quantité:</strong> {productInfo.stockQuantity}
+              </Typography>
+            </Grid>
+          )}
+          
           <Grid item xs={12} sm={6}>
             <Typography variant="subtitle1">
               <strong>Prix:</strong> {productInfo.salePrice} {productInfo.priceType}
@@ -148,15 +155,16 @@ const PreviewStep = ({
         >
           {isSubmitting ? (
             <CircularProgress size={24} />
-          ) : mode === 'create' ? 'Créer le produit' : 'Mettre à jour'}
+          ) : mode === 'create' ? `Créer le ${productTypeLabel.toLowerCase()}` : 'Mettre à jour'}
         </Button>
       </Box>
     </Card>
   );
 };
 
+// CORRECTION: Modifier les PropTypes pour productType
 PreviewStep.propTypes = {
-  productType: PropTypes.string.isRequired,
+  productType: PropTypes.number.isRequired, // Maintenant un nombre
   productInfo: PropTypes.shape({
     name: PropTypes.string,
     category: PropTypes.string,
