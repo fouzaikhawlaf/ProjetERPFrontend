@@ -11,11 +11,9 @@ import {
 } from '@mui/material';
 import { Edit } from '@mui/icons-material';
 import PropTypes from 'prop-types';
-import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 
 const PreviewStep = ({
-  productType, // Maintenant un nombre (0 = produit, 1 = service)
+  productType,
   productInfo,
   additionalInfo,
   handlePrev,
@@ -25,17 +23,6 @@ const PreviewStep = ({
   error,
   mode = 'create'
 }) => {
-  const handleFormSubmit = async () => {
-    try {
-      await handleSubmit(); 
-    } catch (error) {
-      console.error('Erreur lors de la soumission du produit:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Erreur inconnue';
-      toast.error(`Échec de la soumission: ${errorMessage}`);
-    }
-  };
-
-  // CORRECTION: Convertir le type numérique en libellé
   const productTypeLabel = productType === 1 ? "Service" : "Produit";
 
   return (
@@ -77,11 +64,16 @@ const PreviewStep = ({
             </Box>
           </Grid>
           
-          {/* CORRECTION: Afficher la quantité uniquement pour les produits */}
-          {productType === 0 && (
+          {productType === 0 ? (
             <Grid item xs={12} sm={6}>
               <Typography variant="subtitle1">
                 <strong>Quantité:</strong> {productInfo.stockQuantity}
+              </Typography>
+            </Grid>
+          ) : (
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle1">
+                <strong>Durée (heures):</strong> {productInfo.duration}
               </Typography>
             </Grid>
           )}
@@ -147,7 +139,7 @@ const PreviewStep = ({
           Retour
         </Button>
         <Button
-          onClick={handleFormSubmit}
+          onClick={handleSubmit}
           variant="contained"
           color="primary"
           disabled={isSubmitting}
@@ -162,9 +154,8 @@ const PreviewStep = ({
   );
 };
 
-// CORRECTION: Modifier les PropTypes pour productType
 PreviewStep.propTypes = {
-  productType: PropTypes.number.isRequired, // Maintenant un nombre
+  productType: PropTypes.number.isRequired,
   productInfo: PropTypes.shape({
     name: PropTypes.string,
     category: PropTypes.string,
@@ -173,6 +164,7 @@ PreviewStep.propTypes = {
     tvaRate: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     priceType: PropTypes.string,
     stockQuantity: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    duration: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   }).isRequired,
   additionalInfo: PropTypes.shape({
     description: PropTypes.string,

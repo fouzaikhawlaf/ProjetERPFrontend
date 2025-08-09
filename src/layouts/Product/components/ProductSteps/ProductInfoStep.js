@@ -16,25 +16,39 @@ import {
 } from '@mui/material';
 import PropTypes from 'prop-types';
 
-const ProductInfoStep = ({ productInfo, handleProductInfoChange, handlePrev, handleNext }) => {
+const ProductInfoStep = ({ productType, productInfo, handleProductInfoChange, handlePrev, handleNext }) => {
   const [errors, setErrors] = useState({});
   
-  // Validation des champs
   const validateFields = () => {
     const newErrors = {};
     
     if (!productInfo.name || productInfo.name.trim() === '') {
-      newErrors.name = "Le nom du produit est requis";
+      newErrors.name = "Le nom est requis";
     }
     
-    // Correction: conversion en nombre pour la validation
     const salePrice = parseFloat(productInfo.salePrice);
     if (isNaN(salePrice) || salePrice <= 0) {
       newErrors.salePrice = "Le prix doit être supérieur à 0";
     }
     
-    if (productInfo.tvaRate === null || productInfo.tvaRate === undefined) {
+    if (productInfo.tvaRate === null) {
       newErrors.tvaRate = "La TVA est requise";
+    }
+    
+    if (productType === 0) {
+      const stock = parseInt(productInfo.stockQuantity);
+      if (isNaN(stock)) {
+        newErrors.stockQuantity = "La quantité est requise";
+      } else if (stock < 0) {
+        newErrors.stockQuantity = "La quantité ne peut pas être négative";
+      }
+    } else if (productType === 1) {
+      const duration = parseFloat(productInfo.duration);
+      if (isNaN(duration)) {
+        newErrors.duration = "La durée est requise";
+      } else if (duration <= 0) {
+        newErrors.duration = "La durée doit être supérieure à 0";
+      }
     }
     
     setErrors(newErrors);
@@ -50,13 +64,13 @@ const ProductInfoStep = ({ productInfo, handleProductInfoChange, handlePrev, han
   return (
     <Card elevation={3} style={{ padding: '30px', marginTop: '20px', borderRadius: '12px' }}>
       <Typography variant="h6" gutterBottom>
-        Informations du produit
+        {productType === 0 ? "Informations du produit" : "Informations du service"}
       </Typography>
 
       <Grid container spacing={3} style={{ marginTop: '20px' }}>
         <Grid item xs={12} md={6}>
           <TextField
-            label="Nom du produit *"
+            label={productType === 0 ? "Nom du produit *" : "Nom du service *"}
             variant="outlined"
             fullWidth
             value={productInfo.name}
@@ -66,23 +80,35 @@ const ProductInfoStep = ({ productInfo, handleProductInfoChange, handlePrev, han
           />
         </Grid>
         
-        <Grid item xs={12} md={6}>
-          <TextField
-            label="Quantité en stock *"
-            variant="outlined"
-            type="number"
-            fullWidth
-            value={productInfo.stockQuantity}
-            onChange={handleProductInfoChange('stockQuantity')}
-            error={!!errors.stockQuantity}
-            helperText={errors.stockQuantity || "Nombre d'articles disponibles"}
-            InputProps={{ 
-              inputProps: { 
-                min: 0
-              } 
-            }}
-          />
-        </Grid>
+        {productType === 0 ? (
+          <Grid item xs={12} md={6}>
+            <TextField
+              label="Quantité en stock *"
+              variant="outlined"
+              type="number"
+              fullWidth
+              value={productInfo.stockQuantity}
+              onChange={handleProductInfoChange('stockQuantity')}
+              error={!!errors.stockQuantity}
+              helperText={errors.stockQuantity || "Nombre d'articles disponibles"}
+              InputProps={{ inputProps: { min: 0 } }}
+            />
+          </Grid>
+        ) : (
+          <Grid item xs={12} md={6}>
+            <TextField
+              label="Durée (heures) *"
+              variant="outlined"
+              type="number"
+              fullWidth
+              value={productInfo.duration}
+              onChange={handleProductInfoChange('duration')}
+              error={!!errors.duration}
+              helperText={errors.duration || "Durée du service en heures"}
+              InputProps={{ inputProps: { min: 0.1, step: 0.5 } }}
+            />
+          </Grid>
+        )}
         
         <Grid item xs={12} md={6}>
           <FormControl fullWidth>
@@ -101,9 +127,7 @@ const ProductInfoStep = ({ productInfo, handleProductInfoChange, handlePrev, han
                 />
               ))}
             </RadioGroup>
-            {errors.tvaRate && (
-              <FormHelperText error>{errors.tvaRate}</FormHelperText>
-            )}
+            {errors.tvaRate && <FormHelperText error>{errors.tvaRate}</FormHelperText>}
           </FormControl>
         </Grid>
         
@@ -174,14 +198,15 @@ const ProductInfoStep = ({ productInfo, handleProductInfoChange, handlePrev, han
 };
 
 ProductInfoStep.propTypes = {
+  productType: PropTypes.number.isRequired,
   productInfo: PropTypes.shape({
     name: PropTypes.string.isRequired,
     category: PropTypes.string,
-    brand: PropTypes.string,
-    tvaRate: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
-    priceType: PropTypes.string.isRequired,
-    salePrice: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    tvaRate: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    priceType: PropTypes.string,
+    salePrice: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     stockQuantity: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    duration: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   }).isRequired,
   handleProductInfoChange: PropTypes.func.isRequired,
   handlePrev: PropTypes.func.isRequired,

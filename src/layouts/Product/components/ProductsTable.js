@@ -300,7 +300,7 @@ const ProductsTable = ({
               <Button
                 variant="contained"
                 startIcon={<AddCircle />}
-                onClick={() => navigate("/Produit")}
+                onClick={() => navigate("/Ajouter")}
                 sx={{ mr: 2 }}
               >
                 Nouveau Produit

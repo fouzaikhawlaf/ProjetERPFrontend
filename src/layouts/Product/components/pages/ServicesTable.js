@@ -296,7 +296,7 @@ const ServicesTable = ({
               <Button
                 variant="contained"
                 startIcon={<AddCircle />}
-                onClick={() => navigate("/Service")}
+                onClick={() => navigate("/Ajouter")}
                 sx={{ mr: 2 }}
               >
                 Nouveau Service

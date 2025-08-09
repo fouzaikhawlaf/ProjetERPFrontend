@@ -1,6 +1,13 @@
 import React from 'react';
-import { Card, Typography, RadioGroup, FormControlLabel, Radio, Button } from '@mui/material';
-import Box from '@mui/material/Box';
+import { 
+  Card, 
+  Typography, 
+  RadioGroup, 
+  FormControlLabel, 
+  Radio, 
+  Button,
+  Box
+} from '@mui/material';
 import PropTypes from 'prop-types';
 import serviceIcon from 'images/service.png';
 import ProductIcon from 'images/product.png';
@@ -22,18 +29,24 @@ const ProductTypeStep = ({ productType, setProductType, handleNext }) => {
   return (
     <Card elevation={3} style={{ padding: '30px', marginTop: '20px', borderRadius: '12px' }}>
       <Typography variant="h5" gutterBottom style={{ textAlign: 'center' }}>
-        Type de produit
+        Type d&#39;élément
       </Typography>
       
       <RadioGroup
         row
         value={productType}
         onChange={handleTypeChange}
-        style={{ justifyContent: 'center', marginTop: '20px', gap: '20px' }}
+        style={{ 
+          justifyContent: 'center', 
+          marginTop: '20px', 
+          gap: '20px',
+          flexWrap: 'wrap'
+        }}
       >
+        {/* Option Produit Physique */}
         <FormControlLabel
           value={0}
-          control={<Radio color="primary" />}
+          control={<Radio color="primary" style={{ display: 'none' }} />}
           label={
             <Box
               display="flex"
@@ -48,7 +61,11 @@ const ProductTypeStep = ({ productType, setProductType, handleNext }) => {
               bgcolor={productType === 0 ? '#e3f2fd' : 'transparent'}
               sx={{
                 transition: 'all 0.3s',
-                '&:hover': { transform: 'scale(1.05)', boxShadow: 2 }
+                '&:hover': { 
+                  transform: 'scale(1.05)', 
+                  boxShadow: 3,
+                  cursor: 'pointer'
+                }
               }}
             >
               <img 
@@ -64,9 +81,10 @@ const ProductTypeStep = ({ productType, setProductType, handleNext }) => {
           }
         />
         
+        {/* Option Service */}
         <FormControlLabel
           value={1}
-          control={<Radio color="primary" />}
+          control={<Radio color="primary" style={{ display: 'none' }} />}
           label={
             <Box
               display="flex"
@@ -81,7 +99,11 @@ const ProductTypeStep = ({ productType, setProductType, handleNext }) => {
               bgcolor={productType === 1 ? '#e3f2fd' : 'transparent'}
               sx={{
                 transition: 'all 0.3s',
-                '&:hover': { transform: 'scale(1.05)', boxShadow: 2 }
+                '&:hover': { 
+                  transform: 'scale(1.05)', 
+                  boxShadow: 3,
+                  cursor: 'pointer'
+                }
               }}
             >
               <img 
@@ -104,7 +126,12 @@ const ProductTypeStep = ({ productType, setProductType, handleNext }) => {
           color="primary"
           onClick={handleContinue}
           disabled={productType === null}
-          style={{ padding: '10px 30px', borderRadius: '8px', fontWeight: 'bold' }}
+          style={{ 
+            padding: '10px 30px', 
+            borderRadius: '8px', 
+            fontWeight: 'bold',
+            fontSize: '1rem'
+          }}
         >
           Continuer
         </Button>

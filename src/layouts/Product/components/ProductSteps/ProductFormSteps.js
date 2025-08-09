@@ -16,6 +16,7 @@ import AdditionalInfoStep from './AdditionalInfoStep';
 import PreviewStep from './Preview';
 import ProductTypeStep from './ProductTypeStep';
 
+
 function ProductFormStepsPD() {
   const [step, setStep] = useState(0);
   const [productType, setProductType] = useState(0);
@@ -24,9 +25,10 @@ function ProductFormStepsPD() {
     category: '',
     brand: '',
     priceType: 'Fixed',
-    tvaRate: 19, // Valeur par défaut
+    tvaRate: 19,
     salePrice: '',
     stockQuantity: 0,
+    duration: 0.5
   });
   const [additionalInfo, setAdditionalInfo] = useState({
     description: '',
@@ -51,20 +53,16 @@ function ProductFormStepsPD() {
   const handleProductInfoChange = (field) => (e) => {
     const value = e.target.value;
     
-    // CORRECTION: Gestion sécurisée des champs numériques
-    if (['tvaRate', 'salePrice', 'stockQuantity'].includes(field)) {
-      // Permet à l'utilisateur de vider le champ
+    if (['tvaRate', 'salePrice', 'stockQuantity', 'duration'].includes(field)) {
       if (value === '') {
         setProductInfo(prev => ({ ...prev, [field]: '' }));
         return;
       }
       
-      // Conversion numérique adaptée au type de champ
-      const numericValue = field === 'stockQuantity' 
-        ? parseInt(value, 10) 
-        : parseFloat(value);
+      const numericValue = ['stockQuantity', 'duration'].includes(field) 
+        ? parseFloat(value) 
+        : parseInt(value, 10);
         
-      // Ne met à jour que si la conversion est valide
       if (!isNaN(numericValue)) {
         setProductInfo(prev => ({ ...prev, [field]: numericValue }));
       }
@@ -82,14 +80,12 @@ function ProductFormStepsPD() {
     setError(null);
     
     try {
-      // Validation finale
       const errors = {};
       
       if (!productInfo.name.trim()) {
-        errors.name = "Le nom du produit est requis";
+        errors.name = "Le nom est requis";
       }
       
-      // CORRECTION: Utilisation directe des valeurs numériques
       if (productInfo.salePrice <= 0) {
         errors.price = "Le prix doit être supérieur à 0";
       }
@@ -98,8 +94,12 @@ function ProductFormStepsPD() {
         errors.tva = "Le taux de TVA est invalide";
       }
       
-      if (productInfo.stockQuantity < 0) {
+      if (productType === 0 && productInfo.stockQuantity < 0) {
         errors.quantity = "La quantité est invalide";
+      }
+      
+      if (productType === 1 && productInfo.duration <= 0) {
+        errors.duration = "La durée est invalide";
       }
       
       if (Object.keys(errors).length > 0) {
@@ -109,29 +109,32 @@ function ProductFormStepsPD() {
         return;
       }
 
-      // CORRECTION: Préparation des données pour l'API
       const productData = {
         name: productInfo.name,
         description: additionalInfo.description,
-        price: productInfo.salePrice, // Champ 'price' avec la valeur de salePrice
-        taxRate: productInfo.tvaRate, // Taux entier (ex: 19)
-        tvaRate: convertTvaRate(productInfo.tvaRate), // Conversion en enum
+        price: productInfo.salePrice,
+        taxRate: productInfo.tvaRate,
+        tvaRate: convertTvaRate(productInfo.tvaRate),
         priceType: productInfo.priceType,
         category: productInfo.category,
         unit: additionalInfo.unit,
         isArchived: false,
-        itemTypeArticle: productType ,// ✅ Plus propre
-        stockQuantity: productInfo.stockQuantity
+        itemTypeArticle: productType,
+        ...(productType === 0 && { stockQuantity: productInfo.stockQuantity }),
+        ...(productType === 1 && { duration: productInfo.duration })
       };
 
       const response = await createProduct(productData);
       if (response) {
         setStep(4);
-        enqueueSnackbar('Produit créé avec succès', { variant: 'success' });
+        enqueueSnackbar(
+          productType === 0 ? 'Produit créé avec succès' : 'Service créé avec succès', 
+          { variant: 'success' }
+        );
       }
     } catch (error) {
       console.error('Erreur:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Échec de la création du produit';
+      const errorMessage = error.response?.data?.message || error.message || 'Échec de la création';
       setError(errorMessage);
       enqueueSnackbar(errorMessage, { variant: 'error' });
     } finally {
@@ -139,16 +142,14 @@ function ProductFormStepsPD() {
     }
   };
 
-  // CORRECTION: Fonction de conversion TVA
   const convertTvaRate = (rate) => {
-    // Mapping des taux TVA vers les valeurs d'enum backend
     const rateMap = {
       0: 0,    // Zero
-      5.5: 1,  // Reduced
-      10: 2,   // Intermediate
+      7: 1,    // Reduced
+      13: 2,   // Intermediate
       19: 3    // Standard
     };
-    return rateMap[rate] ?? 3; // Par défaut: Standard
+    return rateMap[rate] ?? 3;
   };
 
   const handleEdit = (section) => {
@@ -177,8 +178,8 @@ function ProductFormStepsPD() {
           sx={{ mb: 3 }}
         >
           <Tab label="Type de produit" />
-          <Tab label="Informations du produit" />
-          <Tab label="Informations supplémentaires" />
+          <Tab label="Informations" />
+          <Tab label="Détails" />
           <Tab label="Aperçu" />
           <Tab label="Terminé" />
         </Tabs>
@@ -193,6 +194,7 @@ function ProductFormStepsPD() {
         
         {step === 1 && (
           <ProductInfoStep
+            productType={productType}
             productInfo={productInfo}
             handleProductInfoChange={handleProductInfoChange}
             handlePrev={handlePrev}
@@ -211,7 +213,7 @@ function ProductFormStepsPD() {
         
         {step === 3 && (
           <PreviewStep
-           productType={productType} // ✅ Envoie le nombre (0/1)
+            productType={productType}
             productInfo={productInfo}
             additionalInfo={additionalInfo}
             handlePrev={handlePrev}
@@ -223,7 +225,7 @@ function ProductFormStepsPD() {
           />
         )}
         
-        {step === 4 && <SuccessPage />}
+        {step === 4 && <SuccessPage itemType={productType} />}
       </Box>
     </DashboardLayout>
   );

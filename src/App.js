@@ -287,7 +287,7 @@ export default function App() {
         <Route path="/bon-de-reception" element={<BonDeReceptionPage />} />
         <Route path="/supplier-invoices" element={<SupplierInvoicesPage />} />
         <Route path="/Client-step" element={< MultiStepForm/>}/>
-        <Route path = "/Produit" element ={<ProductFormStepsPD/>}/>
+        <Route path = "/Ajouter" element ={<ProductFormStepsPD/>}/>
         <Route path = "/SupplierForm" element ={<SupplierFormStepsDb/>}/>
         <Route path="/success" element={<SuccessPage/>} />
         <Route path="/products" element={<ProductsTable />} />
@@ -327,7 +327,7 @@ export default function App() {
        <Route path = "/Vente/OrderCLient"   element= {<OrderClientModule />} />   
        <Route path = "/Vente/OrderCLientService"   element= {<CreateClientOrder />} />   
        <Route path = "/Vente/DevisClientPorjet"   element= {<DevisProjetForm />} />   
-      <Route path = "/produit/ajouter"   element= {<ProductFormSteps />} /> 
+    
       <Route path="/clients/edit/:clientId" element={<EditClientPage />} />   
      <Route path="/suppliers/edit/:supplierId" element={<EditSupplierPage />} />
      <Route path="/products/edit/:productId" element={<ProductUpdateSteps />} />

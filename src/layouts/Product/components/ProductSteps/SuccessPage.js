@@ -4,7 +4,9 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PropTypes from 'prop-types';
 import { Link } from 'react-router-dom';
 
-const SuccessPage = ({ onEditAgain }) => {
+const SuccessPage = ({ itemType }) => {
+  const itemLabel = itemType === 1 ? "Service" : "Produit";
+
   return (
     <Box sx={{
       display: 'flex',
@@ -18,11 +20,11 @@ const SuccessPage = ({ onEditAgain }) => {
       <CheckCircleIcon sx={{ fontSize: 80, color: 'success.main', mb: 3 }} />
       
       <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold' }}>
-        Produit mis à jour avec succès !
+        {itemLabel} créé avec succès !
       </Typography>
       
       <Typography variant="body1" color="text.secondary" sx={{ mb: 4, maxWidth: 500 }}>
-        Votre produit a été mis à jour avec succès dans le système.
+        Votre {itemLabel.toLowerCase()} a été créé avec succès dans le système.
       </Typography>
       
       <Box sx={{ display: 'flex', gap: 2 }}>
@@ -33,15 +35,16 @@ const SuccessPage = ({ onEditAgain }) => {
           to="/products"
           sx={{ px: 4, py: 1.5 }}
         >
-          Retour à la liste des produits
+          Retour à la liste
         </Button>
         
         <Button
           variant="outlined"
-          onClick={onEditAgain}
+          component={Link}
+          to="/products/new"
           sx={{ px: 4, py: 1.5 }}
         >
-          Modifier à nouveau
+          Créer un nouveau
         </Button>
       </Box>
     </Box>
@@ -49,7 +52,7 @@ const SuccessPage = ({ onEditAgain }) => {
 };
 
 SuccessPage.propTypes = {
-  onEditAgain: PropTypes.func.isRequired,
+  itemType: PropTypes.number.isRequired,
 };
 
 export default SuccessPage;
