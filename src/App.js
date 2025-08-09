@@ -130,6 +130,7 @@ import EditClientPage from 'layouts/tables/components/pages/EditClientPage';
 import EditSupplierPage from 'layouts/Supplier/components/pages/EditSupplierPage';
 import ProductsTable from 'layouts/Product/components/ProductsTable';
 import ProductUpdateSteps from 'layouts/Product/components/pages/ProductUpdateSteps';
+import ServicesTable from 'layouts/Product/components/pages/ServicesTable';
 
 
 
@@ -330,6 +331,7 @@ export default function App() {
       <Route path="/clients/edit/:clientId" element={<EditClientPage />} />   
      <Route path="/suppliers/edit/:supplierId" element={<EditSupplierPage />} />
      <Route path="/products/edit/:productId" element={<ProductUpdateSteps />} />
+        <Route path="/services" element={<ServicesTable />} />
       </Routes>
     </ThemeProvider>
   );

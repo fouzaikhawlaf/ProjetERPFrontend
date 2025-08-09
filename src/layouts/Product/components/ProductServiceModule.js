@@ -16,7 +16,7 @@ const ProductServiceModule = () => {
       title: 'Service', 
       description: 'Manage your services and offerings...', 
       icon: 'fa-cogs', 
-      link: '/service' 
+      link: '/services' 
     },
   ];
 
