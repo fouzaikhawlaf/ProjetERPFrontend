@@ -20,6 +20,22 @@ export const getServices = async () => {
   }
 };
 
+
+export const updateService = async (id, data) => {
+  try {
+    console.log("Envoi de la requête PUT à /Service/${id}");
+    console.log("Données envoyées:", JSON.stringify(data, null, 2));
+
+    const response = await apiErp.put(`/Service/${id}`, data);
+
+    console.log("Réponse du serveur:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("Erreur détaillée:", error.response?.data);
+    throw error;
+  }
+};
+
 // Supprimer un service
 export const deleteService = async (serviceId) => {
   try {
@@ -76,5 +92,14 @@ export const searchServices = async (query) => {
       || 'Erreur lors de la recherche';
     
     throw new Error(errorMessage);
+  }
+};
+export const getService = async (serviceId) => {
+  try {
+    const response = await apiErp.get(`/Service/${serviceId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching service:', error);
+    throw error;
   }
 };

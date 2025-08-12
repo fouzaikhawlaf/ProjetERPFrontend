@@ -131,6 +131,7 @@ import EditSupplierPage from 'layouts/Supplier/components/pages/EditSupplierPage
 import ProductsTable from 'layouts/Product/components/ProductsTable';
 import ProductUpdateSteps from 'layouts/Product/components/pages/ProductUpdateSteps';
 import ServicesTable from 'layouts/Product/components/pages/ServicesTable';
+import UpdateServiceForm from 'layouts/Product/components/pages/Service UpdateForm';
 
 
 
@@ -332,6 +333,7 @@ export default function App() {
      <Route path="/suppliers/edit/:supplierId" element={<EditSupplierPage />} />
      <Route path="/products/edit/:productId" element={<ProductUpdateSteps />} />
         <Route path="/services" element={<ServicesTable />} />
+           <Route path="/services/edit/:serviceId" element={<UpdateServiceForm />} />
       </Routes>
     </ThemeProvider>
   );
