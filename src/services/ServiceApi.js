@@ -103,3 +103,13 @@ export const getService = async (serviceId) => {
     throw error;
   }
 };
+
+// Ajoutez cette fonction à ProductApi.js
+export const createService = async (serviceData) => {
+  try {
+    const response = await apiErp.post(`/Service`, serviceData);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};

@@ -7,7 +7,8 @@ import {
   useTheme
 } from '@mui/material';
 
-import { createProduct } from 'services/ProductApi';
+import { createProduct} from 'services/ProductApi';
+import { createService } from 'services/ServiceApi';
 import SuccessPage from './SuccessPage';
 import DashboardLayout from '../../../../examples/LayoutContainers/DashboardLayout';
 import { useSnackbar } from 'notistack';
@@ -42,8 +43,6 @@ const formatDuration = (hours) => {
   ].join(':');
 };
 
-
-
 function ProductFormStepsPD() {
   const [step, setStep] = useState(0);
   const [productType, setProductType] = useState(0);
@@ -77,7 +76,6 @@ function ProductFormStepsPD() {
 
   const handleChange = (event, newValue) => setStep(newValue);
 
-  // CORRECTION: Gestion robuste des valeurs numériques
   const handleProductInfoChange = (field) => (e) => {
     const value = e.target.value;
     
@@ -145,7 +143,6 @@ function ProductFormStepsPD() {
       
       // Validation spécifique pour la durée des services
       if (productType === 1) {
-        // CORRECTION: Utilisation de la même logique que dans UpdateServiceForm
         let durationValue;
         if (typeof productInfo.duration === 'string') {
           durationValue = parseFloat(productInfo.duration.replace(',', '.'));
@@ -165,31 +162,32 @@ function ProductFormStepsPD() {
         return;
       }
 
-      const productData = {
+      // Construction de l'objet de données
+      const apiData = {
         name: productInfo.name,
         description: additionalInfo.description,
         price: productInfo.salePrice,
-        taxRate: productInfo.tvaRate,
-        tvaRate: convertTvaRate(productInfo.tvaRate),
+        taxRate: convertTvaRate(productInfo.tvaRate),
+        tvaRate: productInfo.tvaRate,
         priceType: productInfo.priceType,
         category: productInfo.category,
         unit: additionalInfo.unit,
         isArchived: false,
         itemTypeArticle: productType,
-        ...(productType === 0 && { stockQuantity: productInfo.stockQuantity }),
-        // CORRECTION: Utilisation de la même logique de formatage que dans UpdateServiceForm
-        ...(productType === 1 && { 
-           duration: formatDuration(productInfo.duration)
-        })
       };
 
-      // DEBUG: Vérification des valeurs avant envoi
-      console.log('Données du produit:', {
-        ...productData,
-        durationDebug: productType === 1 ? productInfo.duration : undefined
-      });
+      // Ajout des champs spécifiques au type
+      if (productType === 0) { // Produit
+        apiData.stockQuantity = productInfo.stockQuantity;
+      } else { // Service
+        apiData.duration = formatDuration(productInfo.duration);
+      }
 
-      const response = await createProduct(productData);
+      // Appel API approprié
+      const response = productType === 0 
+        ? await createProduct(apiData) 
+        : await createService(apiData);
+      
       if (response) {
         setStep(4);
         enqueueSnackbar(

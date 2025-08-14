@@ -12,13 +12,20 @@ import {
 import { Edit } from '@mui/icons-material';
 import PropTypes from 'prop-types';
 
-// Fonction pour formater la durée en heures/minutes
-const formatDurationDisplay = (hours) => {
-  if (typeof hours !== 'number') return hours;
+// Fonction pour formater l'affichage de la durée
+const formatDurationDisplay = (duration) => {
+  if (typeof duration === 'number') {
+    const h = Math.floor(duration);
+    const m = Math.round((duration - h) * 60);
+    return `${h}h${m.toString().padStart(2, '0')}`;
+  }
   
-  const h = Math.floor(hours);
-  const m = Math.round((hours - h) * 60);
-  return `${h}h${m.toString().padStart(2, '0')}`;
+  if (typeof duration === 'string' && duration.includes(':')) {
+    const [hours, minutes] = duration.split(':');
+    return `${parseInt(hours)}h${minutes.padStart(2, '0')}`;
+  }
+  
+  return duration;
 };
 
 const PreviewStep = ({
@@ -130,7 +137,6 @@ const PreviewStep = ({
               <strong>Unité:</strong> {additionalInfo.unit || 'Non spécifié'}
             </Typography>
           </Grid>
-         
         </Grid>
       </Card>
 
