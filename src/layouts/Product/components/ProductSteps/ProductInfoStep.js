@@ -102,10 +102,16 @@ const ProductInfoStep = ({ productType, productInfo, handleProductInfoChange, ha
               type="number"
               fullWidth
               value={productInfo.duration}
-              onChange={handleProductInfoChange('duration')}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Permettre les valeurs décimales
+                if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
+                  handleProductInfoChange('duration')(e);
+                }
+              }}
               error={!!errors.duration}
-              helperText={errors.duration || "Durée du service en heures"}
-              InputProps={{ inputProps: { min: 0.1, step: 0.5 } }}
+              helperText={errors.duration || "Durée du service en heures (ex: 1.5 pour 1h30)"}
+              InputProps={{ inputProps: { min: 0.1, step: 0.25 } }}
             />
           </Grid>
         )}

@@ -16,6 +16,33 @@ import AdditionalInfoStep from './AdditionalInfoStep';
 import PreviewStep from './Preview';
 import ProductTypeStep from './ProductTypeStep';
 
+// Fonction pour formater la durée en HH:mm:ss (format valide pour .NET TimeSpan)
+const formatDuration = (hours) => {
+  // Convertir en nombre si nécessaire
+  const numericHours = typeof hours === 'string' 
+    ? parseFloat(hours.replace(',', '.')) 
+    : hours;
+  
+  if (isNaN(numericHours)) {
+    console.error('Valeur de durée invalide:', hours);
+    return "00:00:00";
+  }
+  
+  // Calculer les composants temps
+  const totalSeconds = Math.round(numericHours * 3600);
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  
+  // Formatage avec padding pour chaque composant
+  return [
+    String(h).padStart(2, '0'),
+    String(m).padStart(2, '0'),
+    String(s).padStart(2, '0')
+  ].join(':');
+};
+
+
 
 function ProductFormStepsPD() {
   const [step, setStep] = useState(0);
@@ -50,23 +77,41 @@ function ProductFormStepsPD() {
 
   const handleChange = (event, newValue) => setStep(newValue);
 
+  // CORRECTION: Gestion robuste des valeurs numériques
   const handleProductInfoChange = (field) => (e) => {
     const value = e.target.value;
     
+    // Gestion spéciale pour les champs numériques
     if (['tvaRate', 'salePrice', 'stockQuantity', 'duration'].includes(field)) {
+      // Permettre le champ vide temporairement
       if (value === '') {
         setProductInfo(prev => ({ ...prev, [field]: '' }));
         return;
       }
       
-      const numericValue = ['stockQuantity', 'duration'].includes(field) 
-        ? parseFloat(value) 
-        : parseInt(value, 10);
-        
+      let numericValue;
+      
+      // Conversion spécifique pour les nombres décimaux
+      if (field === 'duration' || field === 'salePrice') {
+        // Gestion des virgules et des points
+        const cleanedValue = String(value).replace(',', '.');
+        numericValue = parseFloat(cleanedValue);
+      } 
+      // Conversion pour les entiers
+      else {
+        numericValue = parseInt(String(value).replace(/[^0-9]/g, ''), 10);
+      }
+      
+      // Mise à jour seulement si conversion valide
       if (!isNaN(numericValue)) {
         setProductInfo(prev => ({ ...prev, [field]: numericValue }));
+      } else {
+        // Garder la valeur brute pour correction
+        setProductInfo(prev => ({ ...prev, [field]: value }));
       }
-    } else {
+    } 
+    // Gestion standard pour les autres champs
+    else {
       setProductInfo(prev => ({ ...prev, [field]: value }));
     }
   };
@@ -98,8 +143,19 @@ function ProductFormStepsPD() {
         errors.quantity = "La quantité est invalide";
       }
       
-      if (productType === 1 && productInfo.duration <= 0) {
-        errors.duration = "La durée est invalide";
+      // Validation spécifique pour la durée des services
+      if (productType === 1) {
+        // CORRECTION: Utilisation de la même logique que dans UpdateServiceForm
+        let durationValue;
+        if (typeof productInfo.duration === 'string') {
+          durationValue = parseFloat(productInfo.duration.replace(',', '.'));
+        } else {
+          durationValue = productInfo.duration;
+        }
+        
+        if (isNaN(durationValue) || durationValue <= 0) {
+          errors.duration = "La durée doit être un nombre supérieur à 0";
+        }
       }
       
       if (Object.keys(errors).length > 0) {
@@ -121,8 +177,17 @@ function ProductFormStepsPD() {
         isArchived: false,
         itemTypeArticle: productType,
         ...(productType === 0 && { stockQuantity: productInfo.stockQuantity }),
-        ...(productType === 1 && { duration: productInfo.duration })
+        // CORRECTION: Utilisation de la même logique de formatage que dans UpdateServiceForm
+        ...(productType === 1 && { 
+           duration: formatDuration(productInfo.duration)
+        })
       };
+
+      // DEBUG: Vérification des valeurs avant envoi
+      console.log('Données du produit:', {
+        ...productData,
+        durationDebug: productType === 1 ? productInfo.duration : undefined
+      });
 
       const response = await createProduct(productData);
       if (response) {

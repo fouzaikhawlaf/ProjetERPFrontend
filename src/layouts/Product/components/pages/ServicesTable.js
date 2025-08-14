@@ -238,7 +238,22 @@ const ServicesTable = ({
       state: { service }
     });
   };
-
+// Ajouter cette fonction au début du fichier
+const formatDurationDisplay = (durationString) => {
+  if (!durationString) return '-';
+  
+  try {
+    // Gestion des formats "HH:mm:ss" et "HH:mm"
+    const parts = durationString.split(':');
+    const hours = parseInt(parts[0], 10);
+    const minutes = parts[1] ? parseInt(parts[1], 10) : 0;
+    
+    return `${hours}h${minutes.toString().padStart(2, '0')}`;
+  } catch (error) {
+    console.error('Erreur de formatage de durée:', durationString, error);
+    return durationString;
+  }
+};
   return (
     <DashboardLayout>
       <Toaster
@@ -518,7 +533,7 @@ const ServicesTable = ({
                                   {row?.name || 'Non nommé'}
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary" fontSize="0.75rem">
-                                  Durée: {row?.duration || '-'}
+                                   Durée: {formatDurationDisplay(row?.duration)}
                                 </Typography>
                               </Box>
                             </Box>

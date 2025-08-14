@@ -12,6 +12,15 @@ import {
 import { Edit } from '@mui/icons-material';
 import PropTypes from 'prop-types';
 
+// Fonction pour formater la durée en heures/minutes
+const formatDurationDisplay = (hours) => {
+  if (typeof hours !== 'number') return hours;
+  
+  const h = Math.floor(hours);
+  const m = Math.round((hours - h) * 60);
+  return `${h}h${m.toString().padStart(2, '0')}`;
+};
+
 const PreviewStep = ({
   productType,
   productInfo,
@@ -73,7 +82,7 @@ const PreviewStep = ({
           ) : (
             <Grid item xs={12} sm={6}>
               <Typography variant="subtitle1">
-                <strong>Durée (heures):</strong> {productInfo.duration}
+                <strong>Durée:</strong> {formatDurationDisplay(productInfo.duration)}
               </Typography>
             </Grid>
           )}
@@ -121,11 +130,7 @@ const PreviewStep = ({
               <strong>Unité:</strong> {additionalInfo.unit || 'Non spécifié'}
             </Typography>
           </Grid>
-          <Grid item xs={6}>
-            <Typography variant="subtitle1">
-              <strong>Image:</strong> {additionalInfo.image ? 'Disponible' : 'Non disponible'}
-            </Typography>
-          </Grid>
+         
         </Grid>
       </Card>
 
