@@ -1,3 +1,4 @@
+// ProductInfoStep.js
 import React, { useState } from 'react';
 import { 
   Box, 
@@ -18,6 +19,9 @@ import PropTypes from 'prop-types';
 
 const ProductInfoStep = ({ productType, productInfo, handleProductInfoChange, handlePrev, handleNext }) => {
   const [errors, setErrors] = useState({});
+  
+  // Liste des taux TVA disponibles
+  const tvaRates = [0, 7, 13, 19];
   
   const validateFields = () => {
     const newErrors = {};
@@ -124,7 +128,7 @@ const ProductInfoStep = ({ productType, productInfo, handleProductInfoChange, ha
               value={productInfo.tvaRate}
               onChange={handleProductInfoChange('tvaRate')}
             >
-              {[0, 7, 13, 19].map((rate) => (
+              {tvaRates.map((rate) => (
                 <FormControlLabel
                   key={rate}
                   value={rate}
@@ -168,18 +172,6 @@ const ProductInfoStep = ({ productType, productInfo, handleProductInfoChange, ha
             }}
           />
         </Grid>
-        
-        <Grid item xs={12} md={6}>
-          <TextField
-            label="Catégorie *"
-            variant="outlined"
-            fullWidth
-            value={productInfo.category}
-            onChange={handleProductInfoChange('category')}
-            error={!!errors.category}
-            helperText={errors.category || "Ex: Électronique, Meuble"}
-          />
-        </Grid>
       </Grid>
 
       <Box display="flex" justifyContent="space-between" marginTop="30px">
@@ -207,7 +199,6 @@ ProductInfoStep.propTypes = {
   productType: PropTypes.number.isRequired,
   productInfo: PropTypes.shape({
     name: PropTypes.string.isRequired,
-    category: PropTypes.string,
     tvaRate: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     priceType: PropTypes.string,
     salePrice: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
