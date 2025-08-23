@@ -6,12 +6,7 @@ import StatusFilters from "./StatusFilter";
 //import DashboardLayout from "../../../examples/LayoutContainers/DashboardLayout";
 
 const DeliveriesTable = () => {
-  const initialDeliveries = [
-    { id: "D001", customer: "John Doe", status: "In Transit", expectedDate: "2024-12-15" },
-    { id: "D002", customer: "Jane Smith", status: "Delivered", expectedDate: "2024-12-12" },
-    { id: "D003", customer: "Alice Johnson", status: "Canceled", expectedDate: "2024-12-10" },
-    { id: "D004", customer: "Bob Ross", status: "In Transit", expectedDate: "2024-12-18" },
-  ];
+
 
   const [deliveries, setDeliveries] = useState(initialDeliveries);
   const [selectedDelivery, setSelectedDelivery] = useState(null);

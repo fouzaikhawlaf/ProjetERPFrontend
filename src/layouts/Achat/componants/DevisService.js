@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+
+
 import {
   Paper,
   Button,
@@ -13,6 +15,12 @@ import {
   InputLabel,
   Modal,
   Box,
+  CircularProgress,
+  FormHelperText,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -20,44 +28,93 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
 import { createDevisService } from "services/devisPurchaseService";
 import { getSuppliers } from "services/supplierApi";
+import { getServices } from "services/ServiceApi";
 import { useNavigate } from "react-router-dom";
 import { jsPDF } from "jspdf";
-import "jspdf-autotable"; // Pour les tableaux formaté
-import imageShamash from 'images/imageShamash.png'; // Ajustez le chemin
+import "jspdf-autotable";
+import imageShamash from 'images/imageShamash.png';
 
 const CreerDevisService = () => {
   const [devisNumber, setDevisNumber] = useState("DEVIS-SERVICE-");
   const [validityDate, setValidityDate] = useState("");
   const [description, setDescription] = useState("");
-  const [notes, setNotes] = useState("");
-  const [serviceType, setServiceType] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [items, setItems] = useState([
-    { designation: "", quantite: 0, prixUnitaire: 0, tva: 0 },
+    { designation: "", quantite: 0, prixUnitaire: 0, tva: 0, serviceId: null },
   ]);
   const [suppliers, setSuppliers] = useState([]);
+  const [services, setServices] = useState([]);
   const [selectedSupplier, setSelectedSupplier] = useState("");
-  const [modalOpen, setModalOpen] = useState(false); // State for the modal
+  const [loadingSuppliers, setLoadingSuppliers] = useState(true);
+  const [loadingServices, setLoadingServices] = useState(true);
+  const [supplierError, setSupplierError] = useState("");
+  const [servicesError, setServicesError] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
+  const [pdfBlob, setPdfBlob] = useState(null);
   const navigate = useNavigate();
 
-  // Fetch suppliers on component mount
+  // Fetch suppliers and services on component mount
   useEffect(() => {
-    const fetchSuppliers = async () => {
+    const fetchData = async () => {
       try {
-        const data = await getSuppliers();
-        setSuppliers(data);
+        setLoadingSuppliers(true);
+        setLoadingServices(true);
+        
+        const [suppliersData, servicesData] = await Promise.all([
+          getSuppliers(),
+          getServices()
+        ]);
+        
+        // Traitement des fournisseurs
+        let supplierData = [];
+        if (suppliersData?.$values) supplierData = suppliersData.$values;
+        else if (Array.isArray(suppliersData)) supplierData = suppliersData;
+
+        const transformedSuppliers = supplierData
+          .map(supplier => ({
+            id: supplier.supplierID || supplier.id,
+            name: supplier.name || supplier.companyName || `Fournisseur ${supplier.supplierID || supplier.id}`
+          }))
+          .filter(supplier => supplier.id);
+
+        setSuppliers(transformedSuppliers);
+        setSupplierError(transformedSuppliers.length === 0 ? "Aucun fournisseur disponible" : "");
+
+        // Traitement des services
+        let serviceData = [];
+        if (servicesData?.$values) serviceData = servicesData.$values;
+        else if (Array.isArray(servicesData)) serviceData = servicesData;
+
+        const transformedServices = serviceData
+          .map(service => ({
+            id: service.serviceID || service.id,
+            name: service.name,
+            price: service.price || 0,
+            tvaRate: service.tvaRate || 0
+          }))
+          .filter(service => service.id);
+
+        setServices(transformedServices);
+        setServicesError(transformedServices.length === 0 ? "Aucun service disponible" : "");
+
       } catch (error) {
-        console.error("Error fetching suppliers:", error);
+        console.error("Error fetching data:", error);
+        setSupplierError("Échec du chargement des fournisseurs");
+        setServicesError("Échec du chargement des services");
+      } finally {
+        setLoadingSuppliers(false);
+        setLoadingServices(false);
       }
     };
 
-    fetchSuppliers();
+    fetchData();
   }, []);
 
   // Add a new item to the items list
   const handleAddItem = () => {
-    setItems([...items, { designation: "", quantite: 0, prixUnitaire: 0, tva: 0 }]);
+    setItems([...items, { designation: "", quantite: 0, prixUnitaire: 0, tva: 0, serviceId: null }]);
   };
 
   // Delete an item from the items list
@@ -67,26 +124,67 @@ const CreerDevisService = () => {
   };
 
   // Handle changes in item fields
- 
+  const handleItemChange = (index, field, value) => {
+    const newItems = [...items];
+    
+    if (field === 'designation' || field === 'serviceId') {
+      newItems[index][field] = value;
+    } else {
+      // Pour les champs numériques, s'assurer que c'est un nombre valide
+      const numericValue = Math.max(0, Number(value) || 0);
+      newItems[index][field] = numericValue;
+    }
+    
+    setItems(newItems);
+  };
+
+  // Handle service selection
+  const handleServiceChange = (index, serviceId) => {
+    if (serviceId) {
+      const selectedService = services.find(service => service.id === serviceId);
+      if (selectedService) {
+        const newItems = [...items];
+        newItems[index] = {
+          ...newItems[index], // Conserver les valeurs existantes (comme la quantité)
+          serviceId: selectedService.id,
+          designation: selectedService.name,
+          prixUnitaire: selectedService.price,
+          tva: selectedService.tvaRate
+        };
+        setItems(newItems);
+      }
+    } else {
+      // Si aucun service n'est sélectionné, réinitialiser seulement les champs du service
+      const newItems = [...items];
+      newItems[index] = {
+        ...newItems[index], // Conserver la quantité
+        serviceId: null,
+        designation: "",
+        prixUnitaire: 0,
+        tva: 0
+      };
+      setItems(newItems);
+    }
+  };
 
   // Calculate total HT (excluding taxes)
   const calculateTotalHT = () =>
-    items.reduce((total, item) => total + item.quantite * item.prixUnitaire, 0).toFixed(2);
+    items.reduce((total, item) => total + (item.quantite || 0) * (item.prixUnitaire || 0), 0).toFixed(3);
 
   // Calculate total VAT
   const calculateTotalVAT = () =>
-    items.reduce((total, item) => total + item.quantite * item.prixUnitaire * (item.tva / 100), 0).toFixed(2);
+    items.reduce((total, item) => total + (item.quantite || 0) * (item.prixUnitaire || 0) * ((item.tva || 0) / 100), 0).toFixed(3);
 
   // Calculate total TTC (including taxes)
   const calculateTotalTTC = () =>
-    (parseFloat(calculateTotalHT()) + parseFloat(calculateTotalVAT())).toFixed(2);
+    (parseFloat(calculateTotalHT() || 0) + parseFloat(calculateTotalVAT() || 0)).toFixed(3);
 
   // Calculate duration in hours
   const calculateDuration = () => {
     if (!startDate || !endDate) return 0;
     const start = new Date(startDate);
     const end = new Date(endDate);
-    return ((end - start) / (1000 * 60 * 60)).toFixed(2); // Convert milliseconds to hours
+    return ((end - start) / (1000 * 60 * 60)).toFixed(2);
   };
 
   // Handle changes in the devis number field
@@ -101,8 +199,7 @@ const CreerDevisService = () => {
 
   // Handle supplier selection
   const handleSupplierChange = (e) => {
-    const selectedId = e.target.value;
-    setSelectedSupplier(selectedId);
+    setSelectedSupplier(e.target.value);
   };
 
   // Handle form submission
@@ -118,11 +215,15 @@ const CreerDevisService = () => {
       totalHT: parseFloat(calculateTotalHT()),
       totalTVA: parseFloat(calculateTotalVAT()),
       totalTTC: parseFloat(calculateTotalTTC()),
-      items,
+      items: items.map(item => ({
+        designation: item.designation,
+        quantite: item.quantite,
+        prixUnitaire: item.prixUnitaire,
+        tva: item.tva,
+        serviceId: item.serviceId
+      })),
       validityDate,
       description,
-      notes,
-      serviceType,
       startDate,
       endDate,
     };
@@ -154,149 +255,154 @@ const CreerDevisService = () => {
     navigate("/supplier-form-steps");
   };
 
- 
- 
- 
-  
-  const generatePDF = () => {
-    if (!selectedSupplier) {
-      alert("Veuillez sélectionner un fournisseur avant de générer le PDF");
-      return;
+  const generatePDFBlob = () => {
+  if (!selectedSupplier) {
+    alert("Veuillez sélectionner un fournisseur avant de générer le PDF");
+    return null;
+  }
+
+  try {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    let yPosition = 15;
+
+    // En-tête avec logo
+    if (imageShamash) {
+      doc.addImage(imageShamash, 'PNG', 10, 10, 30, 30);
     }
-  
-    try {
-      const doc = new jsPDF();
-      const pageWidth = doc.internal.pageSize.getWidth();
-      let yPosition = 15;
-  
-      // En-tête avec logo
-      if (imageShamash) {
-        doc.addImage(imageShamash, 'PNG', 10, 10, 30, 30);
-      }
-  
-      // Titre
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.text(`DEVIS N° ${devisNumber}`, pageWidth / 2, 20, { align: "center" });
-  
-      // Informations société
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.text("Société Shamash IT", 140, 15);
-      doc.text("Adresse: étage B03,Centre Urbain Nord, Imm cercle des bureaux", 140, 20);
-      doc.text("Tél: +216  29 511 251", 140, 25);
-      doc.text("Email: contact@shamash-it.com", 140, 30);
-  
-      // Informations client
-      const selectedSupplierObj = suppliers.find(s => s.supplierID === selectedSupplier);
-      const clientInfo = [
-        ["Fournisseur:", selectedSupplierObj?.name || "Non spécifié"],
-        ["Date création:", new Date().toLocaleDateString()],
-        ["Validité:", validityDate || "Non spécifiée"],
-        ["Référence:", `DEV-${devisNumber}`]
-      ];
-  
-      doc.autoTable({
-        startY: 40,
-        body: clientInfo,
-        theme: "plain",
-        columnStyles: { 
-          0: { fontStyle: "bold", cellWidth: 40 },
-          1: { cellWidth: 60 } 
-        },
-        styles: { fontSize: 10 }
-      });
-  
-      yPosition = doc.lastAutoTable.finalY + 10;
-  
-      // Description
-      doc.setFontSize(12);
-      doc.text("Description du service:", 10, yPosition);
-      doc.setFontSize(10);
-      const splitDescription = doc.splitTextToSize(description || "Aucune description", 180);
-      doc.text(splitDescription, 10, yPosition + 7);
-  
-      // Tableau des articles
-      const headers = [["N°", "Désignation", "Qté", "P.U. HT", "TVA", "Total HT"]];
-      const data = items.map((item, index) => [
-        index + 1,
-        item.designation || "-",
-        Number(item.quantite || 0).toFixed(2),
-        `${Number(item.prixUnitaire || 0).toFixed(3)} TND`,
-        `${Number(item.tva || 0).toFixed(2)}%`,
-        `${(Number(item.quantite || 0) * Number(item.prixUnitaire || 0)).toFixed(3)} TND`
-      ]);
-  
-      doc.autoTable({
-        startY: yPosition + 15,
-        head: headers,
-        body: data,
-        theme: "grid",
-        margin: { horizontal: 10 },
-        styles: { fontSize: 8 },
-        headStyles: { 
-          fillColor: [41, 128, 185], 
-          textColor: 255, 
-          fontStyle: "bold" 
-        },
-        columnStyles: {
-          0: { cellWidth: 15 },
-          1: { cellWidth: 65 },
-          2: { cellWidth: 20 },
-          3: { cellWidth: 30 },
-          4: { cellWidth: 20 },
-          5: { cellWidth: 30 }
-        }
-      });
-  
-      // Totaux
-      const totalsY = doc.lastAutoTable.finalY + 15;
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "bold");
-      
-      const totals = [
-        { label: "Total HT:", value: calculateTotalHT() },
-        { label: "Total TVA:", value: calculateTotalVAT() },
-        { label: "Total TTC:", value: calculateTotalTTC() }
-      ];
-  
-      totals.forEach((total, index) => {
-        doc.text(
-          `${total.label} ${Number(total.value).toFixed(3)} TND`,
-          140,
-          totalsY + (index * 7)
-        );
-      });
-  
-      // Pied de page
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "normal");
-      doc.text(
-        "Société XYZ - RCS Tunis B123456 - TVA FR40123456789",
-        pageWidth / 2,
-        doc.internal.pageSize.getHeight() - 10,
-        { align: "center" }
-      );
-  
-      doc.save(`Devis_${devisNumber.replace(/[/]/g, '_')}.pdf`);
-    } catch (error) {
-      console.error("Erreur de génération PDF:", error);
-      alert("Erreur lors de la génération du PDF : " + error.message);
-    }
-  };
-  
-  // Corriger la fonction handleItemChange
-  const handleItemChange = (index, field, value) => {
-    const newItems = [...items];
-    const numericValue = field !== 'designation' ? 
-      Math.max(0, Number(value) || 0) : 
-      value;
+
+    // Titre
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(`DEVIS N° ${devisNumber}`, pageWidth / 2, 20, { align: "center" });
+
+    // Informations société
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text("Société Shamash IT", 140, 15);
+    doc.text("Adresse: étage B03,Centre Urbain Nord, Imm cercle des bureaux", 140, 20);
+    doc.text("Tél: +216  29 511 251", 140, 25);
+    doc.text("Email: contact@shamash-it.com", 140, 30);
+
+    // Informations fournisseur
+    const selectedSupplierObj = suppliers.find(s => s.id === selectedSupplier);
     
-    newItems[index][field] = numericValue;
-    setItems(newItems);
+    doc.setFont("helvetica", "bold");
+    doc.text("Fournisseur:", 10, 40);
+    doc.setFont("helvetica", "normal");
+    doc.text(selectedSupplierObj?.name || "Non spécifié", 40, 40);
+    
+    doc.setFont("helvetica", "bold");
+    doc.text("Date création:", 10, 47);
+    doc.setFont("helvetica", "normal");
+    doc.text(new Date().toLocaleDateString(), 40, 47);
+    
+    doc.setFont("helvetica", "bold");
+    doc.text("Validité:", 10, 54);
+    doc.setFont("helvetica", "normal");
+    doc.text(validityDate || "Non spécifiée", 40, 54);
+    
+    doc.setFont("helvetica", "bold");
+    doc.text("Référence:", 10, 61);
+    doc.setFont("helvetica", "normal");
+    doc.text(`DEV-${devisNumber}`, 40, 61);
+
+    yPosition = 70;
+
+    // Description
+    doc.setFontSize(12);
+    doc.text("Description du service:", 10, yPosition);
+    doc.setFontSize(10);
+    const splitDescription = doc.splitTextToSize(description || "Aucune description", 180);
+    doc.text(splitDescription, 10, yPosition + 7);
+
+    // Tableau des articles - version manuelle
+    yPosition += splitDescription.length * 5 + 15;
+    
+    // En-têtes du tableau
+    doc.setFont("helvetica", "bold");
+    doc.setFillColor(41, 128, 185);
+    doc.setTextColor(255, 255, 255);
+    doc.rect(10, yPosition, 190, 8, 'F');
+    doc.text("N°", 15, yPosition + 5);
+    doc.text("Désignation", 30, yPosition + 5);
+    doc.text("Qté", 110, yPosition + 5);
+    doc.text("P.U. HT", 130, yPosition + 5);
+    doc.text("TVA", 160, yPosition + 5);
+    doc.text("Total HT", 175, yPosition + 5);
+
+    yPosition += 8;
+    doc.setTextColor(0, 0, 0);
+    doc.setFont("helvetica", "normal");
+
+    // Lignes du tableau
+    items.forEach((item, index) => {
+      if (yPosition > 250) {
+        doc.addPage();
+        yPosition = 20;
+      }
+
+      doc.text((index + 1).toString(), 15, yPosition + 5);
+      doc.text(item.designation || "-", 30, yPosition + 5);
+      doc.text(Number(item.quantite || 0).toFixed(2), 110, yPosition + 5);
+      doc.text(`${Number(item.prixUnitaire || 0).toFixed(3)} TND`, 130, yPosition + 5);
+      doc.text(`${Number(item.tva || 0).toFixed(2)}%`, 160, yPosition + 5);
+      doc.text(`${(Number(item.quantite || 0) * Number(item.prixUnitaire || 0)).toFixed(3)} TND`, 175, yPosition + 5);
+      
+      // Ligne séparatrice
+      doc.line(10, yPosition + 8, 200, yPosition + 8);
+      yPosition += 10;
+    });
+
+    // Totaux
+    const totalsY = yPosition + 15;
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    
+    doc.text(`Total HT: ${calculateTotalHT()} TND`, 140, totalsY);
+    doc.text(`Total TVA: ${calculateTotalVAT()} TND`, 140, totalsY + 7);
+    doc.text(`Total TTC: ${calculateTotalTTC()} TND`, 140, totalsY + 14);
+
+    // Pied de page
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.text(
+      "Société XYZ - RCS Tunis B123456 - TVA FR40123456789",
+      pageWidth / 2,
+      doc.internal.pageSize.getHeight() - 10,
+      { align: "center" }
+    );
+
+    return doc.output("blob");
+  } catch (error) {
+    console.error("Erreur de génération PDF:", error);
+    alert("Erreur lors de la génération du PDF : " + error.message);
+    return null;
+  }
+};
+  // Handle PDF preview
+  const handlePreviewPDF = () => {
+    const blob = generatePDFBlob();
+    if (blob) {
+      setPdfBlob(blob);
+      setPdfPreviewOpen(true);
+    }
   };
 
-
+  // Handle PDF download
+  const handleDownloadPDF = () => {
+    const blob = generatePDFBlob();
+    if (blob) {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Devis_${devisNumber.replace(/[/]/g, '_')}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -320,27 +426,40 @@ const CreerDevisService = () => {
         <Grid container spacing={4}>
           {/* Fournisseur */}
           <Grid item xs={12} md={6}>
-            <FormControl fullWidth variant="outlined">
+            <FormControl fullWidth variant="outlined" error={!!supplierError}>
               <InputLabel>Fournisseur</InputLabel>
               <Select
                 value={selectedSupplier}
                 onChange={handleSupplierChange}
                 label="Fournisseur"
+                disabled={loadingSuppliers || supplierError}
+                renderValue={(value) => {
+                  const selected = suppliers.find(s => s.id === value);
+                  return selected ? selected.name : "Sélectionnez un fournisseur";
+                }}
               >
-                {Array.isArray(suppliers) && suppliers.length > 0 ? (
-                  suppliers.map((supplier) => (
-                    <MenuItem key={supplier.supplierID} value={supplier.supplierID}>
-                      {supplier.name}
-                    </MenuItem>
-                  ))
-                ) : (
-                  <MenuItem>
-                    <Button onClick={handleCreateNewSupplier} variant="contained" color="primary">
-                      Créer un nouveau fournisseur
-                    </Button>
+                {loadingSuppliers ? (
+                  <MenuItem disabled>
+                    <CircularProgress size={24} />
+                    <Typography variant="body2" sx={{ ml: 2 }}>Chargement des fournisseurs...</Typography>
                   </MenuItem>
-                )}
+                ) : suppliers.map((supplier) => (
+                  <MenuItem key={supplier.id} value={supplier.id}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                      <span>{supplier.name}</span>
+                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                        ID: {supplier.id}
+                      </Typography>
+                    </Box>
+                  </MenuItem>
+                ))}
               </Select>
+              {supplierError && (
+                <FormHelperText error sx={{ display: 'flex', alignItems: 'center' }}>
+                  <span style={{ marginRight: 8 }}>❌</span>
+                  {supplierError}
+                </FormHelperText>
+              )}
             </FormControl>
           </Grid>
 
@@ -390,30 +509,6 @@ const CreerDevisService = () => {
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              variant="outlined"
-            />
-          </Grid>
-
-          {/* Notes */}
-          <Grid item xs={12}>
-            <TextField
-              label="Notes"
-              fullWidth
-              multiline
-              rows={3}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              variant="outlined"
-            />
-          </Grid>
-
-          {/* Service Type */}
-          <Grid item xs={12} md={6}>
-            <TextField
-              label="Type de service"
-              fullWidth
-              value={serviceType}
-              onChange={(e) => setServiceType(e.target.value)}
               variant="outlined"
             />
           </Grid>
@@ -474,51 +569,72 @@ const CreerDevisService = () => {
               <tr key={index} style={{ borderBottom: "1px solid #ddd" }}>
                 <td style={{ width: "25%", padding: "8px", textAlign: "center" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <input
-                      type="text"
-                      value={item.designation}
-                      onChange={(e) => handleItemChange(index, "designation", e.target.value)}
-                      style={{ width: "100%", padding: "8px", border: "1px solid #ccc", borderRadius: "4px" }}
-                    />
+                    <FormControl fullWidth variant="outlined" size="small">
+                      <Select
+                        value={item.serviceId || ""}
+                        onChange={(e) => handleServiceChange(index, e.target.value)}
+                        displayEmpty
+                      >
+                        <MenuItem value="">
+                          <em>Sélectionner un service</em>
+                        </MenuItem>
+                        {loadingServices ? (
+                          <MenuItem disabled>
+                            <CircularProgress size={20} />
+                            <Typography variant="body2" sx={{ ml: 1 }}>Chargement...</Typography>
+                          </MenuItem>
+                        ) : services.map((service) => (
+                          <MenuItem key={service.id} value={service.id}>
+                            {service.name}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
                   </div>
                 </td>
                 <td style={{ width: "15%", padding: "8px", textAlign: "center" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <input
+                    <TextField
+                      fullWidth
                       type="number"
                       value={item.quantite}
-                      onChange={(e) => handleItemChange(index, "quantite", parseFloat(e.target.value))}
-                      style={{ width: "100%", padding: "8px", border: "1px solid #ccc", borderRadius: "4px" }}
+                      onChange={(e) => handleItemChange(index, "quantite", e.target.value)}
+                      variant="outlined"
+                      size="small"
+                      inputProps={{ min: 0, step: 1 }}
                     />
                   </div>
                 </td>
                 <td style={{ width: "20%", padding: "8px", textAlign: "center" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <input
+                    <TextField
+                      fullWidth
                       type="number"
                       value={item.prixUnitaire}
-                      onChange={(e) => handleItemChange(index, "prixUnitaire", parseFloat(e.target.value))}
-                      style={{ width: "100%", padding: "8px", border: "1px solid #ccc", borderRadius: "4px" }}
+                      onChange={(e) => handleItemChange(index, "prixUnitaire", e.target.value)}
+                      variant="outlined"
+                      size="small"
+                      inputProps={{ min: 0, step: 0.01 }}
                     />
                   </div>
                 </td>
                 <td style={{ width: "15%", padding: "8px", textAlign: "center" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <input
+                    <TextField
+                      fullWidth
                       type="number"
                       value={item.tva}
-                      onChange={(e) => handleItemChange(index, "tva", parseFloat(e.target.value))}
-                      style={{ width: "100%", padding: "8px", border: "1px solid #ccc", borderRadius: "4px" }}
+                      onChange={(e) => handleItemChange(index, "tva", e.target.value)}
+                      variant="outlined"
+                      size="small"
+                      inputProps={{ min: 0, max: 100, step: 0.1 }}
                     />
                   </div>
                 </td>
                 <td style={{ width: "15%", padding: "8px", textAlign: "center" }}>
-                  <button
-                    onClick={() => handleDeleteItem(index)}
-                    style={{ background: "none", border: "none", color: "red", cursor: "pointer" }}
-                  >
+                  <IconButton onClick={() => handleDeleteItem(index)} color="error">
                     <DeleteIcon />
-                  </button>
+                  </IconButton>
                 </td>
               </tr>
             ))}
@@ -541,26 +657,28 @@ const CreerDevisService = () => {
         <Divider sx={{ my: 3 }} />
         <Grid container spacing={2}>
           <Grid item xs={6}>
-            <Typography>Total HT: {calculateTotalHT()} TND</Typography>
+            <Typography variant="h6">Total HT: {calculateTotalHT()} TND</Typography>
           </Grid>
           <Grid item xs={6}>
-            <Typography>Total TVA: {calculateTotalVAT()} TND</Typography>
+            <Typography variant="h6">Total TVA: {calculateTotalVAT()} TND</Typography>
           </Grid>
           <Grid item xs={6}>
-            <Typography>Total TTC: {calculateTotalTTC()} TND</Typography>
+            <Typography variant="h6" color="primary">
+              Total TTC: {calculateTotalTTC()} TND
+            </Typography>
           </Grid>
         </Grid>
 
-        {/* Submit Button */}
-        <Grid container justifyContent="flex-end" sx={{ mt: 3 }}>
-        <Button
-    variant="contained"
-    color="secondary"
-    onClick={generatePDF}
-    sx={{ borderRadius: "8px", px: 4, mr: 2 }}
-  >
-    Télécharger le PDF
-  </Button>
+        {/* Action Buttons */}
+        <Grid container justifyContent="flex-end" sx={{ mt: 3, gap: 2 }}>
+          <Button
+            variant="outlined"
+            color="secondary"
+            onClick={handlePreviewPDF}
+            disabled={!selectedSupplier}
+          >
+            Prévisualiser PDF
+          </Button>
           <Button
             variant="contained"
             color="success"
@@ -573,7 +691,7 @@ const CreerDevisService = () => {
         </Grid>
       </Paper>
 
-      {/* Full-Screen Success Modal */}
+      {/* Success Modal */}
       <Modal
         open={modalOpen}
         onClose={handleModalClose}
@@ -611,6 +729,28 @@ const CreerDevisService = () => {
           </Button>
         </Box>
       </Modal>
+
+      {/* PDF Preview Dialog */}
+      <Dialog open={pdfPreviewOpen} onClose={() => setPdfPreviewOpen(false)} maxWidth="lg" fullWidth>
+        <DialogTitle>Aperçu du devis</DialogTitle>
+        <DialogContent sx={{ height: '80vh' }}>
+          {pdfBlob && (
+            <iframe
+              src={URL.createObjectURL(pdfBlob)}
+              width="100%"
+              height="100%"
+              style={{ border: 'none' }}
+              title="Aperçu PDF"
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPdfPreviewOpen(false)}>Fermer</Button>
+          <Button onClick={handleDownloadPDF} variant="contained" color="primary">
+            Télécharger
+          </Button>
+        </DialogActions>
+      </Dialog>
     </DashboardLayout>
   );
 };

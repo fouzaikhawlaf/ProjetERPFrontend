@@ -1,392 +1,594 @@
 import React, { useState, useEffect } from "react";
+import PropTypes from 'prop-types';
 import {
-  Table,
-  Badge,
+  Paper,
   Button,
-  Modal,
-  Form,
-  InputGroup,
-  FormControl,
-} from "react-bootstrap";
-import { FaEdit, FaTrashAlt, FaSearch, FaEye } from "react-icons/fa";
+  Typography,
+  IconButton,
+  Tooltip,
+  Box,
+  CircularProgress,
+  TextField,
+  Alert,
+  Chip,
+  Grid,
+  InputAdornment,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle
+} from "@mui/material";
+import { 
+  AddCircle, 
+  Edit, 
+  Delete, 
+  Visibility, 
+  Search,
+  Refresh,
+  CheckCircle,
+  Cancel,
+  PendingActions
+} from "@mui/icons-material";
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
-import "bootstrap/dist/css/bootstrap.min.css";
-import {
+import { 
   getAllDevisServices,
   acceptDevis,
-  rejectDevis,
+  rejectDevis
 } from "services/devisPurchaseService";
+import { useSnackbar } from "notistack";
 
-const DevisServiceTable = () => {
-  const [services, setServices] = useState([]);
-  const [filteredServices, setFilteredServices] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [selectedService, setSelectedService] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+const statusOptions = [
+  { value: "Tous", label: "Tous", color: "default" },
+  { value: 0, label: "En Cours", color: "warning" },
+  { value: 1, label: "Accepté", color: "success" },
+  { value: 2, label: "Rejeté", color: "error" }
+];
 
-  // Map numeric statut to string
-  const mapStatutToString = (statut) => {
-    switch (statut) {
-      case 0:
-        return "EnCours";
-      case 1:
-        return "Accepter";
-      case 2:
-        return "Rejecter";
-      default:
-        return "Unknown";
-    }
-  };
+const DevisStatusButton = ({ devisId, currentStatus, onStatusChange }) => {
+  const { enqueueSnackbar } = useSnackbar();
+  const [loading, setLoading] = useState(false);
 
-  // Fetch services on component mount
-  useEffect(() => {
-    const fetchServices = async () => {
-      try {
-        const response = await getAllDevisServices();
-        console.log("Fetched Services:", response);
-
-        const data = response.$values || [];
-        console.log("Extracted Services:", data);
-
-        if (Array.isArray(data)) {
-          setServices(data);
-          setFilteredServices(data);
-        } else {
-          console.error("Expected an array but got:", data);
-          setError("Invalid data format received from the server.");
-        }
-      } catch (error) {
-        console.error("Error fetching services:", error);
-        setError("Failed to fetch services. Please try again later.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchServices();
-  }, []);
-
-  // Handle accept devis
-  const handleAcceptDevis = async (id) => {
+  const handleAccept = async () => {
+    setLoading(true);
     try {
-      await acceptDevis(id);
-      const updatedStatus = 1; // Accepter
-      updateServiceStatus(id, updatedStatus);
+      await acceptDevis(devisId);
+      onStatusChange(devisId, 1);
+      enqueueSnackbar("Devis accepté avec succès", { variant: "success" });
     } catch (error) {
-      console.error("Error accepting devis:", error);
+      enqueueSnackbar("Erreur lors de l'acceptation du devis", { variant: "error" });
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Handle reject devis
-  const handleRejectDevis = async (id) => {
+  const handleReject = async () => {
+    setLoading(true);
     try {
-      await rejectDevis(id);
-      const updatedStatus = 2; // Rejecter
-      updateServiceStatus(id, updatedStatus);
+      await rejectDevis(devisId);
+      onStatusChange(devisId, 2);
+      enqueueSnackbar("Devis rejeté avec succès", { variant: "success" });
     } catch (error) {
-      console.error("Error rejecting devis:", error);
+      enqueueSnackbar("Erreur lors du rejet du devis", { variant: "error" });
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Update the status of a service
-  const updateServiceStatus = (id, newStatus) => {
-    const statutString = mapStatutToString(newStatus); // Map numeric statut to string
-    setServices((prevServices) =>
-      prevServices.map((service) =>
-        service.id === id ? { ...service, statut: statutString } : service
-      )
+  if (currentStatus === 1) {
+    return (
+      <Chip
+        icon={<CheckCircle />}
+        label="Accepté"
+        color="success"
+        size="small"
+      />
     );
-    setFilteredServices((prevFilteredServices) =>
-      prevFilteredServices.map((service) =>
-        service.id === id ? { ...service, statut: statutString } : service
-      )
-    );
-  };
-
-  // Render status button or badge
-  const renderStatusButton = (service) => {
-    const statut = mapStatutToString(service.statut); // Map numeric statut to string
-
-    switch (statut) {
-      case "EnCours":
-        return (
-          <div>
-            <Button
-              variant="outline-success"
-              size="sm"
-              onClick={() => handleAcceptDevis(service.id)}
-            >
-              Accepter
-            </Button>{" "}
-            <Button
-              variant="outline-danger"
-              size="sm"
-              onClick={() => handleRejectDevis(service.id)}
-            >
-              Rejeter
-            </Button>
-          </div>
-        );
-      case "Accepter":
-        return (
-          <Badge bg="success" className="p-2">
-            Accepter
-          </Badge>
-        );
-      case "Rejecter":
-        return (
-          <Badge bg="danger" className="p-2">
-            Rejecter
-          </Badge>
-        );
-      default:
-        return (
-          <Badge bg="secondary" className="p-2">
-            Unknown
-          </Badge>
-        );
-    }
-  };
-
-  // Handle search
-  const handleSearch = (e) => {
-    const query = e.target.value.toLowerCase();
-    setSearchQuery(query);
-    setFilteredServices(
-      services.filter((service) =>
-        Object.values(service).some((value) =>
-          value.toString().toLowerCase().includes(query)
-        )
-      )
-    );
-  };
-
-  // Handle edit
-  const handleEdit = (service) => {
-    setSelectedService(service);
-    setShowEditModal(true);
-  };
-
-  // Handle delete
-  const handleDelete = (service) => {
-    setSelectedService(service);
-    setShowDeleteModal(true);
-  };
-
-  // Handle view
-  const handleView = (service) => {
-    setSelectedService(service);
-    setShowViewModal(true);
-  };
-
-  // Confirm delete
-  const confirmDelete = () => {
-    setServices(services.filter((s) => s.id !== selectedService.id));
-    setFilteredServices(filteredServices.filter((s) => s.id !== selectedService.id));
-    setShowDeleteModal(false);
-  };
-
-  // Handle save changes
-  const handleSave = () => {
-    setServices(services.map((s) => (s.id === selectedService.id ? selectedService : s)));
-    setShowEditModal(false);
-  };
-
-  if (loading) {
-    return <div>Loading services...</div>;
   }
 
-  if (error) {
-    return <div className="text-danger">{error}</div>;
+  if (currentStatus === 2) {
+    return (
+      <Chip
+        icon={<Cancel />}
+        label="Rejeté"
+        color="error"
+        size="small"
+      />
+    );
   }
 
   return (
+    <Box sx={{ display: 'flex', gap: '6px' }}>
+      <Tooltip title="Accepter le devis">
+        <IconButton
+          size="small"
+          onClick={handleAccept}
+          color="success"
+          disabled={loading}
+        >
+          <CheckCircle fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      
+      <Tooltip title="Rejeter le devis">
+        <IconButton
+          size="small"
+          onClick={handleReject}
+          color="error"
+          disabled={loading}
+        >
+          <Cancel fontSize="small" />
+        </IconButton>
+      </Tooltip>
+    </Box>
+  );
+};
+
+DevisStatusButton.propTypes = {
+  devisId: PropTypes.oneOfType([
+    PropTypes.string,
+    PropTypes.number
+  ]).isRequired,
+  currentStatus: PropTypes.number.isRequired,
+  onStatusChange: PropTypes.func.isRequired
+};
+
+const DevisService = () => {
+  const { enqueueSnackbar } = useSnackbar();
+  const [services, setServices] = useState([]);
+  const [filteredServices, setFilteredServices] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState("Tous");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleDotNetResponse = (response) => {
+    if (response && response.$values) return response.$values;
+    if (Array.isArray(response)) return response;
+    return [];
+  };
+
+  const fetchServices = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await getAllDevisServices();
+      const servicesData = handleDotNetResponse(response);
+      setServices(servicesData);
+      setFilteredServices(servicesData);
+    } catch (error) {
+      console.error("Fetch error:", error);
+      setError("Erreur de chargement des devis de service");
+      enqueueSnackbar("Erreur de chargement", { variant: "error" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => { 
+    fetchServices(); 
+  }, [enqueueSnackbar]);
+
+  const handleSearch = (e) => {
+    const query = e.target.value.toLowerCase();
+    setSearchQuery(query);
+    
+    if (query === "") {
+      setFilteredServices(services);
+      return;
+    }
+
+    const filtered = services.filter((service) =>
+      Object.values(service).some((value) =>
+        value && value.toString().toLowerCase().includes(query)
+      )
+    );
+    setFilteredServices(filtered);
+  };
+
+  const handleStatusChange = (id, newStatus) => {
+    setServices(prev => prev.map(service => 
+      service.id === id ? { ...service, statut: newStatus } : service
+    ));
+    setFilteredServices(prev => prev.map(service => 
+      service.id === id ? { ...service, statut: newStatus } : service
+    ));
+  };
+
+  const handleView = (id) => {
+    // Logic to view devis details
+    console.log("View devis:", id);
+    enqueueSnackbar("Fonctionnalité de visualisation à implémenter", { variant: "info" });
+  };
+
+  const handleEdit = (id) => {
+    // Logic to edit devis
+    console.log("Edit devis:", id);
+    enqueueSnackbar("Fonctionnalité d'édition à implémenter", { variant: "info" });
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Confirmer la suppression de ce devis de service?")) return;
+    
+    try {
+      // Normally you would call a delete API here
+      // For now, we'll just filter it out from the state
+      setServices(prev => prev.filter(service => service.id !== id));
+      setFilteredServices(prev => prev.filter(service => service.id !== id));
+      enqueueSnackbar("Devis supprimé avec succès", { variant: "success" });
+    } catch (error) {
+      console.error("Delete error:", error);
+      enqueueSnackbar("Erreur lors de la suppression", { variant: "error" });
+    }
+  };
+
+  const handleCreateClick = () => {
+    // Logic to create a new devis
+    window.location.href = "/CreerDevisService";
+  };
+
+  const handleFilterClick = (filter) => {
+    setActiveFilter(filter);
+    if (filter === "Tous") {
+      setFilteredServices(services);
+    } else {
+      const numericFilter = parseInt(filter);
+      setFilteredServices(services.filter(service => service.statut === numericFilter));
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 0: return "warning";
+      case 1: return "success";
+      case 2: return "error";
+      default: return "default";
+    }
+  };
+
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case 0: return "En Cours";
+      case 1: return "Accepté";
+      case 2: return "Rejeté";
+      default: return "Inconnu";
+    }
+  };
+
+  return (
     <DashboardLayout>
-      <div className="container mt-4">
-        <h2 className="text-center mb-4">Devis Services</h2>
+      <Box sx={{ p: 3 }}>
+        {/* Header Section */}
+        <Grid container spacing={2} alignItems="center" sx={{ mb: 3 }}>
+          <Grid item xs={12} md={6}>
+            <Typography variant="h4" fontWeight="bold">
+              Gestion des Devis de Service
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {filteredServices.length} devis trouvés
+            </Typography>
+          </Grid>
+          <Grid item xs={12} md={6} sx={{ textAlign: { md: 'right' } }}>
+            <Button
+              variant="contained"
+              startIcon={<AddCircle />}
+              onClick={handleCreateClick}
+              sx={{ mr: 2 }}
+            >
+              Nouveau Devis
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<Refresh />}
+              onClick={fetchServices}
+            >
+              Actualiser
+            </Button>
+          </Grid>
+        </Grid>
 
-        {/* Search Bar */}
-        <InputGroup className="mb-3">
-          <FormControl
-            placeholder="Search services..."
-            value={searchQuery}
-            onChange={handleSearch}
-          />
-          <Button variant="outline-secondary">
-            <FaSearch />
-          </Button>
-        </InputGroup>
-
-        {/* Table */}
-        <Table striped bordered hover responsive className="shadow-sm rounded text-center">
-          <thead className="bg-light">
-            <tr>
-              <th>#</th>
-              <th>Devis Number</th>
-              <th>Service Name</th>
-              <th>Status</th>
-              <th>Price</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Array.isArray(filteredServices) &&
-              filteredServices.map((service, index) => (
-                <tr key={service.id}>
-                  <td>{index + 1}</td>
-                  <td>{service.devisNumber}</td>
-                  <td>{service.description}</td>
-                  <td>{renderStatusButton(service)}</td>
-                  <td>{service.totalTTC}</td>
-                  <td>
-                    <div className="d-flex gap-2 justify-content-center">
-                      {/* View Button */}
-                      <Button
-                        variant="link"
-                        size="sm"
-                        onClick={() => handleView(service)}
-                        style={{ background: "transparent", border: "none" }}
-                      >
-                        <FaEye style={{ color: "#0d6efd" }} /> {/* Blue Icon */}
-                      </Button>
-
-                      {/* Edit Button */}
-                      <Button
-                        variant="link"
-                        size="sm"
-                        onClick={() => handleEdit(service)}
-                        style={{ background: "transparent", border: "none" }}
-                      >
-                        <FaEdit style={{ color: "#0d6efd" }} /> {/* Blue Icon */}
-                      </Button>
-
-                      {/* Delete Button */}
-                      <Button
-                        variant="link"
-                        size="sm"
-                        onClick={() => handleDelete(service)}
-                        style={{ background: "transparent", border: "none" }}
-                      >
-                        <FaTrashAlt style={{ color: "#0d6efd" }} /> {/* Blue Icon */}
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-          </tbody>
-        </Table>
-
-        {/* Edit Modal */}
-        <Modal show={showEditModal} onHide={() => setShowEditModal(false)}>
-          <Modal.Header closeButton>
-            <Modal.Title>Edit Service</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            {selectedService && (
-              <Form>
-                <Form.Group className="mb-3">
-                  <Form.Label>Service Name</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={selectedService.name}
-                    onChange={(e) =>
-                      setSelectedService({ ...selectedService, name: e.target.value })
-                    }
+        {/* Filters Section */}
+        <Box sx={{ 
+          p: 2, 
+          mb: 3, 
+          bgcolor: 'background.paper', 
+          borderRadius: 1,
+          boxShadow: 1
+        }}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                variant="outlined"
+                placeholder="Rechercher par référence, description..."
+                value={searchQuery}
+                onChange={handleSearch}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search color="action" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', py: 1 }}>
+                {statusOptions.map((option) => (
+                  <Chip
+                    key={option.value}
+                    label={`${option.label} (${services.filter(service => 
+                      option.value === "Tous" ? true : service.statut === option.value
+                    ).length})`}
+                    onClick={() => handleFilterClick(option.value)}
+                    color={option.color}
+                    variant={activeFilter === option.value ? "filled" : "outlined"}
+                    sx={{ 
+                      minWidth: 100,
+                      fontWeight: activeFilter === option.value ? 'bold' : 'normal'
+                    }}
                   />
-                </Form.Group>
-                <Form.Group className="mb-3">
-                  <Form.Label>Status</Form.Label>
-                  <Form.Select
-                    value={selectedService.status}
-                    onChange={(e) =>
-                      setSelectedService({ ...selectedService, status: e.target.value })
-                    }
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                    <option value="Pending">Pending</option>
-                  </Form.Select>
-                </Form.Group>
-                <Form.Group className="mb-3">
-                  <Form.Label>Created Date</Form.Label>
-                  <Form.Control
-                    type="date"
-                    value={selectedService.dateCreation}
-                    onChange={(e) =>
-                      setSelectedService({ ...selectedService, dateCreation: e.target.value })
-                    }
-                  />
-                </Form.Group>
-                <Form.Group className="mb-3">
-                  <Form.Label>Price</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={selectedService.price}
-                    onChange={(e) =>
-                      setSelectedService({ ...selectedService, price: e.target.value })
-                    }
-                  />
-                </Form.Group>
-              </Form>
-            )}
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowEditModal(false)}>
-              Close
-            </Button>
-            <Button variant="primary" onClick={handleSave}>
-              Save Changes
-            </Button>
-          </Modal.Footer>
-        </Modal>
+                ))}
+              </Box>
+            </Grid>
+          </Grid>
+        </Box>
 
-        {/* Delete Modal */}
-        <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
-          <Modal.Header closeButton>
-            <Modal.Title>Confirm Delete</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            Are you sure you want to delete service {selectedService?.devisNumber} - {selectedService?.name}?
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
-              Cancel
-            </Button>
-            <Button variant="danger" onClick={confirmDelete}>
-              Delete
-            </Button>
-          </Modal.Footer>
-        </Modal>
+        {/* Content Section */}
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+        )}
 
-        {/* View Modal */}
-        <Modal show={showViewModal} onHide={() => setShowViewModal(false)}>
-          <Modal.Header closeButton>
-            <Modal.Title>View Service Details</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            {selectedService && (
-              <div>
-                <p><strong>Devis Number:</strong> {selectedService.devisNumber}</p>
-                <p><strong>Service Name:</strong> {selectedService.description}</p>
-                <p><strong>Status:</strong> {selectedService.statut}</p>
-                <p><strong>Total TTC:</strong> {selectedService.totalTTC}</p>
-                {/* Add more fields as needed */}
-              </div>
-            )}
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowViewModal(false)}>
-              Close
-            </Button>
-          </Modal.Footer>
-        </Modal>
-      </div>
+        {isLoading ? (
+          <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px">
+            <CircularProgress size={60} />
+          </Box>
+        ) : (
+          <Box 
+            component={Paper} 
+            elevation={0} 
+            sx={{ 
+              border: '1px solid', 
+              borderColor: 'divider', 
+              borderRadius: 2,
+              overflow: 'hidden'
+            }}
+          >
+            <Box sx={{ overflowX: 'auto' }}>
+              <table style={{ 
+                width: '100%',
+                borderCollapse: 'collapse',
+                minWidth: '1000px'
+              }}>
+                <thead>
+                  <tr style={{ 
+                    backgroundColor: '#f5f7fa',
+                    height: '60px'
+                  }}>
+                    <th style={{ 
+                      width: '50px',
+                      padding: '0 16px',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      textAlign: 'left',
+                      borderBottom: '2px solid #e0e0e0',
+                      color: '#333'
+                    }}>#</th>
+                    
+                    <th style={{ 
+                      width: '200px',
+                      padding: '0 16px',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      textAlign: 'left',
+                      borderBottom: '2px solid #e0e0e0',
+                      color: '#333'
+                    }}>Référence</th>
+                    
+                    <th style={{ 
+                      width: '250px',
+                      padding: '0 16px',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      textAlign: 'left',
+                      borderBottom: '2px solid #e0e0e0',
+                      color: '#333'
+                    }}>Description</th>
+                    
+                    <th style={{ 
+                      width: '150px',
+                      padding: '0 16px',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      textAlign: 'left',
+                      borderBottom: '2px solid #e0e0e0',
+                      color: '#333'
+                    }}>Statut</th>
+                    
+                    <th style={{ 
+                      width: '150px',
+                      padding: '0 16px',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      textAlign: 'right',
+                      borderBottom: '2px solid #e0e0e0',
+                      color: '#333'
+                    }}>Total TTC</th>
+                    
+                    <th style={{ 
+                      width: '200px',
+                      padding: '0 16px',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      textAlign: 'center',
+                      borderBottom: '2px solid #e0e0e0',
+                      color: '#333'
+                    }}>Actions</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {filteredServices.length > 0 ? (
+                    filteredServices.map((service, index) => (
+                      <tr 
+                        key={service.id}
+                        style={{ 
+                          borderBottom: '1px solid #eee',
+                          '&:hover': { backgroundColor: '#f9fafc' }
+                        }}
+                      >
+                        <td style={{ 
+                          padding: '12px 16px',
+                          color: '#555',
+                          fontSize: '0.875rem',
+                          verticalAlign: 'middle'
+                        }}>{index + 1}</td>
+                        
+                        <td style={{ 
+                          padding: '12px 16px',
+                          color: '#333',
+                          fontSize: '0.875rem',
+                          verticalAlign: 'middle'
+                        }}>
+                          <Box 
+                            component="span" 
+                            sx={{
+                              fontWeight: 500,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              display: 'block',
+                              maxWidth: '180px',
+                              color: '#1976d2'
+                            }}
+                          >
+                            {service.devisNumber || 'N/A'}
+                          </Box>
+                        </td>
+                        
+                        <td style={{ 
+                          padding: '12px 16px',
+                          color: '#555',
+                          fontSize: '0.875rem',
+                          verticalAlign: 'middle'
+                        }}>
+                          {service.description || 'N/A'}
+                        </td>
+                        
+                        <td style={{ 
+                          padding: '12px 16px',
+                          verticalAlign: 'middle'
+                        }}>
+                          <Chip
+                            label={getStatusLabel(service.statut)}
+                            size="small"
+                            color={getStatusColor(service.statut)}
+                            sx={{
+                              fontSize: '0.75rem',
+                              fontWeight: 500
+                            }}
+                          />
+                        </td>
+                        
+                        <td style={{ 
+                          padding: '12px 16px',
+                          color: '#333',
+                          fontSize: '0.875rem',
+                          fontWeight: 500,
+                          textAlign: 'right',
+                          verticalAlign: 'middle'
+                        }}>
+                          {service.totalTTC ? `${service.totalTTC.toFixed(2)} TND` : '0.00 TND'}
+                        </td>
+                        
+                        <td style={{ 
+                          padding: '12px 16px',
+                          textAlign: 'center',
+                          verticalAlign: 'middle'
+                        }}>
+                          <Box sx={{ 
+                            display: 'flex', 
+                            justifyContent: 'center',
+                            gap: '6px'
+                          }}>
+                            <Tooltip title="Voir">
+                              <IconButton 
+                                size="small"
+                                onClick={() => handleView(service.id)}
+                                sx={{ 
+                                  color: '#5c6bc0',
+                                  '&:hover': { backgroundColor: '#e8eaf6' }
+                                }}
+                              >
+                                <Visibility fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            
+                            <Tooltip title="Modifier">
+                              <IconButton 
+                                size="small"
+                                onClick={() => handleEdit(service.id)}
+                                sx={{ 
+                                  color: '#26a69a',
+                                  '&:hover': { backgroundColor: '#e0f2f1' }
+                                }}
+                              >
+                                <Edit fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            
+                            <DevisStatusButton 
+                              devisId={service.id}
+                              currentStatus={service.statut}
+                              onStatusChange={handleStatusChange}
+                            />
+                            
+                            <Tooltip title="Supprimer">
+                              <IconButton 
+                                size="small"
+                                onClick={() => handleDelete(service.id)}
+                                sx={{ 
+                                  color: '#ef5350',
+                                  '&:hover': { backgroundColor: '#ffebee' }
+                                }}
+                              >
+                                <Delete fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td 
+                        colSpan="6" 
+                        style={{ 
+                          padding: '24px', 
+                          textAlign: 'center',
+                          color: '#666'
+                        }}
+                      >
+                        <Box sx={{ textAlign: 'center' }}>
+                          <Typography variant="body1">
+                            Aucun devis de service trouvé
+                          </Typography>
+                          <Typography variant="body2" sx={{ mt: 1 }}>
+                            Essayez de modifier vos critères de recherche
+                          </Typography>
+                        </Box>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </Box>
+          </Box>
+        )}
+      </Box>
     </DashboardLayout>
   );
 };
 
-export default DevisServiceTable;
+export default DevisService;
