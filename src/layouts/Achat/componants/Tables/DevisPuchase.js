@@ -12,11 +12,7 @@ import {
   Alert,
   Chip,
   Grid,
-  InputAdornment,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle
+  InputAdornment
 } from "@mui/material";
 import { 
   AddCircle, 
@@ -36,6 +32,14 @@ import {
   rejectDevis
 } from "services/devisPurchaseService";
 import { useSnackbar } from "notistack";
+import AcceptDevisDialog from "../devisServiceComponants/acceptDevisDialog";
+import RejectDevisDialog from "../devisServiceComponants/RejectDevisDialog";
+import DeleteDevisDialog from "../devisServiceComponants/DeleteDevisDialog";
+import EditDevisDialog from "../devisServiceComponants/EditDevisDialog";
+import ViewDevisDialog from "../devisServiceComponants/ViewDevisDialog";
+
+// Import des dialogs
+
 
 const statusOptions = [
   { value: "Tous", label: "Tous", color: "default" },
@@ -44,35 +48,9 @@ const statusOptions = [
   { value: 2, label: "Rejeté", color: "error" }
 ];
 
-const DevisStatusButton = ({ devisId, currentStatus, onStatusChange }) => {
+const DevisStatusButton = ({ devisId, currentStatus, onStatusChange, onAccept, onReject }) => {
   const { enqueueSnackbar } = useSnackbar();
   const [loading, setLoading] = useState(false);
-
-  const handleAccept = async () => {
-    setLoading(true);
-    try {
-      await acceptDevis(devisId);
-      onStatusChange(devisId, 1);
-      enqueueSnackbar("Devis accepté avec succès", { variant: "success" });
-    } catch (error) {
-      enqueueSnackbar("Erreur lors de l'acceptation du devis", { variant: "error" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleReject = async () => {
-    setLoading(true);
-    try {
-      await rejectDevis(devisId);
-      onStatusChange(devisId, 2);
-      enqueueSnackbar("Devis rejeté avec succès", { variant: "success" });
-    } catch (error) {
-      enqueueSnackbar("Erreur lors du rejet du devis", { variant: "error" });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (currentStatus === 1) {
     return (
@@ -101,7 +79,7 @@ const DevisStatusButton = ({ devisId, currentStatus, onStatusChange }) => {
       <Tooltip title="Accepter le devis">
         <IconButton
           size="small"
-          onClick={handleAccept}
+          onClick={() => onAccept(devisId)}
           color="success"
           disabled={loading}
         >
@@ -112,7 +90,7 @@ const DevisStatusButton = ({ devisId, currentStatus, onStatusChange }) => {
       <Tooltip title="Rejeter le devis">
         <IconButton
           size="small"
-          onClick={handleReject}
+          onClick={() => onReject(devisId)}
           color="error"
           disabled={loading}
         >
@@ -129,7 +107,9 @@ DevisStatusButton.propTypes = {
     PropTypes.number
   ]).isRequired,
   currentStatus: PropTypes.number.isRequired,
-  onStatusChange: PropTypes.func.isRequired
+  onStatusChange: PropTypes.func.isRequired,
+  onAccept: PropTypes.func.isRequired,
+  onReject: PropTypes.func.isRequired
 };
 
 const DevisService = () => {
@@ -140,6 +120,14 @@ const DevisService = () => {
   const [activeFilter, setActiveFilter] = useState("Tous");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  
+  // États pour les dialogs
+  const [selectedDevis, setSelectedDevis] = useState(null);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [acceptDialogOpen, setAcceptDialogOpen] = useState(false);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
 
   const handleDotNetResponse = (response) => {
     if (response && response.$values) return response.$values;
@@ -194,21 +182,34 @@ const DevisService = () => {
     ));
   };
 
-  const handleView = (id) => {
-    // Logic to view devis details
-    console.log("View devis:", id);
-    enqueueSnackbar("Fonctionnalité de visualisation à implémenter", { variant: "info" });
+  const handleView = (service) => {
+    setSelectedDevis(service);
+    setViewDialogOpen(true);
   };
 
-  const handleEdit = (id) => {
-    // Logic to edit devis
-    console.log("Edit devis:", id);
-    enqueueSnackbar("Fonctionnalité d'édition à implémenter", { variant: "info" });
+  const handleEdit = (service) => {
+    setSelectedDevis(service);
+    setEditDialogOpen(true);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Confirmer la suppression de ce devis de service?")) return;
-    
+  const handleDelete = (service) => {
+    setSelectedDevis(service);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleAccept = (devisId) => {
+    const service = services.find(s => s.id === devisId);
+    setSelectedDevis(service);
+    setAcceptDialogOpen(true);
+  };
+
+  const handleReject = (devisId) => {
+    const service = services.find(s => s.id === devisId);
+    setSelectedDevis(service);
+    setRejectDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async (id) => {
     try {
       // Normally you would call a delete API here
       // For now, we'll just filter it out from the state
@@ -515,7 +516,7 @@ const DevisService = () => {
                             <Tooltip title="Voir">
                               <IconButton 
                                 size="small"
-                                onClick={() => handleView(service.id)}
+                                onClick={() => handleView(service)}
                                 sx={{ 
                                   color: '#5c6bc0',
                                   '&:hover': { backgroundColor: '#e8eaf6' }
@@ -528,7 +529,7 @@ const DevisService = () => {
                             <Tooltip title="Modifier">
                               <IconButton 
                                 size="small"
-                                onClick={() => handleEdit(service.id)}
+                                onClick={() => handleEdit(service)}
                                 sx={{ 
                                   color: '#26a69a',
                                   '&:hover': { backgroundColor: '#e0f2f1' }
@@ -542,12 +543,14 @@ const DevisService = () => {
                               devisId={service.id}
                               currentStatus={service.statut}
                               onStatusChange={handleStatusChange}
+                              onAccept={handleAccept}
+                              onReject={handleReject}
                             />
                             
                             <Tooltip title="Supprimer">
                               <IconButton 
                                 size="small"
-                                onClick={() => handleDelete(service.id)}
+                                onClick={() => handleDelete(service)}
                                 sx={{ 
                                   color: '#ef5350',
                                   '&:hover': { backgroundColor: '#ffebee' }
@@ -586,6 +589,41 @@ const DevisService = () => {
             </Box>
           </Box>
         )}
+
+        {/* Dialogs */}
+        <ViewDevisDialog
+          open={viewDialogOpen}
+          onClose={() => setViewDialogOpen(false)}
+          devis={selectedDevis}
+        />
+        
+        <EditDevisDialog
+          open={editDialogOpen}
+          onClose={() => setEditDialogOpen(false)}
+          devis={selectedDevis}
+          onUpdate={fetchServices}
+        />
+        
+        <DeleteDevisDialog
+          open={deleteDialogOpen}
+          onClose={() => setDeleteDialogOpen(false)}
+          devis={selectedDevis}
+          onDelete={handleDeleteConfirm}
+        />
+        
+        <AcceptDevisDialog
+          open={acceptDialogOpen}
+          onClose={() => setAcceptDialogOpen(false)}
+          devis={selectedDevis}
+          onStatusChange={handleStatusChange}
+        />
+        
+        <RejectDevisDialog
+          open={rejectDialogOpen}
+          onClose={() => setRejectDialogOpen(false)}
+          devis={selectedDevis}
+          onStatusChange={handleStatusChange}
+        />
       </Box>
     </DashboardLayout>
   );
