@@ -22,14 +22,14 @@ const AcceptDevisDialog = ({ open, onClose, devis, onStatusChange }) => {
     setLoading(true);
     try {
       await acceptDevis(devis.id, {
-        userId: 123, // Remplacer par l'ID de l'utilisateur connecté
+        userId: 123, // Remplacer par l&apos;ID de l&apos;utilisateur connecté
         comment: comment
       });
       enqueueSnackbar("Devis accepté avec succès", { variant: "success" });
       onStatusChange(devis.id, 1);
       onClose();
     } catch (error) {
-      enqueueSnackbar("Erreur lors de l'acceptation du devis", { variant: "error" });
+      enqueueSnackbar("Erreur lors de l&apos;acceptation du devis", { variant: "error" });
     } finally {
       setLoading(false);
     }
@@ -41,7 +41,7 @@ const AcceptDevisDialog = ({ open, onClose, devis, onStatusChange }) => {
       <DialogContent>
         <Box sx={{ mt: 2 }}>
           <Typography>
-            {'Vous êtes sur le point d\'accepter le devis <strong>{devis?.devisNumber}</strong>.'}
+            Vous êtes sur le point d&apos;accepter le devis <strong>{devis?.devisNumber}</strong>.
           </Typography>
           
           <TextField
