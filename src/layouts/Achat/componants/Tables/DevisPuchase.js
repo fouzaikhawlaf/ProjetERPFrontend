@@ -37,38 +37,36 @@ import RejectDevisDialog from "../devisServiceComponants/RejectDevisDialog";
 import DeleteDevisDialog from "../devisServiceComponants/DeleteDevisDialog";
 import EditDevisDialog from "../devisServiceComponants/EditDevisDialog";
 import ViewDevisDialog from "../devisServiceComponants/ViewDevisDialog";
-
-// Import des dialogs
-
+import { DEVIS_STATUS } from "services/devisConstants";
 
 const statusOptions = [
   { value: "Tous", label: "Tous", color: "default" },
-  { value: 0, label: "En Cours", color: "warning" },
-  { value: 1, label: "Accepté", color: "success" },
-  { value: 2, label: "Rejeté", color: "error" }
+  { value: DEVIS_STATUS.EN_COURS, label: "En Cours", color: "warning" },
+  { value: DEVIS_STATUS.ACCEPTE, label: "Accepté", color: "success" },
+  { value: DEVIS_STATUS.REJETE, label: "Rejeté", color: "error" }
 ];
 
 const DevisStatusButton = ({ devisId, currentStatus, onStatusChange, onAccept, onReject }) => {
   const { enqueueSnackbar } = useSnackbar();
   const [loading, setLoading] = useState(false);
 
-  if (currentStatus === 1) {
+  if (currentStatus === DEVIS_STATUS.ACCEPTE) {
     return (
       <Chip
         icon={<CheckCircle />}
-        label="Accepté"
-        color="success"
+        label={DEVIS_STATUS.getLabel(currentStatus)}
+        color={DEVIS_STATUS.getColor(currentStatus)}
         size="small"
       />
     );
   }
 
-  if (currentStatus === 2) {
+  if (currentStatus === DEVIS_STATUS.REJETE) {
     return (
       <Chip
         icon={<Cancel />}
-        label="Rejeté"
-        color="error"
+        label={DEVIS_STATUS.getLabel(currentStatus)}
+        color={DEVIS_STATUS.getColor(currentStatus)}
         size="small"
       />
     );
@@ -141,8 +139,15 @@ const DevisService = () => {
     try {
       const response = await getAllDevisServices();
       const servicesData = handleDotNetResponse(response);
-      setServices(servicesData);
-      setFilteredServices(servicesData);
+      
+      // Normaliser les données pour utiliser statutDevis du backend
+      const normalizedServices = servicesData.map(service => ({
+        ...service,
+        statut: service.statutDevis !== undefined ? service.statutDevis : DEVIS_STATUS.EN_COURS
+      }));
+      
+      setServices(normalizedServices);
+      setFilteredServices(normalizedServices);
     } catch (error) {
       console.error("Fetch error:", error);
       setError("Erreur de chargement des devis de service");
@@ -211,8 +216,6 @@ const DevisService = () => {
 
   const handleDeleteConfirm = async (id) => {
     try {
-      // Normally you would call a delete API here
-      // For now, we'll just filter it out from the state
       setServices(prev => prev.filter(service => service.id !== id));
       setFilteredServices(prev => prev.filter(service => service.id !== id));
       enqueueSnackbar("Devis supprimé avec succès", { variant: "success" });
@@ -223,7 +226,6 @@ const DevisService = () => {
   };
 
   const handleCreateClick = () => {
-    // Logic to create a new devis
     window.location.href = "/CreerDevisService";
   };
 
@@ -238,21 +240,11 @@ const DevisService = () => {
   };
 
   const getStatusColor = (status) => {
-    switch (status) {
-      case 0: return "warning";
-      case 1: return "success";
-      case 2: return "error";
-      default: return "default";
-    }
+    return DEVIS_STATUS.getColor(status);
   };
 
   const getStatusLabel = (status) => {
-    switch (status) {
-      case 0: return "En Cours";
-      case 1: return "Accepté";
-      case 2: return "Rejeté";
-      default: return "Inconnu";
-    }
+    return DEVIS_STATUS.getLabel(status);
   };
 
   return (
