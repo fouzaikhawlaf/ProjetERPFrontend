@@ -1,11 +1,58 @@
+/* Style général */
+body {
+  background-color: #f9f9f9;
+}
+
+/* Carte */
 .achat-card {
-    border-radius: 10px;
-    transition: transform 0.2s ease-in-out;
-  }
-  .achat-card:hover {
-    transform: translateY(-5px);
-  }
-  .icon-container {
-    color: #007bff;
-  }
-  
+  border-radius: 12px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border: none;
+  background: #fff;
+}
+
+.achat-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Icônes */
+.icon-container {
+  transition: color 0.3s ease;
+}
+
+/* Couleurs personnalisées selon le type */
+.achat-card.nouvel-achat .icon-container {
+  color: #4caf50; /* Vert */
+}
+.achat-card.devis .icon-container {
+  color: #007bff; /* Bleu */
+}
+.achat-card.commandes .icon-container {
+  color: #ff9800; /* Orange */
+}
+.achat-card.receptions .icon-container {
+  color: #795548; /* Marron */
+}
+.achat-card.factures .icon-container {
+  color: #9c27b0; /* Violet */
+}
+.achat-card.rapports .icon-container {
+  color: #e91e63; /* Rose */
+}
+.achat-card.historique .icon-container {
+  color: #607d8b; /* Gris bleu */
+}
+
+/* Titre */
+.achat-card .card-title {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #333;
+}
+
+/* Texte */
+.achat-card .card-text {
+  font-size: 0.9rem;
+  color: #666;
+}
