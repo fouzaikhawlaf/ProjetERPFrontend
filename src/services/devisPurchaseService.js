@@ -229,3 +229,15 @@ export const getDevisByDateRange = async (startDate, endDate) => {
     throw error;
   }
 };
+
+
+// Dans devisPurchaseService.js
+export const deleteDevisPurchase = async (id) => {
+  try {
+    const response = await apiErp.delete(`/DevisPurchase/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error deleting devis purchase with ID ${id}:`, error);
+    throw error;
+  }
+};
