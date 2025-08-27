@@ -31,7 +31,7 @@ import {
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
 import { 
   getAllDevisProducts,
-  acceptDevis,
+  acceptDevisService,
   rejectDevis
 } from "services/devisPurchaseService";
 import { useSnackbar } from "notistack";
@@ -50,7 +50,7 @@ const DevisStatusButton = ({ devisId, currentStatus, onStatusChange }) => {
   const handleAccept = async () => {
     setLoading(true);
     try {
-      await acceptDevis(devisId);
+      await acceptDevisService(devisId);
       onStatusChange(devisId, 1);
       enqueueSnackbar("Devis accepté avec succès", { variant: "success" });
     } catch (error) {

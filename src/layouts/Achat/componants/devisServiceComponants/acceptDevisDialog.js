@@ -9,7 +9,7 @@ import {
   Box,
   Typography
 } from "@mui/material";
-import { acceptDevis } from "services/devisPurchaseService";
+import { acceptDevisService } from "services/devisPurchaseService";
 import { useSnackbar } from "notistack";
 import PropTypes from 'prop-types';
 
@@ -21,7 +21,7 @@ const AcceptDevisDialog = ({ open, onClose, devis, onStatusChange }) => {
   const handleAccept = async () => {
     setLoading(true);
     try {
-      await acceptDevis(devis.id, {
+      await acceptDevisService(devis.id, {
         userId: 123, // Remplacer par l&apos;ID de l&apos;utilisateur connecté
         comment: comment
       });

@@ -94,17 +94,13 @@ export const getAllDevisServices = async () => {
 };
 
 // Other functions (acceptDevis, rejectDevis, getDevisStatus, etc.)
-export const acceptDevis = async (id) => {
+// Pour accepter un devis service
+export const acceptDevisService = async (id) => {
   try {
-    const requestBody = {
-      userId: 123, // Replace with the actual user ID
-      comment: "Devis accepted", // Replace with the actual comment
-    };
-
-    const response = await apiErp.post(`/DevisPurchase/${id}/accept`, requestBody);
-    return normalizeItems(response.data);
+    const response = await apiErp.post(`/DevisPurchase/service/${id}/accept`);
+    return response.data;
   } catch (error) {
-    console.error("Error accepting devis:", error);
+    console.error("Error accepting devis service:", error);
     throw error;
   }
 };
