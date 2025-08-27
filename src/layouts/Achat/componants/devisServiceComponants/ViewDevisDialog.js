@@ -33,6 +33,19 @@ import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 
 const ViewDevisDialog = ({ open, onClose, devis }) => {
+  // Fonction utilitaire pour normaliser les items
+  const normalizeItems = (itemsData) => {
+    if (Array.isArray(itemsData)) {
+      return itemsData;
+    } else if (itemsData && typeof itemsData === 'object' && itemsData.$values) {
+      return itemsData.$values;
+    } else if (itemsData && typeof itemsData === 'object') {
+      // Si c'est un objet mais pas un tableau, convertir en tableau
+      return Object.values(itemsData);
+    }
+    return [];
+  };
+
   const handleDownloadPDF = () => {
     if (!devis) return;
 
@@ -48,17 +61,21 @@ const ViewDevisDialog = ({ open, onClose, devis }) => {
     // Informations générales
     doc.setFontSize(12);
     doc.text(`Date de création: ${new Date(devis.dateCreation).toLocaleDateString()}`, 20, 30);
-    doc.text(`Statut: ${devis.statut === 0 ? 'En Cours' : devis.statut === 1 ? 'Accepté' : 'Rejeté'}`, 20, 40);
+    doc.text(`Statut: ${devis.statutDevis === 0 ? 'En Cours' : devis.statutDevis === 1 ? 'Accepté' : 'Rejeté'}`, 20, 40);
     doc.text(`Description: ${devis.description || 'Non spécifiée'}`, 20, 50);
 
     // Tableau des articles
     const headers = [["Désignation", "Quantité", "Prix Unitaire", "TVA", "Total HT"]];
-    const data = devis.items.map(item => [
-      item.designation,
-      item.quantite,
-      `${item.prixUnitaire} TND`,
-      `${item.tva}%`,
-      `${(item.quantite * item.prixUnitaire).toFixed(2)} TND`
+    
+    // Utiliser la fonction de normalisation pour les items
+    const items = normalizeItems(devis.items);
+    
+    const data = items.map(item => [
+      item.designation || 'N/A',
+      item.quantite || 0,
+      `${item.prixUnitaire || 0} TND`,
+      `${item.tva || 0}%`,
+      `${((item.quantite || 0) * (item.prixUnitaire || 0)).toFixed(2)} TND`
     ]);
 
     doc.autoTable({
@@ -70,9 +87,9 @@ const ViewDevisDialog = ({ open, onClose, devis }) => {
 
     // Totaux
     const finalY = doc.lastAutoTable.finalY + 10;
-    doc.text(`Total HT: ${devis.totalHT} TND`, 140, finalY);
-    doc.text(`Total TVA: ${devis.totalTVA} TND`, 140, finalY + 10);
-    doc.text(`Total TTC: ${devis.totalTTC} TND`, 140, finalY + 20);
+    doc.text(`Total HT: ${devis.totalHT || 0} TND`, 140, finalY);
+    doc.text(`Total TVA: ${devis.totalTVA || 0} TND`, 140, finalY + 10);
+    doc.text(`Total TTC: ${devis.totalTTC || 0} TND`, 140, finalY + 20);
 
     // Téléchargement
     doc.save(`Devis_${devis.devisNumber}.pdf`);
@@ -80,8 +97,11 @@ const ViewDevisDialog = ({ open, onClose, devis }) => {
 
   if (!devis) return null;
 
+  // Normaliser les items pour éviter l'erreur "is not iterable"
+  const items = normalizeItems(devis.items);
+
   const getStatusIcon = () => {
-    switch (devis.statut) {
+    switch (devis.statutDevis) {
       case 0: return <Schedule />;
       case 1: return <CheckCircle />;
       case 2: return <Cancel />;
@@ -90,7 +110,7 @@ const ViewDevisDialog = ({ open, onClose, devis }) => {
   };
 
   const getStatusColor = () => {
-    switch (devis.statut) {
+    switch (devis.statutDevis) {
       case 0: return 'warning';
       case 1: return 'success';
       case 2: return 'error';
@@ -99,7 +119,7 @@ const ViewDevisDialog = ({ open, onClose, devis }) => {
   };
 
   const getStatusLabel = () => {
-    switch (devis.statut) {
+    switch (devis.statutDevis) {
       case 0: return 'En Cours';
       case 1: return 'Accepté';
       case 2: return 'Rejeté';
@@ -124,7 +144,7 @@ const ViewDevisDialog = ({ open, onClose, devis }) => {
       }}>
         <Box display="flex" alignItems="center">
           <Avatar sx={{ 
-            bgcolor: devis.statut === 1 ? '#4caf50' : devis.statut === 2 ? '#f44336' : '#ff9800', 
+            bgcolor: devis.statutDevis === 1 ? '#4caf50' : devis.statutDevis === 2 ? '#f44336' : '#ff9800', 
             mr: 2,
             width: 40, 
             height: 40
@@ -205,33 +225,39 @@ const ViewDevisDialog = ({ open, onClose, devis }) => {
           <Grid item xs={12}>
             <Paper sx={{ p: 2, mb: 2 }}>
               <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
-                <Receipt sx={{ mr: 1 }} /> Articles ({devis.items?.length || 0})
+                <Receipt sx={{ mr: 1 }} /> Articles ({items.length})
               </Typography>
-              <List dense>
-                {devis.items?.map((item, index) => (
-                  <React.Fragment key={index}>
-                    <ListItem sx={{ flexDirection: 'column', alignItems: 'flex-start', py: 1 }}>
-                      <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography fontWeight="medium">
-                          {item.designation || 'Article sans nom'}
-                        </Typography>
-                        <Typography fontWeight="bold">
-                          {(item.quantite * item.prixUnitaire).toFixed(2)} TND
-                        </Typography>
-                      </Box>
-                      <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          {item.quantite} x {item.prixUnitaire} TND
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          TVA: {item.tva}%
-                        </Typography>
-                      </Box>
-                    </ListItem>
-                    {index < devis.items.length - 1 && <Divider />}
-                  </React.Fragment>
-                ))}
-              </List>
+              {items.length > 0 ? (
+                <List dense>
+                  {items.map((item, index) => (
+                    <React.Fragment key={index}>
+                      <ListItem sx={{ flexDirection: 'column', alignItems: 'flex-start', py: 1 }}>
+                        <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography fontWeight="medium">
+                            {item.designation || 'Article sans nom'}
+                          </Typography>
+                          <Typography fontWeight="bold">
+                            {((item.quantite || 0) * (item.prixUnitaire || 0)).toFixed(2)} TND
+                          </Typography>
+                        </Box>
+                        <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+                          <Typography variant="body2" color="text.secondary">
+                            {item.quantite || 0} x {item.prixUnitaire || 0} TND
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            TVA: {item.tva || 0}%
+                          </Typography>
+                        </Box>
+                      </ListItem>
+                      {index < items.length - 1 && <Divider />}
+                    </React.Fragment>
+                  ))}
+                </List>
+              ) : (
+                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+                  Aucun article dans ce devis
+                </Typography>
+              )}
             </Paper>
           </Grid>
 
@@ -328,19 +354,14 @@ ViewDevisDialog.propTypes = {
     description: PropTypes.string,
     startDate: PropTypes.string,
     endDate: PropTypes.string,
-    statut: PropTypes.number,
+    statutDevis: PropTypes.number,
     totalHT: PropTypes.number,
     totalTVA: PropTypes.number,
     totalTTC: PropTypes.number,
-    items: PropTypes.arrayOf(
-      PropTypes.shape({
-        designation: PropTypes.string,
-        quantite: PropTypes.number,
-        prixUnitaire: PropTypes.number,
-        tva: PropTypes.number,
-        serviceId: PropTypes.oneOfType([PropTypes.string, PropTypes.number])
-      })
-    )
+    items: PropTypes.oneOfType([
+      PropTypes.array,
+      PropTypes.object // Accepte aussi les objets (pour $values)
+    ])
   }),
   open: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,

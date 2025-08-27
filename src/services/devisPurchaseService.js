@@ -1,10 +1,26 @@
 import apiErp from './api'; // Import the axios instance
 
+// Fonction utilitaire pour normaliser les items
+const normalizeItems = (data) => {
+  if (Array.isArray(data)) {
+    return data.map(item => ({
+      ...item,
+      items: item.items?.$values || item.items || []
+    }));
+  } else if (data && typeof data === 'object') {
+    return {
+      ...data,
+      items: data.items?.$values || data.items || []
+    };
+  }
+  return data;
+};
+
 // Récupérer tous les devis
 export const getAllDevisPurchases = async () => {
   try {
     const response = await apiErp.get('/DevisPurchase');
-    return response.data;
+    return normalizeItems(response.data);
   } catch (error) {
     console.error('Error fetching devis purchases:', error);
     throw error;
@@ -15,7 +31,7 @@ export const getAllDevisPurchases = async () => {
 export const getDevisPurchaseById = async (id) => {
   try {
     const response = await apiErp.get(`/DevisPurchase/${id}`);
-    return response.data;
+    return normalizeItems(response.data);
   } catch (error) {
     console.error(`Error fetching devis purchase with ID ${id}:`, error);
     throw error;
@@ -26,7 +42,7 @@ export const getDevisPurchaseById = async (id) => {
 export const createDevisPurchase = async (createDevisPurchaseDto) => {
   try {
     const response = await apiErp.post('/DevisPurchase', createDevisPurchaseDto);
-    return response.data;
+    return normalizeItems(response.data);
   } catch (error) {
     console.error('Error creating devis purchase:', error);
     throw error;
@@ -37,7 +53,7 @@ export const createDevisPurchase = async (createDevisPurchaseDto) => {
 export const createDevisService = async (devisServiceDto) => {
   try {
     const response = await apiErp.post('/DevisPurchase/create-service', devisServiceDto);
-    return response.data;
+    return normalizeItems(response.data);
   } catch (error) {
     console.error('Error creating devis service:', error);
     throw error;
@@ -48,7 +64,7 @@ export const createDevisService = async (devisServiceDto) => {
 export const createDevisProduct = async (devisProduitDto) => {
   try {
     const response = await apiErp.post('/DevisPurchase/create-product', devisProduitDto);
-    return response.data;
+    return normalizeItems(response.data);
   } catch (error) {
     console.error('Error creating devis product:', error);
     throw error;
@@ -59,7 +75,7 @@ export const createDevisProduct = async (devisProduitDto) => {
 export const updateDevisPurchase = async (id, updateDevisPurchaseDto) => {
   try {
     const response = await apiErp.put(`/DevisPurchase/${id}`, updateDevisPurchaseDto);
-    return response.data;
+    return normalizeItems(response.data);
   } catch (error) {
     console.error(`Error updating devis purchase with ID ${id}:`, error);
     throw error;
@@ -70,7 +86,7 @@ export const updateDevisPurchase = async (id, updateDevisPurchaseDto) => {
 export const getAllDevisServices = async () => {
   try {
     const response = await apiErp.get("/DevisPurchase/services");
-    return response.data;
+    return normalizeItems(response.data);
   } catch (error) {
     console.error("Error fetching devis services:", error);
     throw error;
@@ -86,7 +102,7 @@ export const acceptDevis = async (id) => {
     };
 
     const response = await apiErp.post(`/DevisPurchase/${id}/accept`, requestBody);
-    return response.data;
+    return normalizeItems(response.data);
   } catch (error) {
     console.error("Error accepting devis:", error);
     throw error;
@@ -101,7 +117,7 @@ export const rejectDevis = async (id) => {
     };
 
     const response = await apiErp.post(`/DevisPurchase/${id}/reject`, requestBody);
-    return response.data;
+    return normalizeItems(response.data);
   } catch (error) {
     console.error("Error rejecting devis:", error);
     throw error;
@@ -111,7 +127,7 @@ export const rejectDevis = async (id) => {
 export const getDevisStatus = async (id) => {
   try {
     const response = await apiErp.get(`/DevisPurchase/${id}/status`);
-    return response.data;
+    return response.data; // Pas besoin de normaliser pour le statut
   } catch (error) {
     console.error("Error fetching devis status:", error);
     throw error;
@@ -122,7 +138,7 @@ export const getDevisStatus = async (id) => {
 export const getAllDevisProducts = async () => {
   try {
     const response = await apiErp.get('/DevisPurchase/products');
-    return response.data;
+    return normalizeItems(response.data);
   } catch (error) {
     console.error('Error fetching devis products:', error);
     throw error;
@@ -135,7 +151,7 @@ export const searchDevis = async (searchTerm, type = null) => {
     const response = await apiErp.get('/DevisPurchase/search', {
       params: { searchTerm, type },
     });
-    return response.data;
+    return normalizeItems(response.data);
   } catch (error) {
     console.error('Error searching devis:', error);
     throw error;
@@ -146,7 +162,7 @@ export const searchDevis = async (searchTerm, type = null) => {
 export const getDevisByStatut = async (statut) => {
   try {
     const response = await apiErp.get(`/DevisPurchase/by-status/${statut}`);
-    return response.data;
+    return normalizeItems(response.data);
   } catch (error) {
     console.error(`Error fetching devis by statut ${statut}:`, error);
     throw error;
@@ -157,7 +173,7 @@ export const getDevisByStatut = async (statut) => {
 export const calculateTotalTTC = async (id) => {
   try {
     const response = await apiErp.get(`/DevisPurchase/${id}/calculate-total-ttc`);
-    return response.data;
+    return response.data; // Pas besoin de normaliser pour un nombre
   } catch (error) {
     console.error(`Error calculating total TTC for devis with ID ${id}:`, error);
     throw error;
@@ -168,7 +184,7 @@ export const calculateTotalTTC = async (id) => {
 export const addItemToDevisProduit = async (id, itemDto) => {
   try {
     const response = await apiErp.post(`/DevisPurchase/${id}/add-item`, itemDto);
-    return response.data;
+    return normalizeItems(response.data);
   } catch (error) {
     console.error(`Error adding item to devis produit with ID ${id}:`, error);
     throw error;
@@ -179,7 +195,7 @@ export const addItemToDevisProduit = async (id, itemDto) => {
 export const removeItemFromDevisProduit = async (devisId, itemId) => {
   try {
     const response = await apiErp.delete(`/DevisPurchase/${devisId}/remove-item/${itemId}`);
-    return response.data;
+    return normalizeItems(response.data);
   } catch (error) {
     console.error(`Error removing item from devis produit with ID ${devisId}:`, error);
     throw error;
@@ -190,7 +206,7 @@ export const removeItemFromDevisProduit = async (devisId, itemId) => {
 export const updateItemInDevisProduit = async (devisId, itemDto) => {
   try {
     const response = await apiErp.put(`/DevisPurchase/${devisId}/update-item`, itemDto);
-    return response.data;
+    return normalizeItems(response.data);
   } catch (error) {
     console.error(`Error updating item in devis produit with ID ${devisId}:`, error);
     throw error;
@@ -201,7 +217,7 @@ export const updateItemInDevisProduit = async (devisId, itemDto) => {
 export const getDevisBySupplier = async (supplierId) => {
   try {
     const response = await apiErp.get(`/DevisPurchase/by-supplier/${supplierId}`);
-    return response.data;
+    return normalizeItems(response.data);
   } catch (error) {
     console.error(`Error fetching devis by supplier ID ${supplierId}:`, error);
     throw error;
@@ -214,10 +230,9 @@ export const getDevisByDateRange = async (startDate, endDate) => {
     const response = await apiErp.get('/DevisPurchase/by-date-range', {
       params: { startDate, endDate },
     });
-    return response.data;
+    return normalizeItems(response.data);
   } catch (error) {
     console.error('Error fetching devis by date range:', error);
     throw error;
   }
 };
-

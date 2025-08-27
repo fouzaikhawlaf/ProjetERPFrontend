@@ -44,15 +44,31 @@ const EditDevisDialog = ({ open, onClose, devis, onUpdate }) => {
   const [servicesError, setServicesError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Fonction utilitaire pour normaliser les items
+  const normalizeItems = (itemsData) => {
+    if (Array.isArray(itemsData)) {
+      return itemsData;
+    } else if (itemsData && typeof itemsData === 'object' && itemsData.$values) {
+      return itemsData.$values;
+    } else if (itemsData && typeof itemsData === 'object') {
+      // Si c'est un objet mais pas un tableau, convertir en tableau
+      return Object.values(itemsData);
+    }
+    return [];
+  };
+
   useEffect(() => {
     if (devis) {
+      // Normaliser les items pour éviter l'erreur "is not iterable"
+      const normalizedItems = normalizeItems(devis.items);
+      
       setFormData({
         devisNumber: devis.devisNumber || '',
         validityDate: devis.validityDate || '',
         description: devis.description || '',
         startDate: devis.startDate || '',
         endDate: devis.endDate || '',
-        items: devis.items ? [...devis.items] : []
+        items: normalizedItems
       });
       setSelectedSupplier(devis.supplierId || '');
     }
@@ -505,15 +521,10 @@ EditDevisDialog.propTypes = {
     startDate: PropTypes.string,
     endDate: PropTypes.string,
     supplierId: PropTypes.number,
-    items: PropTypes.arrayOf(
-      PropTypes.shape({
-        designation: PropTypes.string.isRequired,
-        quantite: PropTypes.number.isRequired,
-        prixUnitaire: PropTypes.number.isRequired,
-        tva: PropTypes.number.isRequired,
-        serviceId: PropTypes.number,
-      })
-    ).isRequired,
+    items: PropTypes.oneOfType([
+      PropTypes.array,
+      PropTypes.object // Accepte aussi les objets (pour $values)
+    ])
   }).isRequired,
   onUpdate: PropTypes.func.isRequired,
 };
