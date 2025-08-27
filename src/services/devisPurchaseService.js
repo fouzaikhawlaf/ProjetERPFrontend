@@ -105,14 +105,11 @@ export const acceptDevisService = async (id) => {
   }
 };
 
-export const rejectDevis = async (id) => {
+export const rejectDevis = async (id, comment = "") => {
   try {
-    const requestBody = {
-      userId: 123, // Replace with the actual user ID
-      comment: "Devis rejected", // Replace with the actual comment
-    };
-
-    const response = await apiErp.post(`/DevisPurchase/${id}/reject`, requestBody);
+    const response = await apiErp.post(`/DevisPurchase/${id}/reject`, {
+      comment: comment
+    });
     return normalizeItems(response.data);
   } catch (error) {
     console.error("Error rejecting devis:", error);

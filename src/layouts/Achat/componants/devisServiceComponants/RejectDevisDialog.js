@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import { useSnackbar } from 'notistack';
 import PropTypes from 'prop-types';
+import { rejectDevis } from 'services/devisPurchaseService'; // Importez votre service
 
 const RejectDevisDialog = ({ open, onClose, devis, onStatusChange }) => {
   const { enqueueSnackbar } = useSnackbar();
@@ -20,9 +21,10 @@ const RejectDevisDialog = ({ open, onClose, devis, onStatusChange }) => {
   const handleReject = async () => {
     setLoading(true);
     try {
-      // Appelle une fonction pour rejeter le devis (exemple)
-      await onStatusChange(devis.id, 2, comment);
+      // Appel direct à l'API via le service
+      await rejectDevis(devis.id, comment);
       enqueueSnackbar('Le devis a été rejeté avec succès.', { variant: 'success' });
+      onStatusChange(devis.id, 2); // Met à jour le statut local
       onClose();
     } catch (error) {
       enqueueSnackbar('Erreur lors du rejet du devis.', { variant: 'error' });
