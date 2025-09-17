@@ -241,3 +241,48 @@ export const deleteDevisPurchase = async (id) => {
     throw error;
   }
 };
+
+
+// Mettre à jour un devis service
+export const updateDevisService = async (id, data) => {
+  try {
+    // Formater les données selon le DTO backend
+    const formattedData = {
+      id: parseInt(id), // L'ID doit être dans le corps de la requête
+      supplierId: data.supplierId,
+      devisNumber: data.devisNumber,
+      totalHT: data.totalHT,
+      totalTVA: data.totalTVA,
+      totalTTC: data.totalTTC,
+      validityDate: data.validityDate,
+      description: data.description,
+      startDate: data.startDate,
+      endDate: data.endDate,
+      items: data.items.map(item => ({
+        designation: item.designation,
+        quantite: item.quantite,
+        prixUnitaire: item.prixUnitaire,
+        tva: item.tva,
+        serviceId: item.serviceId
+      }))
+    };
+
+    const response = await apiErp.put(`/DevisPurchase/service/${id}`, formattedData);
+    return response.data;
+  } catch (error) {
+    console.error(`Error updating devis service with ID ${id}:`, error.response?.data || error.message);
+    throw error;
+  }
+};
+
+// Mettre à jour un devis produit
+export const updateDevisProduct = async (id, updateDevisPurchaseDto) => {
+  try {
+    const response = await apiErp.put(`/DevisPurchase/product/${id}`, updateDevisPurchaseDto);
+    return normalizeItems(response.data);
+  } catch (error) {
+    console.error(`Error updating devis product with ID ${id}:`, error);
+    throw error;
+  }
+};
+

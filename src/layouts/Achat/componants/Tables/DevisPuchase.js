@@ -38,6 +38,7 @@ import DeleteDevisDialog from "../devisServiceComponants/DeleteDevisDialog";
 import EditDevisDialog from "../devisServiceComponants/EditDevisDialog";
 import ViewDevisDialog from "../devisServiceComponants/ViewDevisDialog";
 import { DEVIS_STATUS } from "services/devisConstants";
+import { Link } from "react-router-dom";
 
 const statusOptions = [
   { value: "Tous", label: "Tous", color: "default" },
@@ -262,9 +263,10 @@ const DevisService = () => {
           </Grid>
           <Grid item xs={12} md={6} sx={{ textAlign: { md: 'right' } }}>
             <Button
+              component={Link}
+              to="/achats/Devis"
               variant="contained"
               startIcon={<AddCircle />}
-              onClick={handleCreateClick}
               sx={{ mr: 2 }}
             >
               Nouveau Devis
@@ -273,6 +275,7 @@ const DevisService = () => {
               variant="outlined"
               startIcon={<Refresh />}
               onClick={fetchServices}
+              
             >
               Actualiser
             </Button>

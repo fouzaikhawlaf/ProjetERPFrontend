@@ -19,7 +19,7 @@ import {
   Grid
 } from "@mui/material";
 import { Add, Delete } from "@mui/icons-material";
-import { updateDevisPurchase } from "services/devisPurchaseService";
+import { updateDevisService } from "services/devisPurchaseService";
 import { getSuppliers } from "services/supplierApi";
 import { getServices } from "services/ServiceApi";
 import { useSnackbar } from "notistack";
@@ -51,7 +51,6 @@ const EditDevisDialog = ({ open, onClose, devis, onUpdate }) => {
     } else if (itemsData && typeof itemsData === 'object' && itemsData.$values) {
       return itemsData.$values;
     } else if (itemsData && typeof itemsData === 'object') {
-      // Si c'est un objet mais pas un tableau, convertir en tableau
       return Object.values(itemsData);
     }
     return [];
@@ -59,7 +58,6 @@ const EditDevisDialog = ({ open, onClose, devis, onUpdate }) => {
 
   useEffect(() => {
     if (devis) {
-      // Normaliser les items pour éviter l'erreur "is not iterable"
       const normalizedItems = normalizeItems(devis.items);
       
       setFormData({
@@ -85,7 +83,6 @@ const EditDevisDialog = ({ open, onClose, devis, onUpdate }) => {
           getServices()
         ]);
         
-        // Traitement des fournisseurs
         let supplierData = [];
         if (suppliersData?.$values) supplierData = suppliersData.$values;
         else if (Array.isArray(suppliersData)) supplierData = suppliersData;
@@ -100,7 +97,6 @@ const EditDevisDialog = ({ open, onClose, devis, onUpdate }) => {
         setSuppliers(transformedSuppliers);
         setSupplierError(transformedSuppliers.length === 0 ? "Aucun fournisseur disponible" : "");
 
-        // Traitement des services
         let serviceData = [];
         if (servicesData?.$values) serviceData = servicesData.$values;
         else if (Array.isArray(servicesData)) serviceData = servicesData;
@@ -213,17 +209,17 @@ const EditDevisDialog = ({ open, onClose, devis, onUpdate }) => {
     setLoading(true);
     try {
       const updateData = {
-        supplierId: selectedSupplier,
+        supplierId: parseInt(selectedSupplier), // Convertir en nombre
         devisNumber: formData.devisNumber,
         totalHT: parseFloat(calculateTotalHT()),
         totalTVA: parseFloat(calculateTotalVAT()),
         totalTTC: parseFloat(calculateTotalTTC()),
         items: formData.items.map(item => ({
           designation: item.designation,
-          quantite: item.quantite,
-          prixUnitaire: item.prixUnitaire,
-          tva: item.tva,
-          serviceId: item.serviceId
+          quantite: parseInt(item.quantite), // Convertir en nombre
+          prixUnitaire: parseFloat(item.prixUnitaire), // Convertir en nombre
+          tva: parseFloat(item.tva), // Convertir en nombre
+          serviceId: item.serviceId ? parseInt(item.serviceId) : null // Convertir en nombre si existe
         })),
         validityDate: formData.validityDate,
         description: formData.description,
@@ -231,7 +227,8 @@ const EditDevisDialog = ({ open, onClose, devis, onUpdate }) => {
         endDate: formData.endDate,
       };
 
-      await updateDevisPurchase(devis.id, updateData);
+      console.log("Données envoyées:", updateData); // Pour le débogage
+      await updateDevisService(devis.id, updateData);
       enqueueSnackbar("Devis modifié avec succès", { variant: "success" });
       onUpdate();
       onClose();
@@ -523,7 +520,7 @@ EditDevisDialog.propTypes = {
     supplierId: PropTypes.number,
     items: PropTypes.oneOfType([
       PropTypes.array,
-      PropTypes.object // Accepte aussi les objets (pour $values)
+      PropTypes.object
     ])
   }).isRequired,
   onUpdate: PropTypes.func.isRequired,
