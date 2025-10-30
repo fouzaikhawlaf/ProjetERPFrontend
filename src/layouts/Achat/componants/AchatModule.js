@@ -24,7 +24,7 @@ const AchatModule = () => {
       title: "Commandes",
       description: "Suivez et gérez vos commandes d'achat.",
       icon: "fa-box-open",
-      link: "/achats/commandes",
+      link: "/Achat/Commande/Liste",
       type: "commandes"
     },
     {

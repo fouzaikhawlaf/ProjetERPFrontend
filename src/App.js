@@ -133,6 +133,8 @@ import ProductUpdateSteps from 'layouts/Product/components/pages/ProductUpdateSt
 import ServicesTable from 'layouts/Product/components/pages/ServicesTable';
 import UpdateServiceForm from 'layouts/Product/components/pages/Service UpdateForm';
 import CommandeSupplierService from 'layouts/Achat/componants/OrderSupplier/Tables/CommandeSupplierService';
+import CommandeDetails from 'layouts/Achat/componants/OrderSupplier/Componants/CommandeDetails';
+import CommandeDetailsDialog from 'layouts/Achat/componants/OrderSupplier/Componants/CommandeDetails';
 
 
 
@@ -336,6 +338,7 @@ export default function App() {
         <Route path="/services" element={<ServicesTable />} />
            <Route path="/services/edit/:serviceId" element={<UpdateServiceForm />} />
             <Route path="Achat/Commande/Liste" element={<CommandeSupplierService />} /> 
+            <Route path="/commandes-fournisseur/:id" element={<CommandeDetailsDialog />} />
       </Routes>
     </ThemeProvider>
   );

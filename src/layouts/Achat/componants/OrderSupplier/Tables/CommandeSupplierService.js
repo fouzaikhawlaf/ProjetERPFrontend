@@ -14,7 +14,12 @@ import {
   Grid,
   InputAdornment,
   Card,
-  CardContent
+  CardContent,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  MenuItem
 } from "@mui/material";
 import { 
   AddCircle, 
@@ -26,13 +31,12 @@ import {
   CheckCircle,
   Cancel,
   PictureAsPdf,
-  Inventory,
-  BugReport
+  Inventory
 } from "@mui/icons-material";
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
 import { useSnackbar } from "notistack";
-import { Link } from "react-router-dom";
-
+import { Link, useNavigate } from "react-router-dom";
+import CommandeDetailsDialog from '../Componants/CommandeDetails';
 // Service pour les commandes fournisseurs
 import orderSupplierService from "services/orderSupplierService";
 
@@ -142,6 +146,7 @@ CommandeStatusButton.propTypes = {
 
 const CommandeSupplierService = () => {
   const { enqueueSnackbar } = useSnackbar();
+  const navigate = useNavigate();
   const [commandes, setCommandes] = useState([]);
   const [filteredCommandes, setFilteredCommandes] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -152,9 +157,10 @@ const CommandeSupplierService = () => {
   
   // États pour les dialogs
   const [selectedCommande, setSelectedCommande] = useState(null);
-  const [viewDialogOpen, setViewDialogOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [status, setStatus] = useState('');
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
   const handleDotNetResponse = (response) => {
     console.log("Réponse brute de l'API:", response);
@@ -235,14 +241,22 @@ const CommandeSupplierService = () => {
     ));
   };
 
-  const handleView = (commande) => {
-    setSelectedCommande(commande);
-    setViewDialogOpen(true);
-  };
+  // Ajoutez ces fonctions
+const handleViewDetails = (commande) => {
+  setSelectedCommande(commande);
+  setDetailDialogOpen(true);
+};
+
+const handleCloseDetailDialog = () => {
+  setDetailDialogOpen(false);
+  setSelectedCommande(null);
+};
+
+
 
   const handleEdit = (commande) => {
-    setSelectedCommande(commande);
-    setEditDialogOpen(true);
+    // Navigation vers la page d'édition
+    navigate(`/commandes-fournisseur/edit/${commande.id}`);
   };
 
   const handleDelete = (commande) => {
@@ -296,10 +310,15 @@ const CommandeSupplierService = () => {
     }
   };
 
-  const handleDeleteConfirm = async (id) => {
+  const handleDeleteConfirm = async () => {
+    if (!selectedCommande) return;
+    
     try {
-      setCommandes(prev => prev.filter(commande => commande.id !== id));
-      setFilteredCommandes(prev => prev.filter(commande => commande.id !== id));
+      await orderSupplierService.deleteOrder(selectedCommande.id);
+      setCommandes(prev => prev.filter(commande => commande.id !== selectedCommande.id));
+      setFilteredCommandes(prev => prev.filter(commande => commande.id !== selectedCommande.id));
+      setDeleteDialogOpen(false);
+      setSelectedCommande(null);
       enqueueSnackbar("Commande supprimée avec succès", { variant: "success" });
     } catch (error) {
       console.error("Delete error:", error);
@@ -370,7 +389,7 @@ const CommandeSupplierService = () => {
           <Grid item xs={12} md={6} sx={{ textAlign: { md: 'right' } }}>
             <Button
               component={Link}
-              to="/CommandesFournisseur/CreateOrderSupplierService"
+              to="/achats/commandes"
               variant="contained"
               startIcon={<AddCircle />}
               sx={{ mr: 2 }}
@@ -395,42 +414,6 @@ const CommandeSupplierService = () => {
             </Button>
           </Grid>
         </Grid>
-
-        {/* Informations de débogage */}
-        {debugInfo && (
-          <Card sx={{ mb: 3, bgcolor: 'grey.100' }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <BugReport sx={{ mr: 1 }} />
-                <Typography variant="h6">Informations de débogage</Typography>
-              </Box>
-              <Grid container spacing={2}>
-                <Grid item xs={12} md={4}>
-                  <Typography variant="body2">
-                    <strong>Timestamp:</strong> {new Date(debugInfo.timestamp).toLocaleString()}
-                  </Typography>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <Typography variant="body2">
-                    <strong>Total commandes:</strong> {debugInfo.totalCommandes}
-                  </Typography>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <Typography variant="body2">
-                    <strong>Statut API:</strong> {debugInfo.totalCommandes > 0 ? "✅ Données trouvées" : "⚠️ Aucune donnée"}
-                  </Typography>
-                </Grid>
-              </Grid>
-              <Button 
-                size="small" 
-                onClick={() => console.log("Debug info:", debugInfo)}
-                sx={{ mt: 1 }}
-              >
-                Voir les détails dans la console
-              </Button>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Filters Section */}
         <Box sx={{ 
@@ -704,18 +687,24 @@ const CommandeSupplierService = () => {
                             gap: '6px',
                             flexWrap: 'wrap'
                           }}>
-                            <Tooltip title="Voir détails">
-                              <IconButton 
-                                size="small"
-                                onClick={() => handleView(commande)}
-                                sx={{ 
-                                  color: '#5c6bc0',
-                                  '&:hover': { backgroundColor: '#e8eaf6' }
-                                }}
-                              >
-                                <Visibility fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
+                           <Tooltip title="Voir détails">
+  <IconButton 
+    size="small"
+    onClick={() => handleViewDetails(commande)}
+    sx={{ 
+      color: '#5c6bc0',
+      '&:hover': { backgroundColor: '#e8eaf6' }
+    }}
+  >
+    <Visibility fontSize="small" />
+  </IconButton>
+</Tooltip>
+
+<CommandeDetailsDialog
+  open={detailDialogOpen}
+  onClose={handleCloseDetailDialog}
+  commandeId={selectedCommande?.id}
+/>
                             
                             <Tooltip title="Modifier">
                               <IconButton 
@@ -790,7 +779,7 @@ const CommandeSupplierService = () => {
                           </Typography>
                           <Button
                             component={Link}
-                            to="/CommandesFournisseur/CreateOrderSupplierService"
+                            to="/achats/commandes"
                             variant="contained"
                             startIcon={<AddCircle />}
                             sx={{ mt: 2 }}
@@ -806,6 +795,20 @@ const CommandeSupplierService = () => {
             </Box>
           </Box>
         )}
+
+        {/* Dialog de confirmation de suppression */}
+        <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+          <DialogTitle>Confirmer la suppression</DialogTitle>
+          <DialogContent>
+            Êtes-vous sûr de vouloir supprimer la commande {selectedCommande?.orderNumber} ?
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDeleteDialogOpen(false)}>Annuler</Button>
+            <Button onClick={handleDeleteConfirm} color="error">
+              Supprimer
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Box>
     </DashboardLayout>
   );  
