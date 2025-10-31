@@ -135,6 +135,7 @@ import UpdateServiceForm from 'layouts/Product/components/pages/Service UpdateFo
 import CommandeSupplierService from 'layouts/Achat/componants/OrderSupplier/Tables/CommandeSupplierService';
 import CommandeDetails from 'layouts/Achat/componants/OrderSupplier/Componants/CommandeDetails';
 import CommandeDetailsDialog from 'layouts/Achat/componants/OrderSupplier/Componants/CommandeDetails';
+import EditCommandeFournisseurDialog from 'layouts/Achat/componants/OrderSupplier/Componants/EditCommandeFournisseurDialog';
 
 
 
@@ -339,6 +340,10 @@ export default function App() {
            <Route path="/services/edit/:serviceId" element={<UpdateServiceForm />} />
             <Route path="Achat/Commande/Liste" element={<CommandeSupplierService />} /> 
             <Route path="/commandes-fournisseur/:id" element={<CommandeDetailsDialog />} />
+            <Route
+          path="/commande-fournisseur/edit/:commandeId"
+          element={<EditCommandeFournisseurDialog />}
+        />
       </Routes>
     </ThemeProvider>
   );

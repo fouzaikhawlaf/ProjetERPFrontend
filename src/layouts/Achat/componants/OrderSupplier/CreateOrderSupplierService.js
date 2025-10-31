@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import jsPDF from "jspdf";
 // Import par défaut seulement
-import orderSupplierService from 'services/orderSupplierService';
+import orderSupplierService from "services/orderSupplierService";
 import {
   Paper,
   Button,
@@ -17,10 +17,10 @@ import {
   Box,
   CircularProgress,
   Alert,
-  Snackbar,CardContent,Card,
+  Snackbar,
+  CardContent,
+  Card,
 } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
-import DeleteIcon from "@mui/icons-material/Delete";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
 import { useNavigate } from "react-router-dom";
@@ -31,12 +31,12 @@ import { getDevisByStatut } from "services/devisPurchaseService";
 
 const CreateCommandeSupplier = () => {
   const navigate = useNavigate();
-  
+
   // States
   const [acceptedDevis, setAcceptedDevis] = useState([]);
   const [selectedDevisNumber, setSelectedDevisNumber] = useState("");
   const [selectedDevisId, setSelectedDevisId] = useState(null);
-  const [orderNumber, setOrderNumber] = useState("CMD-FOURNISSEUR-");
+  const [orderNumber, setOrderNumber] = useState("CMD-FOURNISSEUR-"); // ✅ éditable
   const [deliveryDate, setDeliveryDate] = useState("");
   const [description, setDescription] = useState("");
   const [pdfBlob, setPdfBlob] = useState(null);
@@ -45,18 +45,22 @@ const CreateCommandeSupplier = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState({
     devis: true,
-    submission: false
+    submission: false,
   });
   const [error, setError] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
 
   // Fetch accepted devis on mount
   useEffect(() => {
     const fetchAcceptedDevis = async () => {
       try {
-        const data = await getDevisByStatut('Accepter');
-        
+        const data = await getDevisByStatut("Accepter");
+
         if (data && Array.isArray(data.$values)) {
           setAcceptedDevis(data.$values);
         } else {
@@ -67,7 +71,7 @@ const CreateCommandeSupplier = () => {
         setError("Échec du chargement des devis");
         setAcceptedDevis([]);
       } finally {
-        setLoading(prev => ({ ...prev, devis: false }));
+        setLoading((prev) => ({ ...prev, devis: false }));
       }
     };
     fetchAcceptedDevis();
@@ -75,27 +79,44 @@ const CreateCommandeSupplier = () => {
 
   // Handle devis selection
   const handleDevisSelect = (devisNumber) => {
-    const selectedDevis = acceptedDevis.find(d => d.devisNumber === devisNumber);
-    
+    const selectedDevis = acceptedDevis.find(
+      (d) => d.devisNumber === devisNumber
+    );
+
     if (selectedDevis) {
       setSelectedDevisNumber(devisNumber);
       setSelectedDevisId(selectedDevis.id);
+
+      // ✅ on continue à pré-remplir mais on pourra modifier après
       setOrderNumber(`CMD-${selectedDevis.devisNumber}`);
-      setDeliveryDate(selectedDevis.expectedDeliveryDate?.split('T')[0] || "");
-      
-      const mappedItems = selectedDevis.items?.$values?.map(item => ({
-        designation: item.designation || "",
-        quantity: item.quantite || 0,
-        unitPrice: item.prixUnitaire || 0,
-        tva: item.tva || 0
-      })) || [];
-      
+
+      setDeliveryDate(
+        selectedDevis.expectedDeliveryDate?.split("T")[0] || ""
+      );
+
+      const mappedItems =
+        selectedDevis.items?.$values?.map((item) => ({
+          designation: item.designation || "",
+          quantity: item.quantite || 0,
+          unitPrice: item.prixUnitaire || 0,
+          tva: item.tva || 0,
+        })) || [];
+
       setItems(mappedItems);
-      setDescription(`Totaux importés - HT: ${selectedDevis.totalHT} TND, TVA: ${selectedDevis.totalTVA} TND, TTC: ${selectedDevis.totalTTC} TND`);
+      setDescription(
+        `Totaux importés - HT: ${selectedDevis.totalHT} TND, TVA: ${selectedDevis.totalTVA} TND, TTC: ${selectedDevis.totalTTC} TND`
+      );
+    } else {
+      // si on enlève le devis
+      setSelectedDevisNumber("");
+      setSelectedDevisId(null);
+      setItems([]);
+      setDescription("");
+      setOrderNumber("CMD-FOURNISSEUR-");
     }
   };
 
-  // Fonction pour générer le PDF (identique à votre exemple)
+  // Fonction pour générer le PDF
   const generatePDFBlob = () => {
     if (!selectedDevisId) {
       alert("Veuillez sélectionner un devis avant de générer le PDF");
@@ -107,42 +128,46 @@ const CreateCommandeSupplier = () => {
       const pageWidth = doc.internal.pageSize.getWidth();
       let yPosition = 15;
 
-      // En-tête avec logo (décommentez si vous avez l'image)
-      // if (imageShamash) {
-      //   doc.addImage(imageShamash, 'PNG', 10, 10, 30, 30);
-      // }
-
       // Titre
       doc.setFont("helvetica", "bold");
       doc.setFontSize(16);
-      doc.text(`COMMANDE FOURNISSEUR N° ${orderNumber}`, pageWidth / 2, 20, { align: "center" });
+      doc.text(
+        `COMMANDE FOURNISSEUR N° ${orderNumber}`,
+        pageWidth / 2,
+        20,
+        { align: "center" }
+      );
 
-      // Informations société
+      // Infos société
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
       doc.text("Société Shamash IT", 140, 15);
-      doc.text("Adresse: étage B03,Centre Urbain Nord, Imm cercle des bureaux", 140, 20);
+      doc.text(
+        "Adresse: étage B03,Centre Urbain Nord, Imm cercle des bureaux",
+        140,
+        20
+      );
       doc.text("Tél: +216  29 511 251", 140, 25);
       doc.text("Email: contact@shamash-it.com", 140, 30);
 
-      // Informations commande
-      const selectedDevis = acceptedDevis.find(d => d.id === selectedDevisId);
-      
+      // Infos commande
+      const selectedDevis = acceptedDevis.find((d) => d.id === selectedDevisId);
+
       doc.setFont("helvetica", "bold");
       doc.text("Fournisseur:", 10, 40);
       doc.setFont("helvetica", "normal");
       doc.text(selectedDevis?.supplierName || "Non spécifié", 40, 40);
-      
+
       doc.setFont("helvetica", "bold");
       doc.text("Date création:", 10, 47);
       doc.setFont("helvetica", "normal");
       doc.text(new Date().toLocaleDateString(), 40, 47);
-      
+
       doc.setFont("helvetica", "bold");
       doc.text("Date livraison:", 10, 54);
       doc.setFont("helvetica", "normal");
       doc.text(deliveryDate || "Non spécifiée", 40, 54);
-      
+
       doc.setFont("helvetica", "bold");
       doc.text("Référence:", 10, 61);
       doc.setFont("helvetica", "normal");
@@ -170,12 +195,11 @@ const CreateCommandeSupplier = () => {
         yPosition += splitNotes.length * 5 + 15;
       }
 
-      // Tableau des articles - version manuelle
-      // En-têtes du tableau
+      // Tableau
       doc.setFont("helvetica", "bold");
       doc.setFillColor(41, 128, 185);
       doc.setTextColor(255, 255, 255);
-      doc.rect(10, yPosition, 190, 8, 'F');
+      doc.rect(10, yPosition, 190, 8, "F");
       doc.text("N°", 15, yPosition + 5);
       doc.text("Désignation", 30, yPosition + 5);
       doc.text("Qté", 110, yPosition + 5);
@@ -187,7 +211,6 @@ const CreateCommandeSupplier = () => {
       doc.setTextColor(0, 0, 0);
       doc.setFont("helvetica", "normal");
 
-      // Lignes du tableau
       items.forEach((item, index) => {
         if (yPosition > 250) {
           doc.addPage();
@@ -195,20 +218,25 @@ const CreateCommandeSupplier = () => {
         }
 
         doc.text((index + 1).toString(), 15, yPosition + 5);
-        
-        // Gestion du texte long pour la désignation
-        const designationLines = doc.splitTextToSize(item.designation || "-", 70);
+
+        const designationLines = doc.splitTextToSize(
+          item.designation || "-",
+          70
+        );
         doc.text(designationLines, 30, yPosition + 5);
-        
+
         doc.text(Number(item.quantity || 0).toFixed(2), 110, yPosition + 5);
         doc.text(`${Number(item.unitPrice || 0).toFixed(3)} TND`, 130, yPosition + 5);
         doc.text(`${Number(item.tva || 0).toFixed(2)}%`, 160, yPosition + 5);
-        doc.text(`${(Number(item.quantity || 0) * Number(item.unitPrice || 0)).toFixed(3)} TND`, 175, yPosition + 5);
-        
-        // Ajuster la position Y en fonction du nombre de lignes de désignation
+        doc.text(
+          `${(Number(item.quantity || 0) * Number(item.unitPrice || 0)).toFixed(
+            3
+          )} TND`,
+          175,
+          yPosition + 5
+        );
+
         yPosition += Math.max(10, designationLines.length * 5);
-        
-        // Ligne séparatrice
         doc.line(10, yPosition + 2, 200, yPosition + 2);
         yPosition += 5;
       });
@@ -217,7 +245,7 @@ const CreateCommandeSupplier = () => {
       const totalsY = yPosition + 15;
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
-      
+
       doc.text(`Total HT: ${calculateTotalHT()} TND`, 140, totalsY);
       doc.text(`Total TVA: ${calculateTotalVAT()} TND`, 140, totalsY + 7);
       doc.text(`Total TTC: ${calculateTotalTTC()} TND`, 140, totalsY + 14);
@@ -240,7 +268,7 @@ const CreateCommandeSupplier = () => {
     }
   };
 
-  // Handle PDF preview
+  // Preview PDF
   const handlePreviewPDF = () => {
     const blob = generatePDFBlob();
     if (blob) {
@@ -249,99 +277,108 @@ const CreateCommandeSupplier = () => {
     }
   };
 
-  // Handle PDF download
+  // Download PDF
   const handleDownloadPDF = () => {
     const blob = generatePDFBlob();
     if (blob) {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `Commande_${orderNumber.replace(/[/]/g, '_')}.pdf`;
+      link.download = `Commande_${orderNumber.replace(/[/]/g, "_")}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      
+
       setSnackbar({
         open: true,
         message: "PDF téléchargé avec succès!",
-        severity: "success"
+        severity: "success",
       });
     }
   };
 
-  // Item management
-  const handleAddItem = () => {
-    setItems([...items, { 
-      designation: "", 
-      quantity: 0, 
-      unitPrice: 0, 
-      tva: 0 
-    }]);
-  };
-
-  const handleDeleteItem = (index) => {
-    setItems(items.filter((_, i) => i !== index));
-  };
-
-  const handleItemChange = (index, field, value) => {
-    const newItems = [...items];
-    newItems[index][field] = value;
-    setItems(newItems);
-  };
-
-  // Calculations
-  const calculateTotalHT = () => 
-    items.reduce((total, item) => total + (item.quantity * item.unitPrice), 0).toFixed(3);
+  // Calculs
+  const calculateTotalHT = () =>
+    items
+      .reduce(
+        (total, item) => total + item.quantity * item.unitPrice,
+        0
+      )
+      .toFixed(3);
 
   const calculateTotalVAT = () =>
-    items.reduce((total, item) => 
-      total + (item.quantity * item.unitPrice * (item.tva / 100)), 0).toFixed(3);
+    items
+      .reduce(
+        (total, item) =>
+          total + item.quantity * item.unitPrice * (item.tva / 100),
+        0
+      )
+      .toFixed(3);
 
-  const calculateTotalTTC = () => 
-    (parseFloat(calculateTotalHT()) + parseFloat(calculateTotalVAT())).toFixed(3);
+  const calculateTotalTTC = () =>
+    (
+      parseFloat(calculateTotalHT()) + parseFloat(calculateTotalVAT())
+    ).toFixed(3);
 
-  // Fonction pour créer une commande depuis un devis
+  // Soumission via devis
   const onSubmitWithDevis = async () => {
     if (!selectedDevisId) {
       setSnackbar({
         open: true,
         message: "Veuillez sélectionner un devis",
-        severity: "error"
+        severity: "error",
       });
       return;
     }
 
-    setLoading(prev => ({ ...prev, submission: true }));
+    if (!orderNumber.trim()) {
+      setSnackbar({
+        open: true,
+        message: "Veuillez saisir un numéro de commande",
+        severity: "error",
+      });
+      return;
+    }
+
+    setLoading((prev) => ({ ...prev, submission: true }));
     setError(null);
 
     try {
-      // Utilisation de createOrderFromDevis
-      const createdOrder = await orderSupplierService.createOrderFromDevis(selectedDevisId);
+      // ⚠️ Ton backend doit accepter ces données si tu veux les envoyer
+      const createdOrder = await orderSupplierService.createOrderFromDevis(
+        selectedDevisId,
+        {
+          orderNumber,
+          deliveryDate,
+          notes,
+        }
+      );
 
       if (createdOrder) {
         setModalOpen(true);
         setSnackbar({
           open: true,
           message: "Commande créée avec succès depuis le devis!",
-          severity: "success"
+          severity: "success",
         });
         setTimeout(() => navigate("/CommandesFournisseur"), 3000);
       }
     } catch (err) {
-      const errorMessage = err.message || "Échec de la création de commande depuis le devis";
+      const errorMessage =
+        err.message || "Échec de la création de commande depuis le devis";
       setError(errorMessage);
       setSnackbar({
         open: true,
         message: errorMessage,
-        severity: "error"
+        severity: "error",
       });
     } finally {
-      setLoading(prev => ({ ...prev, submission: false }));
+      setLoading((prev) => ({ ...prev, submission: false }));
     }
   };
 
-  // Fonction principale de soumission
+  // Soumission principale
   const onSubmit = async () => {
     if (selectedDevisId) {
       await onSubmitWithDevis();
@@ -349,7 +386,7 @@ const CreateCommandeSupplier = () => {
       setSnackbar({
         open: true,
         message: "Veuillez sélectionner un devis pour créer une commande",
-        severity: "warning"
+        severity: "warning",
       });
     }
   };
@@ -360,27 +397,39 @@ const CreateCommandeSupplier = () => {
 
   return (
     <DashboardLayout>
-      <Paper elevation={4} sx={{ 
-        p: 4, 
-        width: "90%", 
-        maxWidth: 1200, 
-        margin: "auto", 
-        mt: 4, 
-        borderRadius: 3 
-      }}>
-        <Typography variant="h4" align="center" gutterBottom sx={{ fontWeight: 600 }}>
+      <Paper
+        elevation={4}
+        sx={{
+          p: 4,
+          width: "90%",
+          maxWidth: 1200,
+          margin: "auto",
+          mt: 4,
+          borderRadius: 3,
+        }}
+      >
+        <Typography
+          variant="h4"
+          align="center"
+          gutterBottom
+          sx={{ fontWeight: 600 }}
+        >
           Création de Commande Fournisseur
         </Typography>
-        <Typography variant="subtitle1" align="center" color="primary" sx={{ mb: 2 }}>
-          {selectedDevisId ? 
-            "✓ Conversion depuis devis accepté" : 
-            "Sélectionnez un devis accepté pour créer une commande"
-          }
+        <Typography
+          variant="subtitle1"
+          align="center"
+          color="primary"
+          sx={{ mb: 2 }}
+        >
+          {selectedDevisId
+            ? "✓ Conversion depuis devis accepté"
+            : "Sélectionnez un devis accepté pour créer une commande"}
         </Typography>
         <Divider sx={{ mb: 4 }} />
 
         {loading.devis ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+          <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
             <CircularProgress />
           </Box>
         ) : error ? (
@@ -403,7 +452,9 @@ const CreateCommandeSupplier = () => {
                   </MenuItem>
                   {acceptedDevis.map((devis) => (
                     <MenuItem key={devis.id} value={devis.devisNumber}>
-                      {devis.devisNumber} - {devis.supplierName || `Fournisseur ${devis.supplierId}`}
+                      {devis.devisNumber} -{" "}
+                      {devis.supplierName ||
+                        `Fournisseur ${devis.supplierId}`}
                     </MenuItem>
                   ))}
                 </Select>
@@ -421,41 +472,57 @@ const CreateCommandeSupplier = () => {
                 <Grid item xs={12}>
                   <Card variant="outlined" sx={{ mb: 3 }}>
                     <CardContent>
-                      <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, color: 'primary.main' }}>
+                      <Typography
+                        variant="h6"
+                        gutterBottom
+                        sx={{ fontWeight: 600, color: "primary.main" }}
+                      >
                         Détails de la Commande
                       </Typography>
                       <Grid container spacing={3}>
+                        {/* ✅ Numéro de commande éditable */}
                         <Grid item xs={12} md={6}>
                           <Box sx={{ mb: 2 }}>
-                            <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.primary', fontWeight: 600 }}>
+                            <Typography
+                              variant="subtitle2"
+                              sx={{
+                                mb: 1,
+                                color: "text.primary",
+                                fontWeight: 600,
+                              }}
+                            >
                               Numéro de commande
                             </Typography>
-                            <Paper variant="outlined" sx={{ p: 2, backgroundColor: 'grey.50', borderColor: 'grey.300' }}>
-                              <Typography variant="body1" sx={{ fontWeight: 600, color: 'primary.main', fontSize: '1.1rem' }}>
-                                {orderNumber}
-                              </Typography>
-                            </Paper>
+                            <TextField
+                              fullWidth
+                              value={orderNumber}
+                              onChange={(e) => setOrderNumber(e.target.value)}
+                              placeholder="Ex : CMD-2025-001"
+                              InputLabelProps={{ shrink: true }}
+                            />
                           </Box>
                         </Grid>
 
+                        {/* ✅ Date de livraison éditable */}
                         <Grid item xs={12} md={6}>
                           <Box sx={{ mb: 2 }}>
-                            <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.primary', fontWeight: 600 }}>
+                            <Typography
+                              variant="subtitle2"
+                              sx={{
+                                mb: 1,
+                                color: "text.primary",
+                                fontWeight: 600,
+                              }}
+                            >
                               Date de livraison prévue
                             </Typography>
-                            <Paper variant="outlined" sx={{ p: 2, backgroundColor: 'grey.50', borderColor: 'grey.300', position: 'relative' }}>
-                              <Typography variant="body1" sx={{ fontWeight: 500, fontSize: '1rem' }}>
-                                {deliveryDate ? new Date(deliveryDate).toLocaleDateString('fr-FR', {
-                                  weekday: 'long',
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric'
-                                }) : "Non spécifiée"}
-                              </Typography>
-                              <Box sx={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'primary.main', fontSize: '1.2rem' }}>
-                                📅
-                              </Box>
-                            </Paper>
+                            <TextField
+                              type="date"
+                              fullWidth
+                              value={deliveryDate}
+                              onChange={(e) => setDeliveryDate(e.target.value)}
+                              InputLabelProps={{ shrink: true }}
+                            />
                           </Box>
                         </Grid>
                       </Grid>
@@ -463,12 +530,19 @@ const CreateCommandeSupplier = () => {
                   </Card>
                 </Grid>
 
-                {/* Affichage des articles en lecture seule */}
+                {/* Articles du devis */}
                 <Grid item xs={12}>
                   <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
                     Articles du devis
                   </Typography>
-                  <table style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse", margin: "24px 0" }}>
+                  <table
+                    style={{
+                      width: "100%",
+                      tableLayout: "fixed",
+                      borderCollapse: "collapse",
+                      margin: "24px 0",
+                    }}
+                  >
                     <thead>
                       <tr>
                         <th style={tableHeaderStyle}>Désignation</th>
@@ -479,7 +553,10 @@ const CreateCommandeSupplier = () => {
                     </thead>
                     <tbody>
                       {items.map((item, index) => (
-                        <tr key={index} style={{ borderBottom: "1px solid #ddd" }}>
+                        <tr
+                          key={index}
+                          style={{ borderBottom: "1px solid #ddd" }}
+                        >
                           <td style={tableCellStyle}>
                             <TextField
                               fullWidth
@@ -577,19 +654,16 @@ const CreateCommandeSupplier = () => {
                   "Convertir le devis en commande"
                 )}
               </Button>
-              
+
               {selectedDevisId && (
-                <>
-                  <Button
-                    variant="contained"
-                    color="secondary"
-                    onClick={handlePreviewPDF}
-                    sx={{ ml: 2 }}
-                  >
-                    Prévisualiser PDF
-                  </Button>
-                
-                </>
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  onClick={handlePreviewPDF}
+                  sx={{ ml: 2 }}
+                >
+                  Prévisualiser PDF
+                </Button>
               )}
             </Grid>
           </Grid>
@@ -600,25 +674,30 @@ const CreateCommandeSupplier = () => {
           open={pdfPreviewOpen}
           onClose={() => setPdfPreviewOpen(false)}
           aria-labelledby="pdf-preview-title"
-          slots={{ backdrop: 'div' }}
+          slots={{ backdrop: "div" }}
           slotProps={{
             backdrop: {
               sx: {
-                backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                backdropFilter: 'blur(3px)'
-              }
-            }
+                backgroundColor: "rgba(0, 0, 0, 0.7)",
+                backdropFilter: "blur(3px)",
+              },
+            },
           }}
         >
           <Box sx={previewModalStyle}>
-            <Typography id="pdf-preview-title" variant="h6" component="h2" sx={{ mb: 2, textAlign: 'center' }}>
+            <Typography
+              id="pdf-preview-title"
+              variant="h6"
+              component="h2"
+              sx={{ mb: 2, textAlign: "center" }}
+            >
               Aperçu de la commande - {orderNumber}
             </Typography>
-            
-            <Button 
-              variant="contained" 
+
+            <Button
+              variant="contained"
               onClick={() => setPdfPreviewOpen(false)}
-              sx={{ position: 'absolute', top: 10, right: 10, zIndex: 1 }}
+              sx={{ position: "absolute", top: 10, right: 10, zIndex: 1 }}
             >
               Fermer
             </Button>
@@ -628,7 +707,7 @@ const CreateCommandeSupplier = () => {
                 src={URL.createObjectURL(pdfBlob)}
                 width="100%"
                 height="90%"
-                style={{ border: 'none' }}
+                style={{ border: "none" }}
                 title="Aperçu PDF de la commande"
               />
             )}
@@ -636,10 +715,10 @@ const CreateCommandeSupplier = () => {
             <Button
               variant="contained"
               color="success"
-              sx={{ 
-                position: 'absolute', 
-                bottom: 20, 
-                right: 20 
+              sx={{
+                position: "absolute",
+                bottom: 20,
+                right: 20,
               }}
               onClick={handleDownloadPDF}
             >
@@ -649,26 +728,36 @@ const CreateCommandeSupplier = () => {
         </Modal>
 
         {/* Modal de confirmation */}
-        <Modal 
-          open={modalOpen} 
+        <Modal
+          open={modalOpen}
           onClose={() => setModalOpen(false)}
           aria-labelledby="confirmation-modal-title"
           aria-describedby="confirmation-modal-description"
-          slots={{ backdrop: 'div' }}
+          slots={{ backdrop: "div" }}
           slotProps={{
             backdrop: {
               sx: {
-                backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                backdropFilter: 'blur(2px)'
-              }
-            }
+                backgroundColor: "rgba(0, 0, 0, 0.5)",
+                backdropFilter: "blur(2px)",
+              },
+            },
           }}
         >
           <Box sx={confirmationModalStyle}>
-            <Typography id="confirmation-modal-title" variant="h5" component="h2" align="center" gutterBottom>
+            <Typography
+              id="confirmation-modal-title"
+              variant="h5"
+              component="h2"
+              align="center"
+              gutterBottom
+            >
               🎉 Commande créée !
             </Typography>
-            <Typography id="confirmation-modal-description" align="center" sx={{ mt: 2 }}>
+            <Typography
+              id="confirmation-modal-description"
+              align="center"
+              sx={{ mt: 2 }}
+            >
               La commande a été créée avec succès depuis le devis.
               <br />
               Redirection vers la liste des commandes...
@@ -681,13 +770,16 @@ const CreateCommandeSupplier = () => {
           open={snackbar.open}
           autoHideDuration={6000}
           onClose={handleCloseSnackbar}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         >
-          <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
+          <Alert
+            onClose={handleCloseSnackbar}
+            severity={snackbar.severity}
+            sx={{ width: "100%" }}
+          >
             {snackbar.message}
           </Alert>
         </Snackbar>
-
       </Paper>
     </DashboardLayout>
   );
@@ -699,26 +791,26 @@ const tableHeaderStyle = {
   textAlign: "center",
   fontWeight: "bold",
   padding: "8px",
-  borderBottom: "1px solid #ddd"
+  borderBottom: "1px solid #ddd",
 };
 
 const tableCellStyle = {
   padding: "8px",
-  textAlign: "center"
+  textAlign: "center",
 };
 
 const previewModalStyle = {
-  position: 'absolute',
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  width: '90vw',
-  height: '90vh',
-  bgcolor: 'background.paper',
+  position: "absolute",
+  top: "50%",
+  left: "50%",
+  transform: "translate(-50%, -50%)",
+  width: "90vw",
+  height: "90vh",
+  bgcolor: "background.paper",
   boxShadow: 24,
   p: 4,
   borderRadius: 2,
-  outline: 'none'
+  outline: "none",
 };
 
 const confirmationModalStyle = {
@@ -731,7 +823,7 @@ const confirmationModalStyle = {
   boxShadow: 24,
   p: 4,
   borderRadius: 2,
-  outline: 'none'
+  outline: "none",
 };
 
 export default CreateCommandeSupplier;
