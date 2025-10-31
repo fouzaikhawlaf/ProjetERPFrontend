@@ -13,10 +13,6 @@ import {
   Chip,
   Grid,
   InputAdornment,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
 } from "@mui/material";
 import {
   AddCircle,
@@ -36,10 +32,14 @@ import { Link } from "react-router-dom";
 import CommandeDetailsDialog from "../Componants/CommandeDetails";
 import orderSupplierService from "services/orderSupplierService";
 
-// 👇👇 ajoute ton dialog d'édition
-import EditCommandeFournisseurDialog from "../Componants/EditCommandeFournisseurDialog"; // ⚠️ adapte le chemin
+// 👇 Dialog d’édition
+import EditCommandeFournisseurDialog from "../Componants/EditCommandeFournisseurDialog";
+// 👇 Dialog de suppression (design comme DeleteDevisDialog)
+import DeleteCommandeDialog from "../Componants/DeleteCommandeDialog"; // ⚠️ adapte le chemin si besoin
 
-// Statuts des commandes fournisseurs
+// ==========================
+// Statuts des commandes
+// ==========================
 const ORDER_STATUS = {
   EN_ATTENTE: 0,
   APPROUVE: 1,
@@ -91,6 +91,9 @@ const statusOptions = [
   { value: ORDER_STATUS.ANNULE, label: "Annulé", color: "default" },
 ];
 
+// ==========================
+// Boutons accepter / rejeter
+// ==========================
 const CommandeStatusButton = ({
   commandeId,
   currentStatus,
@@ -100,6 +103,7 @@ const CommandeStatusButton = ({
 }) => {
   const [loading, setLoading] = useState(false);
 
+  // Si c'est déjà approuvé → on montre juste le chip
   if (currentStatus === ORDER_STATUS.APPROUVE) {
     return (
       <Chip
@@ -111,6 +115,7 @@ const CommandeStatusButton = ({
     );
   }
 
+  // Si c'est déjà rejeté → on montre juste le chip
   if (currentStatus === ORDER_STATUS.REJETE) {
     return (
       <Chip
@@ -122,14 +127,35 @@ const CommandeStatusButton = ({
     );
   }
 
+  // Sinon → montrer les 2 icônes (actives)
+  const handleApproveClick = async () => {
+    if (loading) return;
+    setLoading(true);
+    try {
+      await onApprove(commandeId);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRejectClick = async () => {
+    if (loading) return;
+    setLoading(true);
+    try {
+      await onReject(commandeId);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Box sx={{ display: "flex", gap: "6px" }}>
       <Tooltip title="Approuver la commande">
         <IconButton
           size="small"
-          onClick={() => onApprove(commandeId)}
+          onClick={handleApproveClick}
           color="success"
-          disabled={loading || currentStatus !== ORDER_STATUS.EN_ATTENTE}
+          disabled={loading}
         >
           <CheckCircle fontSize="small" />
         </IconButton>
@@ -138,9 +164,9 @@ const CommandeStatusButton = ({
       <Tooltip title="Rejeter la commande">
         <IconButton
           size="small"
-          onClick={() => onReject(commandeId)}
+          onClick={handleRejectClick}
           color="error"
-          disabled={loading || currentStatus !== ORDER_STATUS.EN_ATTENTE}
+          disabled={loading}
         >
           <Cancel fontSize="small" />
         </IconButton>
@@ -158,6 +184,9 @@ CommandeStatusButton.propTypes = {
   onReject: PropTypes.func.isRequired,
 };
 
+// ==========================
+// Composant principal
+// ==========================
 const CommandeSupplierService = () => {
   const { enqueueSnackbar } = useSnackbar();
   const [commandes, setCommandes] = useState([]);
@@ -174,7 +203,7 @@ const CommandeSupplierService = () => {
   // suppression
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-  // ✅ édition
+  // édition
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [commandeToEdit, setCommandeToEdit] = useState(null);
 
@@ -249,7 +278,6 @@ const CommandeSupplierService = () => {
     setSelectedCommande(null);
   };
 
-  // ✅ ICI on ouvre le dialog au lieu de naviguer
   const handleEdit = (commande) => {
     setCommandeToEdit(commande);
     setEditDialogOpen(true);
@@ -258,8 +286,7 @@ const CommandeSupplierService = () => {
   const handleCloseEditDialog = () => {
     setEditDialogOpen(false);
     setCommandeToEdit(null);
-    // on recharge la liste pour voir les modifs
-    fetchCommandes();
+    fetchCommandes(); // rafraîchir après édition
   };
 
   const handleDelete = (commande) => {
@@ -321,28 +348,6 @@ const CommandeSupplierService = () => {
     }
   };
 
-  const handleDeleteConfirm = async () => {
-    if (!selectedCommande) return;
-
-    try {
-      await orderSupplierService.deleteOrder(selectedCommande.id);
-      setCommandes((prev) =>
-        prev.filter((commande) => commande.id !== selectedCommande.id)
-      );
-      setFilteredCommandes((prev) =>
-        prev.filter((commande) => commande.id !== selectedCommande.id)
-      );
-      setDeleteDialogOpen(false);
-      setSelectedCommande(null);
-      enqueueSnackbar("Commande supprimée avec succès", {
-        variant: "success",
-      });
-    } catch (error) {
-      console.error("Delete error:", error);
-      enqueueSnackbar("Erreur lors de la suppression", { variant: "error" });
-    }
-  };
-
   const handleFilterClick = (filter) => {
     setActiveFilter(filter);
     if (filter === "Tous") {
@@ -355,13 +360,8 @@ const CommandeSupplierService = () => {
     }
   };
 
-  const getStatusColor = (status) => {
-    return ORDER_STATUS.getColor(status);
-  };
-
-  const getStatusLabel = (status) => {
-    return ORDER_STATUS.getLabel(status);
-  };
+  const getStatusColor = (status) => ORDER_STATUS.getColor(status);
+  const getStatusLabel = (status) => ORDER_STATUS.getLabel(status);
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -466,9 +466,7 @@ const CommandeSupplierService = () => {
               />
             </Grid>
             <Grid item xs={12} md={6}>
-              <Box
-                sx={{ display: "flex", gap: 1, overflowX: "auto", py: 1 }}
-              >
+              <Box sx={{ display: "flex", gap: 1, overflowX: "auto", py: 1 }}>
                 {statusOptions.map((option) => (
                   <Chip
                     key={option.value}
@@ -536,115 +534,16 @@ const CommandeSupplierService = () => {
                       height: "60px",
                     }}
                   >
-                    <th
-                      style={{
-                        width: "50px",
-                        padding: "0 16px",
-                        fontWeight: 600,
-                        fontSize: "0.875rem",
-                        textAlign: "left",
-                        borderBottom: "2px solid #e0e0e0",
-                        color: "#333",
-                      }}
-                    >
-                      #
-                    </th>
-
-                    <th
-                      style={{
-                        width: "150px",
-                        padding: "0 16px",
-                        fontWeight: 600,
-                        fontSize: "0.875rem",
-                        textAlign: "left",
-                        borderBottom: "2px solid #e0e0e0",
-                        color: "#333",
-                      }}
-                    >
-                      Numéro Commande
-                    </th>
-
-                    <th
-                      style={{
-                        width: "200px",
-                        padding: "0 16px",
-                        fontWeight: 600,
-                        fontSize: "0.875rem",
-                        textAlign: "left",
-                        borderBottom: "2px solid #e0e0e0",
-                        color: "#333",
-                      }}
-                    >
-                      Fournisseur
-                    </th>
-
-                    <th
-                      style={{
-                        width: "120px",
-                        padding: "0 16px",
-                        fontWeight: 600,
-                        fontSize: "0.875rem",
-                        textAlign: "left",
-                        borderBottom: "2px solid #e0e0e0",
-                        color: "#333",
-                      }}
-                    >
-                      Date Commande
-                    </th>
-
-                    <th
-                      style={{
-                        width: "120px",
-                        padding: "0 16px",
-                        fontWeight: 600,
-                        fontSize: "0.875rem",
-                        textAlign: "left",
-                        borderBottom: "2px solid #e0e0e0",
-                        color: "#333",
-                      }}
-                    >
-                      Date Livraison
-                    </th>
-
-                    <th
-                      style={{
-                        width: "150px",
-                        padding: "0 16px",
-                        fontWeight: 600,
-                        fontSize: "0.875rem",
-                        textAlign: "left",
-                        borderBottom: "2px solid #e0e0e0",
-                        color: "#333",
-                      }}
-                    >
-                      Statut
-                    </th>
-
-                    <th
-                      style={{
-                        width: "150px",
-                        padding: "0 16px",
-                        fontWeight: 600,
-                        fontSize: "0.875rem",
-                        textAlign: "right",
-                        borderBottom: "2px solid #e0e0e0",
-                        color: "#333",
-                      }}
-                    >
+                    <th style={thStyle}>#</th>
+                    <th style={thStyle}>Numéro Commande</th>
+                    <th style={thStyle}>Fournisseur</th>
+                    <th style={thStyle}>Date Commande</th>
+                    <th style={thStyle}>Date Livraison</th>
+                    <th style={thStyle}>Statut</th>
+                    <th style={{ ...thStyle, textAlign: "right" }}>
                       Total TTC
                     </th>
-
-                    <th
-                      style={{
-                        width: "250px",
-                        padding: "0 16px",
-                        fontWeight: 600,
-                        fontSize: "0.875rem",
-                        textAlign: "center",
-                        borderBottom: "2px solid #e0e0e0",
-                        color: "#333",
-                      }}
-                    >
+                    <th style={{ ...thStyle, textAlign: "center" }}>
                       Actions
                     </th>
                   </tr>
@@ -669,25 +568,9 @@ const CommandeSupplierService = () => {
                             index % 2 === 0 ? "#ffffff" : "#fafafa";
                         }}
                       >
-                        <td
-                          style={{
-                            padding: "12px 16px",
-                            color: "#555",
-                            fontSize: "0.875rem",
-                            verticalAlign: "middle",
-                          }}
-                        >
-                          {index + 1}
-                        </td>
+                        <td style={tdStyle}>{index + 1}</td>
 
-                        <td
-                          style={{
-                            padding: "12px 16px",
-                            color: "#333",
-                            fontSize: "0.875rem",
-                            verticalAlign: "middle",
-                          }}
-                        >
+                        <td style={tdStyle}>
                           <Box
                             component="span"
                             sx={{
@@ -704,47 +587,21 @@ const CommandeSupplierService = () => {
                           </Box>
                         </td>
 
-                        <td
-                          style={{
-                            padding: "12px 16px",
-                            color: "#555",
-                            fontSize: "0.875rem",
-                            verticalAlign: "middle",
-                          }}
-                        >
+                        <td style={tdStyle}>
                           {commande.supplierName ||
                             commande.supplierId ||
                             "N/A"}
                         </td>
 
-                        <td
-                          style={{
-                            padding: "12px 16px",
-                            color: "#555",
-                            fontSize: "0.875rem",
-                            verticalAlign: "middle",
-                          }}
-                        >
+                        <td style={tdStyle}>
                           {formatDate(commande.orderDate)}
                         </td>
 
-                        <td
-                          style={{
-                            padding: "12px 16px",
-                            color: "#555",
-                            fontSize: "0.875rem",
-                            verticalAlign: "middle",
-                          }}
-                        >
+                        <td style={tdStyle}>
                           {formatDate(commande.deliveryDate)}
                         </td>
 
-                        <td
-                          style={{
-                            padding: "12px 16px",
-                            verticalAlign: "middle",
-                          }}
-                        >
+                        <td style={tdStyle}>
                           <Chip
                             label={getStatusLabel(commande.state)}
                             size="small"
@@ -758,12 +615,9 @@ const CommandeSupplierService = () => {
 
                         <td
                           style={{
-                            padding: "12px 16px",
-                            color: "#333",
-                            fontSize: "0.875rem",
-                            fontWeight: 500,
+                            ...tdStyle,
                             textAlign: "right",
-                            verticalAlign: "middle",
+                            fontWeight: 500,
                           }}
                         >
                           {commande.totalTTC
@@ -773,9 +627,8 @@ const CommandeSupplierService = () => {
 
                         <td
                           style={{
-                            padding: "12px 16px",
+                            ...tdStyle,
                             textAlign: "center",
-                            verticalAlign: "middle",
                           }}
                         >
                           <Box
@@ -786,6 +639,7 @@ const CommandeSupplierService = () => {
                               flexWrap: "wrap",
                             }}
                           >
+                            {/* Voir détails */}
                             <Tooltip title="Voir détails">
                               <IconButton
                                 size="small"
@@ -805,7 +659,7 @@ const CommandeSupplierService = () => {
                               commandeId={selectedCommande?.id}
                             />
 
-                            {/* ✅ bouton modifier -> ouvre le dialog */}
+                            {/* bouton modifier -> ouvre le dialog */}
                             <Tooltip title="Modifier">
                               <IconButton
                                 size="small"
@@ -819,6 +673,7 @@ const CommandeSupplierService = () => {
                               </IconButton>
                             </Tooltip>
 
+                            {/* PDF */}
                             <Tooltip title="Générer PDF">
                               <IconButton
                                 size="small"
@@ -834,6 +689,7 @@ const CommandeSupplierService = () => {
                               </IconButton>
                             </Tooltip>
 
+                            {/* ✅ Accepter / Rejeter avec icônes (actifs) */}
                             <CommandeStatusButton
                               commandeId={commande.id}
                               currentStatus={commande.state}
@@ -842,6 +698,7 @@ const CommandeSupplierService = () => {
                               onReject={handleReject}
                             />
 
+                            {/* Supprimer */}
                             <Tooltip title="Supprimer">
                               <IconButton
                                 size="small"
@@ -903,25 +760,17 @@ const CommandeSupplierService = () => {
           </Box>
         )}
 
-        {/* Dialog de confirmation de suppression */}
-        <Dialog
+        {/* ✅ Dialog de suppression */}
+        <DeleteCommandeDialog
           open={deleteDialogOpen}
           onClose={() => setDeleteDialogOpen(false)}
-        >
-          <DialogTitle>Confirmer la suppression</DialogTitle>
-          <DialogContent>
-            Êtes-vous sûr de vouloir supprimer la commande{" "}
-            {selectedCommande?.orderNumber} ?
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setDeleteDialogOpen(false)}>
-              Annuler
-            </Button>
-            <Button onClick={handleDeleteConfirm} color="error">
-              Supprimer
-            </Button>
-          </DialogActions>
-        </Dialog>
+          commande={selectedCommande}
+          onDelete={(id) => {
+            setCommandes((prev) => prev.filter((c) => c.id !== id));
+            setFilteredCommandes((prev) => prev.filter((c) => c.id !== id));
+          }}
+          redirectOnSuccess={false}
+        />
 
         {/* ✅ Dialog d'édition de commande */}
         {commandeToEdit && (
@@ -935,6 +784,24 @@ const CommandeSupplierService = () => {
       </Box>
     </DashboardLayout>
   );
+};
+
+// styles de la table
+const thStyle = {
+  width: "150px",
+  padding: "0 16px",
+  fontWeight: 600,
+  fontSize: "0.875rem",
+  textAlign: "left",
+  borderBottom: "2px solid #e0e0e0",
+  color: "#333",
+};
+
+const tdStyle = {
+  padding: "12px 16px",
+  color: "#555",
+  fontSize: "0.875rem",
+  verticalAlign: "middle",
 };
 
 export default CommandeSupplierService;
