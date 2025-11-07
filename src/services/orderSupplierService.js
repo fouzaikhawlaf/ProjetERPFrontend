@@ -73,15 +73,15 @@ class OrderSupplierService {
     }
   }
 
-  // POST: Créer une commande à partir d'un devis
-  async createOrderFromDevis(devisId) {
-    try {
-      const response = await apiErp.post(`/ordersupplier/convert-devis/${devisId}`);
-      return response.data;
-    } catch (error) {
-      this.handleError(error, `Erreur lors de la création de la commande depuis le devis ${devisId}`);
-    }
+// POST: Créer une commande à partir d'un devis
+async createOrderFromDevis(devisId, orderData) {
+  try {
+    const response = await apiErp.post(`/ordersupplier/convert-devis/${devisId}`, orderData);
+    return response.data;
+  } catch (error) {
+    this.handleError(error, `Erreur lors de la création de la commande depuis le devis ${devisId}`);
   }
+}
 
   // Gestion centralisée des erreurs
   handleError(error, defaultMessage) {

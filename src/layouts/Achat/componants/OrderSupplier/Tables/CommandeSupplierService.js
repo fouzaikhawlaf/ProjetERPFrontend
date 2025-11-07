@@ -13,6 +13,9 @@ import {
   Chip,
   Grid,
   InputAdornment,
+  Switch,
+  FormControlLabel,
+  Divider,
 } from "@mui/material";
 import {
   AddCircle,
@@ -25,109 +28,89 @@ import {
   Cancel,
   PictureAsPdf,
   Inventory,
+  BugReport,
+  ContentCopy,
 } from "@mui/icons-material";
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
 import { useSnackbar } from "notistack";
 import { Link } from "react-router-dom";
 import CommandeDetailsDialog from "../Componants/CommandeDetails";
 import orderSupplierService from "services/orderSupplierService";
-
-// 👇 Dialog d’édition
 import EditCommandeFournisseurDialog from "../Componants/EditCommandeFournisseurDialog";
-// 👇 Dialog de suppression (design comme DeleteDevisDialog)
-import DeleteCommandeDialog from "../Componants/DeleteCommandeDialog"; // ⚠️ adapte le chemin si besoin
+import DeleteCommandeDialog from "../Componants/DeleteCommandeDialog";
 
-// ==========================
-// Statuts des commandes
-// ==========================
+// Mapping complet de l'énum backend OrderState
+// 0 Draft | 1 Validated | 2 Delivered | 3 Invoiced | 4 Cancelled | 5 Pending | 6 Confirmed | 7 Approved | 8 Rejected
 const ORDER_STATUS = {
-  EN_ATTENTE: 0,
-  APPROUVE: 1,
-  REJETE: 2,
-  LIVRE: 3,
-  ANNULE: 4,
+  DRAFT: 0,
+  VALIDATED: 1,
+  DELIVERED: 2,
+  INVOICED: 3,
+  CANCELLED: 4,
+  PENDING: 5,
+  CONFIRMED: 6,
+  APPROVED: 7,
+  REJECTED: 8,
 
-  getLabel: (status) => {
-    switch (status) {
-      case 0:
-        return "En Attente";
-      case 1:
-        return "Approuvé";
-      case 2:
-        return "Rejeté";
-      case 3:
-        return "Livré";
-      case 4:
-        return "Annulé";
-      default:
-        return "Inconnu";
+  getLabel: (s) => {
+    switch (s) {
+      case 0: return "Brouillon";
+      case 1: return "Validée";
+      case 2: return "Livrée";
+      case 3: return "Facturée";
+      case 4: return "Annulée";
+      case 5: return "En attente";
+      case 6: return "Confirmée";
+      case 7: return "Approuvée";
+      case 8: return "Rejetée";
+      default: return `Statut ${s}`;
     }
   },
 
-  getColor: (status) => {
-    switch (status) {
-      case 0:
-        return "warning";
-      case 1:
-        return "success";
-      case 2:
-        return "error";
-      case 3:
-        return "info";
-      case 4:
-        return "default";
-      default:
-        return "default";
+  getColor: (s) => {
+    switch (s) {
+      case 0: return "default";   // Brouillon
+      case 1: return "info";      // Validée
+      case 2: return "info";      // Livrée
+      case 3: return "primary";   // Facturée
+      case 4: return "default";   // Annulée
+      case 5: return "warning";   // En attente
+      case 6: return "info";      // Confirmée
+      case 7: return "success";   // Approuvée
+      case 8: return "error";     // Rejetée
+      default: return "default";
     }
   },
 };
 
 const statusOptions = [
   { value: "Tous", label: "Tous", color: "default" },
-  { value: ORDER_STATUS.EN_ATTENTE, label: "En Attente", color: "warning" },
-  { value: ORDER_STATUS.APPROUVE, label: "Approuvé", color: "success" },
-  { value: ORDER_STATUS.REJETE, label: "Rejeté", color: "error" },
-  { value: ORDER_STATUS.LIVRE, label: "Livré", color: "info" },
-  { value: ORDER_STATUS.ANNULE, label: "Annulé", color: "default" },
+  { value: ORDER_STATUS.DRAFT,     label: "Brouillon",  color: "default" },
+  { value: ORDER_STATUS.VALIDATED, label: "Validée",    color: "info" },
+  { value: ORDER_STATUS.DELIVERED, label: "Livrée",     color: "info" },
+  { value: ORDER_STATUS.INVOICED,  label: "Facturée",   color: "primary" },
+  { value: ORDER_STATUS.CANCELLED, label: "Annulée",    color: "default" },
+  { value: ORDER_STATUS.PENDING,   label: "En attente", color: "warning" },
+  { value: ORDER_STATUS.CONFIRMED, label: "Confirmée",  color: "info" },
+  { value: ORDER_STATUS.APPROVED,  label: "Approuvée",  color: "success" },
+  { value: ORDER_STATUS.REJECTED,  label: "Rejetée",    color: "error" },
 ];
 
-// ==========================
-// Boutons accepter / rejeter
-// ==========================
-const CommandeStatusButton = ({
-  commandeId,
-  currentStatus,
-  onStatusChange,
-  onApprove,
-  onReject,
-}) => {
+const CommandeStatusButton = ({ commandeId, currentStatus, onApprove, onReject }) => {
   const [loading, setLoading] = useState(false);
 
-  // Si c'est déjà approuvé → on montre juste le chip
-  if (currentStatus === ORDER_STATUS.APPROUVE) {
+  // Si déjà approuvée ou rejetée, on affiche juste le chip
+  if (currentStatus === ORDER_STATUS.APPROVED) {
     return (
-      <Chip
-        icon={<CheckCircle />}
-        label={ORDER_STATUS.getLabel(currentStatus)}
-        color={ORDER_STATUS.getColor(currentStatus)}
-        size="small"
-      />
+      <Chip icon={<CheckCircle />} label={ORDER_STATUS.getLabel(currentStatus)} color={ORDER_STATUS.getColor(currentStatus)} size="small" />
+    );
+  }
+  if (currentStatus === ORDER_STATUS.REJECTED) {
+    return (
+      <Chip icon={<Cancel />} label={ORDER_STATUS.getLabel(currentStatus)} color={ORDER_STATUS.getColor(currentStatus)} size="small" />
     );
   }
 
-  // Si c'est déjà rejeté → on montre juste le chip
-  if (currentStatus === ORDER_STATUS.REJETE) {
-    return (
-      <Chip
-        icon={<Cancel />}
-        label={ORDER_STATUS.getLabel(currentStatus)}
-        color={ORDER_STATUS.getColor(currentStatus)}
-        size="small"
-      />
-    );
-  }
-
-  // Sinon → montrer les 2 icônes (actives)
   const handleApproveClick = async () => {
     if (loading) return;
     setLoading(true);
@@ -151,23 +134,12 @@ const CommandeStatusButton = ({
   return (
     <Box sx={{ display: "flex", gap: "6px" }}>
       <Tooltip title="Approuver la commande">
-        <IconButton
-          size="small"
-          onClick={handleApproveClick}
-          color="success"
-          disabled={loading}
-        >
+        <IconButton size="small" onClick={handleApproveClick} color="success" disabled={loading}>
           <CheckCircle fontSize="small" />
         </IconButton>
       </Tooltip>
-
       <Tooltip title="Rejeter la commande">
-        <IconButton
-          size="small"
-          onClick={handleRejectClick}
-          color="error"
-          disabled={loading}
-        >
+        <IconButton size="small" onClick={handleRejectClick} color="error" disabled={loading}>
           <Cancel fontSize="small" />
         </IconButton>
       </Tooltip>
@@ -176,17 +148,12 @@ const CommandeStatusButton = ({
 };
 
 CommandeStatusButton.propTypes = {
-  commandeId: PropTypes.oneOfType([PropTypes.string, PropTypes.number])
-    .isRequired,
+  commandeId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
   currentStatus: PropTypes.number.isRequired,
-  onStatusChange: PropTypes.func.isRequired,
   onApprove: PropTypes.func.isRequired,
   onReject: PropTypes.func.isRequired,
 };
 
-// ==========================
-// Composant principal
-// ==========================
 const CommandeSupplierService = () => {
   const { enqueueSnackbar } = useSnackbar();
   const [commandes, setCommandes] = useState([]);
@@ -196,25 +163,34 @@ const CommandeSupplierService = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // détails
   const [selectedCommande, setSelectedCommande] = useState(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
-
-  // suppression
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-
-  // édition
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [commandeToEdit, setCommandeToEdit] = useState(null);
 
+  // Debug / console-like
+  const [debugOpen, setDebugOpen] = useState(false);
+  const [lastRawResponse, setLastRawResponse] = useState(null);
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }).format(amount || 0);
+  };
+
+  // Unwrap des listes .NET ($values)
   const handleDotNetResponse = (response) => {
-    if (response && response.$values) {
-      return response.$values;
-    }
-    if (Array.isArray(response)) {
-      return response;
-    }
+    if (response && response.$values) return response.$values;
+    if (Array.isArray(response)) return response;
     return [];
+  };
+
+  const copyToClipboard = async (obj) => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(obj, null, 2));
+      enqueueSnackbar("JSON copié dans le presse-papiers", { variant: "success" });
+    } catch (_) {
+      enqueueSnackbar("Impossible de copier le JSON", { variant: "error" });
+    }
   };
 
   const fetchCommandes = async () => {
@@ -222,7 +198,19 @@ const CommandeSupplierService = () => {
     setError(null);
     try {
       const response = await orderSupplierService.getAllOrders();
+      setLastRawResponse(response);
+
+      console.groupCollapsed("📦 Réponse API getAllOrders()");
+      console.log("Brut:", response);
       const commandesData = handleDotNetResponse(response);
+      console.log(`Items: ${commandesData.length}`);
+      if (commandesData[0]) console.table(commandesData[0]);
+      console.groupEnd();
+
+      // Sécurité : s'assurer que status est bien un nombre
+      const bad = commandesData.filter((c) => typeof c.status !== "number");
+      if (bad.length) console.warn("Commandes sans status numérique:", bad);
+
       setCommandes(commandesData);
       setFilteredCommandes(commandesData);
     } catch (error) {
@@ -236,36 +224,23 @@ const CommandeSupplierService = () => {
 
   useEffect(() => {
     fetchCommandes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSearch = (e) => {
     const query = e.target.value.toLowerCase();
     setSearchQuery(query);
-
-    if (query === "") {
-      setFilteredCommandes(commandes);
-      return;
-    }
+    if (!query) return setFilteredCommandes(commandes);
 
     const filtered = commandes.filter((commande) =>
-      Object.values(commande).some((value) =>
-        value && value.toString().toLowerCase().includes(query)
-      )
+      Object.values(commande).some((value) => value && value.toString().toLowerCase().includes(query))
     );
     setFilteredCommandes(filtered);
   };
 
   const handleStatusChange = (id, newStatus) => {
-    setCommandes((prev) =>
-      prev.map((commande) =>
-        commande.id === id ? { ...commande, state: newStatus } : commande
-      )
-    );
-    setFilteredCommandes((prev) =>
-      prev.map((commande) =>
-        commande.id === id ? { ...commande, state: newStatus } : commande
-      )
-    );
+    setCommandes((prev) => prev.map((c) => (c.id === id ? { ...c, status: newStatus } : c)));
+    setFilteredCommandes((prev) => prev.map((c) => (c.id === id ? { ...c, status: newStatus } : c)));
   };
 
   const handleViewDetails = (commande) => {
@@ -286,7 +261,7 @@ const CommandeSupplierService = () => {
   const handleCloseEditDialog = () => {
     setEditDialogOpen(false);
     setCommandeToEdit(null);
-    fetchCommandes(); // rafraîchir après édition
+    fetchCommandes();
   };
 
   const handleDelete = (commande) => {
@@ -298,10 +273,8 @@ const CommandeSupplierService = () => {
     try {
       setIsLoading(true);
       await orderSupplierService.approveOrder(commandeId);
-      handleStatusChange(commandeId, ORDER_STATUS.APPROUVE);
-      enqueueSnackbar("Commande approuvée avec succès", {
-        variant: "success",
-      });
+      handleStatusChange(commandeId, ORDER_STATUS.APPROVED);
+      enqueueSnackbar("Commande approuvée avec succès", { variant: "success" });
     } catch (error) {
       console.error("Approve error:", error);
       enqueueSnackbar("Erreur lors de l'approbation", { variant: "error" });
@@ -314,10 +287,8 @@ const CommandeSupplierService = () => {
     try {
       setIsLoading(true);
       await orderSupplierService.rejectOrder(commandeId);
-      handleStatusChange(commandeId, ORDER_STATUS.REJETE);
-      enqueueSnackbar("Commande rejetée avec succès", {
-        variant: "success",
-      });
+      handleStatusChange(commandeId, ORDER_STATUS.REJECTED);
+      enqueueSnackbar("Commande rejetée avec succès", { variant: "success" });
     } catch (error) {
       console.error("Reject error:", error);
       enqueueSnackbar("Erreur lors du rejet", { variant: "error" });
@@ -328,9 +299,7 @@ const CommandeSupplierService = () => {
 
   const handleGeneratePDF = async (commandeId) => {
     try {
-      const pdfBlob = await orderSupplierService.generateOrderPdf([
-        commandeId,
-      ]);
+      const pdfBlob = await orderSupplierService.generateOrderPdf([commandeId]);
       const url = window.URL.createObjectURL(pdfBlob);
       const link = document.createElement("a");
       link.href = url;
@@ -342,22 +311,16 @@ const CommandeSupplierService = () => {
       enqueueSnackbar("PDF généré avec succès", { variant: "success" });
     } catch (error) {
       console.error("PDF generation error:", error);
-      enqueueSnackbar("Erreur lors de la génération du PDF", {
-        variant: "error",
-      });
+      enqueueSnackbar("Erreur lors de la génération du PDF", { variant: "error" });
     }
   };
 
   const handleFilterClick = (filter) => {
     setActiveFilter(filter);
-    if (filter === "Tous") {
-      setFilteredCommandes(commandes);
-    } else {
-      const numericFilter = parseInt(filter);
-      setFilteredCommandes(
-        commandes.filter((commande) => commande.state === numericFilter)
-      );
-    }
+    if (filter === "Tous") return setFilteredCommandes(commandes);
+
+    const numericFilter = parseInt(filter, 10);
+    setFilteredCommandes(commandes.filter((c) => c.status === numericFilter));
   };
 
   const getStatusColor = (status) => ORDER_STATUS.getColor(status);
@@ -373,17 +336,13 @@ const CommandeSupplierService = () => {
       enqueueSnackbar("Aucune commande à exporter", { variant: "warning" });
       return;
     }
-
     try {
-      const commandeIds = filteredCommandes.map((commande) => commande.id);
+      const commandeIds = filteredCommandes.map((c) => c.id);
       const pdfBlob = await orderSupplierService.generateOrderPdf(commandeIds);
       const url = window.URL.createObjectURL(pdfBlob);
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute(
-        "download",
-        `commandes_${new Date().toISOString().split("T")[0]}.pdf`
-      );
+      link.setAttribute("download", `commandes_${new Date().toISOString().split("T")[0]}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -399,55 +358,25 @@ const CommandeSupplierService = () => {
     <DashboardLayout>
       <Box sx={{ p: 3 }}>
         {/* Header Section */}
-        <Grid container spacing={2} alignItems="center" sx={{ mb: 3 }}>
+        <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
           <Grid item xs={12} md={6}>
-            <Typography variant="h4" fontWeight="bold">
-              Gestion des Commandes Fournisseurs
-            </Typography>
+            <Typography variant="h4" fontWeight="bold">Gestion des Commandes Fournisseurs</Typography>
             <Typography variant="body2" color="text.secondary">
-              {filteredCommandes.length} commandes trouvées sur{" "}
-              {commandes.length} total
+              {filteredCommandes.length} commandes trouvées sur {commandes.length} total
             </Typography>
           </Grid>
-          <Grid item xs={12} md={6} sx={{ textAlign: { md: "right" } }}>
-            <Button
-              component={Link}
-              to="/achats/commandes"
-              variant="contained"
-              startIcon={<AddCircle />}
-              sx={{ mr: 2 }}
-            >
-              Nouvelle Commande
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<PictureAsPdf />}
-              onClick={handleExportPDF}
-              disabled={filteredCommandes.length === 0}
-              sx={{ mr: 2 }}
-            >
-              Exporter PDF
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<Refresh />}
-              onClick={fetchCommandes}
-            >
-              Actualiser
-            </Button>
+          <Grid item xs={12} md={6} sx={{ textAlign: { md: "right" }, display: 'flex', gap: 1, justifyContent: { xs: 'flex-start', md: 'flex-end' }, alignItems: 'center' }}>
+            <FormControlLabel control={<Switch checked={debugOpen} onChange={() => setDebugOpen((v) => !v)} />} label={<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}><BugReport fontSize="small" /> Console API</Box>} />
+            <Button component={Link} to="/achats/commandes" variant="contained" startIcon={<AddCircle />} sx={{ mr: 1 }}>Nouvelle Commande</Button>
+            <Button variant="outlined" startIcon={<PictureAsPdf />} onClick={handleExportPDF} disabled={filteredCommandes.length === 0} sx={{ mr: 1 }}>Exporter PDF</Button>
+            <Button variant="outlined" startIcon={<Refresh />} onClick={fetchCommandes}>Actualiser</Button>
           </Grid>
         </Grid>
 
+       
+
         {/* Filters Section */}
-        <Box
-          sx={{
-            p: 2,
-            mb: 3,
-            bgcolor: "background.paper",
-            borderRadius: 1,
-            boxShadow: 1,
-          }}
-        >
+        <Box sx={{ p: 2, mb: 3, bgcolor: "background.paper", borderRadius: 1, boxShadow: 1 }}>
           <Grid container spacing={2} alignItems="center">
             <Grid item xs={12} md={6}>
               <TextField
@@ -456,13 +385,7 @@ const CommandeSupplierService = () => {
                 placeholder="Rechercher par numéro, fournisseur..."
                 value={searchQuery}
                 onChange={handleSearch}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search color="action" />
-                    </InputAdornment>
-                  ),
-                }}
+                InputProps={{ startAdornment: (<InputAdornment position="start"><Search color="action" /></InputAdornment>) }}
               />
             </Grid>
             <Grid item xs={12} md={6}>
@@ -470,21 +393,11 @@ const CommandeSupplierService = () => {
                 {statusOptions.map((option) => (
                   <Chip
                     key={option.value}
-                    label={`${option.label} (${commandes.filter((commande) =>
-                      option.value === "Tous"
-                        ? true
-                        : commande.state === option.value
-                    ).length})`}
+                    label={`${option.label} (${commandes.filter((c) => option.value === "Tous" ? true : c.status === option.value).length})`}
                     onClick={() => handleFilterClick(option.value)}
                     color={option.color}
-                    variant={
-                      activeFilter === option.value ? "filled" : "outlined"
-                    }
-                    sx={{
-                      minWidth: 100,
-                      fontWeight:
-                        activeFilter === option.value ? "bold" : "normal",
-                    }}
+                    variant={activeFilter === option.value ? "filled" : "outlined"}
+                    sx={{ minWidth: 100, fontWeight: activeFilter === option.value ? "bold" : "normal" }}
                   />
                 ))}
               </Box>
@@ -493,221 +406,95 @@ const CommandeSupplierService = () => {
         </Box>
 
         {/* Content Section */}
-        {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            {error}
-          </Alert>
-        )}
+        {error && (<Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>)}
 
         {isLoading ? (
-          <Box
-            display="flex"
-            justifyContent="center"
-            alignItems="center"
-            minHeight="300px"
-          >
-            <CircularProgress size={60} />
-          </Box>
+          <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px"><CircularProgress size={60} /></Box>
         ) : (
-          <Box
-            component={Paper}
-            elevation={0}
-            sx={{
-              border: "1px solid",
-              borderColor: "divider",
-              borderRadius: 2,
-              overflow: "hidden",
-            }}
-          >
+          <Box component={Paper} elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2, overflow: "hidden" }}>
             <Box sx={{ overflowX: "auto" }}>
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  minWidth: "1200px",
-                }}
-              >
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "1400px" }}>
                 <thead>
-                  <tr
-                    style={{
-                      backgroundColor: "#f5f7fa",
-                      height: "60px",
-                    }}
-                  >
+                  <tr style={{ backgroundColor: "#f5f7fa", height: "60px" }}>
                     <th style={thStyle}>#</th>
                     <th style={thStyle}>Numéro Commande</th>
                     <th style={thStyle}>Fournisseur</th>
                     <th style={thStyle}>Date Commande</th>
                     <th style={thStyle}>Date Livraison</th>
                     <th style={thStyle}>Statut</th>
-                    <th style={{ ...thStyle, textAlign: "right" }}>
-                      Total TTC
-                    </th>
-                    <th style={{ ...thStyle, textAlign: "center" }}>
-                      Actions
-                    </th>
+                    <th style={{ ...thStyle, textAlign: "right" }}>Total HT</th>
+                    <th style={{ ...thStyle, textAlign: "right" }}>Total TVA</th>
+                    <th style={{ ...thStyle, textAlign: "right" }}>Total TTC</th>
+                    <th style={{ ...thStyle, textAlign: "center" }}>Actions</th>
                   </tr>
                 </thead>
-
                 <tbody>
                   {filteredCommandes.length > 0 ? (
                     filteredCommandes.map((commande, index) => (
                       <tr
                         key={commande.id}
-                        style={{
-                          borderBottom: "1px solid #eee",
-                          backgroundColor:
-                            index % 2 === 0 ? "#ffffff" : "#fafafa",
-                          transition: "background-color 0.2s",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = "#f5f7fa";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor =
-                            index % 2 === 0 ? "#ffffff" : "#fafafa";
-                        }}
+                        style={{ borderBottom: "1px solid #eee", backgroundColor: index % 2 === 0 ? "#ffffff" : "#fafafa", transition: "background-color 0.2s" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#f5f7fa"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = index % 2 === 0 ? "#ffffff" : "#fafafa"; }}
                       >
                         <td style={tdStyle}>{index + 1}</td>
-
                         <td style={tdStyle}>
-                          <Box
-                            component="span"
-                            sx={{
-                              fontWeight: 500,
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              display: "block",
-                              maxWidth: "140px",
-                              color: "#1976d2",
-                            }}
-                          >
-                            {commande.orderNumber || "N/A"}
+                          <Box component="span" sx={{ fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "block", maxWidth: "140px", color: "#1976d2" }}>
+                            {commande.OrderNumber || "N/A"}
                           </Box>
                         </td>
-
+                        <td style={tdStyle}>{commande.supplierName || commande.supplierId || "N/A"}</td>
+                        <td style={tdStyle}>{formatDate(commande.orderDate)}</td>
+                        <td style={tdStyle}>{formatDate(commande.expectedDeliveryDate)}</td>
                         <td style={tdStyle}>
-                          {commande.supplierName ||
-                            commande.supplierId ||
-                            "N/A"}
+                          <Chip label={getStatusLabel(commande.status)} size="small" color={getStatusColor(commande.status)} sx={{ fontSize: "0.75rem", fontWeight: 500 }} />
                         </td>
-
-                        <td style={tdStyle}>
-                          {formatDate(commande.orderDate)}
+                        {/* Total HT (purchaseAmount fourni par l'API) */}
+                        <td style={{ ...tdStyle, textAlign: "right", fontWeight: 500 }}>
+                          {commande.purchaseAmount !== undefined ? `${formatCurrency(commande.purchaseAmount)} TND` : "0.000 TND"}
                         </td>
-
-                        <td style={tdStyle}>
-                          {formatDate(commande.deliveryDate)}
+                        {/* Total TVA */}
+                        <td style={{ ...tdStyle, textAlign: "right", fontWeight: 500 }}>
+                          {commande.totalTVA !== undefined ? `${formatCurrency(commande.totalTVA)} TND` : "0.000 TND"}
                         </td>
-
-                        <td style={tdStyle}>
-                          <Chip
-                            label={getStatusLabel(commande.state)}
-                            size="small"
-                            color={getStatusColor(commande.state)}
-                            sx={{
-                              fontSize: "0.75rem",
-                              fontWeight: 500,
-                            }}
-                          />
+                        {/* Total TTC (totalTTC ou totalAmount) */}
+                        <td style={{ ...tdStyle, textAlign: "right", fontWeight: 500 }}>
+                          {commande.totalTTC !== undefined
+                            ? `${formatCurrency(commande.totalTTC)} TND`
+                            : commande.totalAmount !== undefined
+                              ? `${formatCurrency(commande.totalAmount)} TND`
+                              : "0.000 TND"}
                         </td>
-
-                        <td
-                          style={{
-                            ...tdStyle,
-                            textAlign: "right",
-                            fontWeight: 500,
-                          }}
-                        >
-                          {commande.totalTTC
-                            ? `${commande.totalTTC.toFixed(2)} TND`
-                            : "0.00 TND"}
-                        </td>
-
-                        <td
-                          style={{
-                            ...tdStyle,
-                            textAlign: "center",
-                          }}
-                        >
-                          <Box
-                            sx={{
-                              display: "flex",
-                              justifyContent: "center",
-                              gap: "6px",
-                              flexWrap: "wrap",
-                            }}
-                          >
-                            {/* Voir détails */}
+                        <td style={{ ...tdStyle, textAlign: "center" }}>
+                          <Box sx={{ display: "flex", justifyContent: "center", gap: "6px", flexWrap: "wrap" }}>
                             <Tooltip title="Voir détails">
-                              <IconButton
-                                size="small"
-                                onClick={() => handleViewDetails(commande)}
-                                sx={{
-                                  color: "#5c6bc0",
-                                  "&:hover": { backgroundColor: "#e8eaf6" },
-                                }}
-                              >
+                              <IconButton size="small" onClick={() => handleViewDetails(commande)} sx={{ color: "#5c6bc0", "&:hover": { backgroundColor: "#e8eaf6" } }}>
                                 <Visibility fontSize="small" />
                               </IconButton>
                             </Tooltip>
-
-                            <CommandeDetailsDialog
-                              open={detailDialogOpen}
-                              onClose={handleCloseDetailDialog}
-                              commandeId={selectedCommande?.id}
-                            />
-
-                            {/* bouton modifier -> ouvre le dialog */}
                             <Tooltip title="Modifier">
-                              <IconButton
-                                size="small"
-                                onClick={() => handleEdit(commande)}
-                                sx={{
-                                  color: "#26a69a",
-                                  "&:hover": { backgroundColor: "#e0f2f1" },
-                                }}
-                              >
+                              <IconButton size="small" onClick={() => handleEdit(commande)} sx={{ color: "#26a69a", "&:hover": { backgroundColor: "#e0f2f1" } }}>
                                 <Edit fontSize="small" />
                               </IconButton>
                             </Tooltip>
-
-                            {/* PDF */}
                             <Tooltip title="Générer PDF">
-                              <IconButton
-                                size="small"
-                                onClick={() =>
-                                  handleGeneratePDF(commande.id)
-                                }
-                                sx={{
-                                  color: "#d32f2f",
-                                  "&:hover": { backgroundColor: "#ffebee" },
-                                }}
-                              >
+                              <IconButton size="small" onClick={() => handleGeneratePDF(commande.id)} sx={{ color: "#d32f2f", "&:hover": { backgroundColor: "#ffebee" } }}>
                                 <PictureAsPdf fontSize="small" />
                               </IconButton>
                             </Tooltip>
-
-                            {/* ✅ Accepter / Rejeter avec icônes (actifs) */}
                             <CommandeStatusButton
                               commandeId={commande.id}
-                              currentStatus={commande.state}
-                              onStatusChange={handleStatusChange}
+                              currentStatus={commande.status}
                               onApprove={handleApprove}
                               onReject={handleReject}
                             />
-
-                            {/* Supprimer */}
+                            <Tooltip title="Copier JSON de la ligne">
+                              <IconButton size="small" onClick={() => copyToClipboard(commande)}>
+                                <ContentCopy fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
                             <Tooltip title="Supprimer">
-                              <IconButton
-                                size="small"
-                                onClick={() => handleDelete(commande)}
-                                sx={{
-                                  color: "#ef5350",
-                                  "&:hover": { backgroundColor: "#ffebee" },
-                                }}
-                              >
+                              <IconButton size="small" onClick={() => handleDelete(commande)} sx={{ color: "#ef5350", "&:hover": { backgroundColor: "#ffebee" } }}>
                                 <Delete fontSize="small" />
                               </IconButton>
                             </Tooltip>
@@ -717,37 +504,16 @@ const CommandeSupplierService = () => {
                     ))
                   ) : (
                     <tr>
-                      <td
-                        colSpan="8"
-                        style={{
-                          padding: "24px",
-                          textAlign: "center",
-                          color: "#666",
-                        }}
-                      >
+                      <td colSpan="10" style={{ padding: "24px", textAlign: "center", color: "#666" }}>
                         <Box sx={{ textAlign: "center" }}>
-                          <Inventory
-                            sx={{
-                              fontSize: 60,
-                              color: "#e0e0e0",
-                              mb: 2,
-                            }}
-                          />
-                          <Typography variant="body1">
-                            Aucune commande fournisseur trouvée
-                          </Typography>
+                          <Inventory sx={{ fontSize: 60, color: "#e0e0e0", mb: 2 }} />
+                          <Typography variant="body1">Aucune commande fournisseur trouvée</Typography>
                           <Typography variant="body2" sx={{ mt: 1 }}>
                             {commandes.length === 0
                               ? "Aucune commande n'a été créée. Créez une nouvelle commande ou convertissez un devis accepté."
                               : "Aucune commande ne correspond à vos critères de recherche."}
                           </Typography>
-                          <Button
-                            component={Link}
-                            to="/achats/commandes"
-                            variant="contained"
-                            startIcon={<AddCircle />}
-                            sx={{ mt: 2 }}
-                          >
+                          <Button component={Link} to="/achats/commandes" variant="contained" startIcon={<AddCircle />} sx={{ mt: 2 }}>
                             Créer une nouvelle commande
                           </Button>
                         </Box>
@@ -760,7 +526,6 @@ const CommandeSupplierService = () => {
           </Box>
         )}
 
-        {/* ✅ Dialog de suppression */}
         <DeleteCommandeDialog
           open={deleteDialogOpen}
           onClose={() => setDeleteDialogOpen(false)}
@@ -772,7 +537,6 @@ const CommandeSupplierService = () => {
           redirectOnSuccess={false}
         />
 
-        {/* ✅ Dialog d'édition de commande */}
         {commandeToEdit && (
           <EditCommandeFournisseurDialog
             open={editDialogOpen}
@@ -781,14 +545,19 @@ const CommandeSupplierService = () => {
             onUpdate={fetchCommandes}
           />
         )}
+
+        <CommandeDetailsDialog
+          open={detailDialogOpen}
+          onClose={handleCloseDetailDialog}
+          commandeId={selectedCommande?.id}
+        />
       </Box>
     </DashboardLayout>
   );
 };
 
-// styles de la table
 const thStyle = {
-  width: "150px",
+  width: "120px",
   padding: "0 16px",
   fontWeight: 600,
   fontSize: "0.875rem",

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import PropTypes from 'prop-types';
+import React, { useEffect, useState } from "react";
+import PropTypes from "prop-types";
 import {
   Dialog,
   DialogTitle,
@@ -19,12 +19,11 @@ import {
   Alert,
   TextField,
   MenuItem,
-  IconButton
+  IconButton,
 } from "@mui/material";
 import {
   Description,
   AttachMoney,
-  CalendarToday,
   Person,
   CheckCircle,
   Cancel,
@@ -33,11 +32,80 @@ import {
   PictureAsPdf,
   Edit,
   Delete,
-  Clear
+  Clear,
 } from "@mui/icons-material";
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
-import orderSupplierService from 'services/orderSupplierService';
+import orderSupplierService from "services/orderSupplierService";
+
+// 0 Draft | 1 Validated | 2 Delivered | 3 Invoiced | 4 Cancelled | 5 Pending | 6 Confirmed | 7 Approved | 8 Rejected
+const ORDER_STATUS = {
+  DRAFT: 0,
+  VALIDATED: 1,
+  DELIVERED: 2,
+  INVOICED: 3,
+  CANCELLED: 4,
+  PENDING: 5,
+  CONFIRMED: 6,
+  APPROVED: 7,
+  REJECTED: 8,
+
+  getLabel: (s) => {
+    switch (Number(s)) {
+      case 0: return "Brouillon";
+      case 1: return "Validée";
+      case 2: return "Livrée";
+      case 3: return "Facturée";
+      case 4: return "Annulée";
+      case 5: return "En attente";
+      case 6: return "Confirmée";
+      case 7: return "Approuvée";
+      case 8: return "Rejetée";
+      default: return `Statut ${s}`;
+    }
+  },
+  getColor: (s) => {
+    switch (Number(s)) {
+      case 0: return "default";
+      case 1: return "info";
+      case 2: return "info";
+      case 3: return "primary";
+      case 4: return "default";
+      case 5: return "warning";
+      case 6: return "info";
+      case 7: return "success";
+      case 8: return "error";
+      default: return "default";
+    }
+  },
+  getIcon: (s) => {
+    switch (Number(s)) {
+      case 2:
+      case 3:
+      case 7:
+        return <CheckCircle />;
+      case 4:
+      case 8:
+        return <Cancel />;
+      case 0:
+      case 1:
+      case 5:
+      case 6:
+      default:
+        return <Schedule />;
+    }
+  },
+};
+
+const nf3 = new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+const nf2 = new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function unwrapDotNetList(maybe) {
+  if (!maybe) return [];
+  if (Array.isArray(maybe)) return maybe;
+  if (maybe.$values) return maybe.$values;
+  return [];
+}
 
 const CommandeDetailsDialog = ({ open, onClose, commandeId, onCommandeUpdated }) => {
   const [commande, setCommande] = useState(null);
@@ -45,149 +113,164 @@ const CommandeDetailsDialog = ({ open, onClose, commandeId, onCommandeUpdated })
   const [error, setError] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
-  const [status, setStatus] = useState('');
-
-  // Fonction utilitaire pour normaliser les items
-  const normalizeItems = (itemsData) => {
-    if (Array.isArray(itemsData)) {
-      return itemsData;
-    } else if (itemsData && typeof itemsData === 'object' && itemsData.$values) {
-      return itemsData.$values;
-    } else if (itemsData && typeof itemsData === 'object') {
-      return Object.values(itemsData);
-    }
-    return [];
-  };
+  const [status, setStatus] = useState(0);
 
   useEffect(() => {
-    if (commandeId) {
-      loadCommande();
-    }
-  }, [commandeId]);
+    if (open && commandeId != null) loadCommande();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, commandeId]);
 
   const loadCommande = async () => {
     try {
       setLoading(true);
+      setError(null);
       const data = await orderSupplierService.getOrderById(commandeId);
       setCommande(data);
     } catch (err) {
-      setError(err.message);
+      setError(err?.message || "Erreur de chargement");
     } finally {
       setLoading(false);
     }
   };
 
   const handleDownloadPDF = () => {
-    // ... (identique à l'ancien code)
+    if (!commande) return;
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text(
+      `COMMANDE FOURNISSEUR — ${commande.orderNumber || commande.id}`,
+      pageWidth / 2,
+      18,
+      { align: "center" }
+    );
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(
+      `Fournisseur: ${commande.supplierName || "Non spécifié"} (ID: ${commande.supplierId ?? "-"})`,
+      14,
+      30
+    );
+    doc.text(
+      `Date commande: ${
+        commande.orderDate ? new Date(commande.orderDate).toLocaleDateString("fr-FR") : "-"
+      }`,
+      14,
+      36
+    );
+    doc.text(
+      `Date livraison: ${
+        commande.expectedDeliveryDate
+          ? new Date(commande.expectedDeliveryDate).toLocaleDateString("fr-FR")
+          : "-"
+      }`,
+      14,
+      42
+    );
+    doc.text(`Statut: ${ORDER_STATUS.getLabel(commande.status)}`, 14, 48);
+
+    // Lignes du tableau (items)
+    const rows = unwrapDotNetList(commande.items).map((it, idx) => [
+      idx + 1,
+      it.productName || "-",
+      nf2.format(Number(it.quantity || 0)),
+      nf3.format(Number(it.price || 0)),
+      `${nf2.format(Number(it.tva ?? it.tvaRate ?? 0))}%`,
+      nf3.format(Number(it.quantity || 0) * Number(it.price || 0)),
+    ]);
+
+    doc.autoTable({
+      startY: 56,
+      head: [["#", "Désignation", "Qté", "P.U. HT", "TVA", "Total HT"]],
+      body: rows,
+      theme: "grid",
+      styles: { font: "helvetica", fontSize: 9 },
+      headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+    });
+
+    let y = doc.lastAutoTable?.finalY || 56;
+    y += 10;
+
+    doc.setFont("helvetica", "bold");
+    doc.text(`Total HT: ${nf3.format(commande.purchaseAmount ?? 0)} TND`, 140, y);
+    y += 6;
+    doc.text(`Total TVA: ${nf3.format(commande.totalTVA ?? 0)} TND`, 140, y);
+    y += 6;
+    doc.text(`Total TTC: ${nf3.format(commande.totalAmount ?? 0)} TND`, 140, y);
+
+    doc.save(`Commande_${commande.orderNumber || commande.id}.pdf`);
   };
 
-  const handleDelete = () => {
-    setDeleteDialogOpen(true);
-  };
+  const handleDelete = () => setDeleteDialogOpen(true);
 
   const confirmDelete = async () => {
     try {
       await orderSupplierService.deleteOrder(commandeId);
       setDeleteDialogOpen(false);
-      onCommandeUpdated(); // Informer le parent de la suppression
-      onClose(); // Fermer le dialog
+      onCommandeUpdated?.();
+      onClose?.();
     } catch (err) {
-      setError(err.message);
+      setError(err?.message || "Suppression impossible");
     }
   };
 
-  const handleStatusChange = () => {
-    setStatus(commande.status);
+  const openStatusDialog = () => {
+    setStatus(Number(commande?.status ?? 0));
     setStatusDialogOpen(true);
   };
 
   const confirmStatusChange = async () => {
     try {
-      await orderSupplierService.updateOrderStatus(commandeId, status);
+      await orderSupplierService.updateOrderStatus(commandeId, Number(status));
       setStatusDialogOpen(false);
-      loadCommande(); // Recharger les données du dialog
-      onCommandeUpdated(); // Informer le parent du changement
+      await loadCommande();
+      onCommandeUpdated?.();
     } catch (err) {
-      setError(err.message);
+      setError(err?.message || "Mise à jour du statut impossible");
     }
   };
 
-  const handleEdit = () => {
-    // Rediriger vers la page d'édition? Ou peut-être gérer l'édition dans un autre dialog?
-    // Pour l'instant, nous allons fermer le dialog et laisser le parent gérer l'édition.
-    onClose();
-    // Naviguer vers la page d'édition? Mais nous sommes dans un dialog.
-    // Nous pourrions avoir une prop `onEdit` pour que le parent ouvre le dialog d'édition.
-    // Cependant, ce n'est pas implémenté dans le code actuel.
-    // Pour l'instant, nous allons simplement fermer le dialog.
-  };
+  const getChipColor = (s) => ORDER_STATUS.getColor(s);
+  const getChipIcon = (s) => ORDER_STATUS.getIcon(s);
+  const getStatusLabel = (s) => ORDER_STATUS.getLabel(s);
 
-  const getStatusIcon = () => {
-    switch (commande?.status) {
-      case 'En attente': return <Schedule />;
-      case 'Confirmée': return <CheckCircle />;
-      case 'En cours': return <Schedule />;
-      case 'Livrée': return <CheckCircle />;
-      case 'Annulée': return <Cancel />;
-      default: return <Description />;
-    }
-  };
+  if (!open) return null;
 
-  const getStatusColor = () => {
-    switch (commande?.status) {
-      case 'En attente': return 'warning';
-      case 'Confirmée': return 'info';
-      case 'En cours': return 'primary';
-      case 'Livrée': return 'success';
-      case 'Annulée': return 'error';
-      default: return 'default';
-    }
-  };
-
-  const getStatusLabel = () => {
-    return commande?.status || 'Inconnu';
-  };
-
-  // Si le dialog n'est pas ouvert, ne rien rendre
-  if (!open) {
-    return null;
-  }
-
-  const items = normalizeItems(commande?.items);
+  const items = unwrapDotNetList(commande?.items);
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="md"
-      fullWidth
-      PaperProps={{ sx: { borderRadius: 2 } }}
-    >
-      <DialogTitle sx={{ 
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: '#f5f7fa',
-        borderBottom: '1px solid #e0e0e0'
-      }}>
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
+      <DialogTitle
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          backgroundColor: "#f5f7fa",
+          borderBottom: "1px solid #e0e0e0",
+        }}
+      >
         <Box display="flex" alignItems="center">
-          <Avatar sx={{ 
-            bgcolor: getStatusColor() === 'warning' ? '#ff9800' : 
-                     getStatusColor() === 'success' ? '#4caf50' : 
-                     getStatusColor() === 'error' ? '#f44336' : 
-                     getStatusColor() === 'info' ? '#2196f3' : '#9e9e9e', 
-            mr: 2,
-            width: 40, 
-            height: 40
-          }}>
-            {getStatusIcon()}
+          <Avatar
+            sx={{
+              bgcolor: "#fff",
+              mr: 2,
+              width: 40,
+              height: 40,
+              border: "2px solid #e0e0e0",
+            }}
+          >
+            {getChipIcon(commande?.status)}
           </Avatar>
           <Box>
             <Typography variant="h6" fontWeight="bold">
-              Commande {commande?.orderNumber}
+              Commande {commande?.orderNumber || commande?.id}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {getStatusLabel()}
+              {getStatusLabel(commande?.status)}
             </Typography>
           </Box>
         </Box>
@@ -195,7 +278,7 @@ const CommandeDetailsDialog = ({ open, onClose, commandeId, onCommandeUpdated })
           <Clear />
         </IconButton>
       </DialogTitle>
-      
+
       <DialogContent dividers sx={{ py: 2 }}>
         {loading ? (
           <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
@@ -207,35 +290,53 @@ const CommandeDetailsDialog = ({ open, onClose, commandeId, onCommandeUpdated })
           <Alert severity="warning">Commande non trouvée</Alert>
         ) : (
           <Grid container spacing={2}>
-            {/* Section Informations générales */}
+            {/* Informations générales */}
             <Grid item xs={12}>
               <Paper sx={{ p: 2, mb: 2, borderRadius: 2 }}>
-                <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
+                <Typography
+                  variant="subtitle1"
+                  fontWeight="bold"
+                  sx={{ mb: 1, display: "flex", alignItems: "center" }}
+                >
                   <Description sx={{ mr: 1 }} /> Informations générales
                 </Typography>
                 <Grid container spacing={1}>
                   <Grid item xs={12} md={6}>
-                    <Typography><strong>Numéro de commande:</strong> {commande.orderNumber || 'N/A'}</Typography>
+                    <Typography>
+                      <strong>Numéro de commande:</strong> {commande.orderNumber || "N/A"}
+                    </Typography>
                   </Grid>
                   <Grid item xs={12} md={6}>
-                    <Typography><strong>Date de création:</strong> {commande.dateCreation ? new Date(commande.dateCreation).toLocaleDateString() : 'N/A'}</Typography>
+                    <Typography>
+                      <strong>Date de commande:</strong>{" "}
+                      {commande.orderDate ? new Date(commande.orderDate).toLocaleDateString("fr-FR") : "N/A"}
+                    </Typography>
                   </Grid>
                   <Grid item xs={12} md={6}>
-                    <Typography><strong>Date de livraison:</strong> {commande.deliveryDate ? new Date(commande.deliveryDate).toLocaleDateString() : 'Non spécifiée'}</Typography>
+                    <Typography>
+                      <strong>Date de livraison prévue:</strong>{" "}
+                      {commande.expectedDeliveryDate
+                        ? new Date(commande.expectedDeliveryDate).toLocaleDateString("fr-FR")
+                        : "Non spécifiée"}
+                    </Typography>
                   </Grid>
                   <Grid item xs={12} md={6}>
-                    <Typography><strong>Fournisseur:</strong> {commande.supplierName || 'Non spécifié'}</Typography>
+                    <Typography>
+                      <strong>Fournisseur:</strong>{" "}
+                      {commande.supplierName || `Fournisseur ${commande.supplierId ?? ""}`}
+                    </Typography>
                   </Grid>
                   <Grid item xs={12} md={6}>
-                    <Typography><strong>Statut:</strong> 
-                      <Chip 
-                        label={getStatusLabel()} 
-                        size="small" 
-                        color={getStatusColor()}
+                    <Typography>
+                      <strong>Statut:</strong>
+                      <Chip
+                        label={getStatusLabel(commande.status)}
+                        size="small"
+                        color={getChipColor(commande.status)}
                         sx={{ ml: 1 }}
-                        icon={getStatusIcon()}
-                        onClick={handleStatusChange}
-                        style={{ cursor: 'pointer' }}
+                        icon={getChipIcon(commande.status)}
+                        onClick={openStatusDialog}
+                        style={{ cursor: "pointer" }}
                       />
                     </Typography>
                   </Grid>
@@ -243,20 +344,26 @@ const CommandeDetailsDialog = ({ open, onClose, commandeId, onCommandeUpdated })
               </Paper>
             </Grid>
 
-            {/* Section Notes */}
+            {/* Notes */}
             {commande.notes && (
               <Grid item xs={12}>
                 <Paper sx={{ p: 2, mb: 2, borderRadius: 2 }}>
-                  <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
+                  <Typography
+                    variant="subtitle1"
+                    fontWeight="bold"
+                    sx={{ mb: 1, display: "flex", alignItems: "center" }}
+                  >
                     <Person sx={{ mr: 1 }} /> Notes
                   </Typography>
-                  <Box sx={{ 
-                    backgroundColor: '#f9f9f9', 
-                    p: 2, 
-                    borderRadius: 1,
-                    borderLeft: '3px solid #1976d2'
-                  }}>
-                    <Typography variant="body1" style={{ whiteSpace: 'pre-wrap' }}>
+                  <Box
+                    sx={{
+                      backgroundColor: "#f9f9f9",
+                      p: 2,
+                      borderRadius: 1,
+                      borderLeft: "3px solid #1976d2",
+                    }}
+                  >
+                    <Typography variant="body1" style={{ whiteSpace: "pre-wrap" }}>
                       {commande.notes}
                     </Typography>
                   </Box>
@@ -264,31 +371,49 @@ const CommandeDetailsDialog = ({ open, onClose, commandeId, onCommandeUpdated })
               </Grid>
             )}
 
-            {/* Section Articles */}
+            {/* Articles */}
             <Grid item xs={12}>
               <Paper sx={{ p: 2, mb: 2, borderRadius: 2 }}>
-                <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
+                <Typography
+                  variant="subtitle1"
+                  fontWeight="bold"
+                  sx={{ mb: 1, display: "flex", alignItems: "center" }}
+                >
                   <Receipt sx={{ mr: 1 }} /> Articles ({items.length})
                 </Typography>
                 {items.length > 0 ? (
                   <List dense>
                     {items.map((item, index) => (
                       <React.Fragment key={index}>
-                        <ListItem sx={{ flexDirection: 'column', alignItems: 'flex-start', py: 1 }}>
-                          <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <ListItem sx={{ flexDirection: "column", alignItems: "flex-start", py: 1 }}>
+                          <Box
+                            sx={{
+                              width: "100%",
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                            }}
+                          >
                             <Typography fontWeight="medium">
-                              {item.designation || 'Article sans nom'}
+                              {item.productName || "Article sans nom"}
                             </Typography>
                             <Typography fontWeight="bold">
-                              {((item.quantity || 0) * (item.unitPrice || 0)).toFixed(3)} TND
+                              {nf3.format((Number(item.quantity) || 0) * (Number(item.price) || 0))} TND
                             </Typography>
                           </Box>
-                          <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+                          <Box
+                            sx={{
+                              width: "100%",
+                              display: "flex",
+                              justifyContent: "space-between",
+                              mt: 0.5,
+                            }}
+                          >
                             <Typography variant="body2" color="text.secondary">
-                              {item.quantity || 0} x {item.unitPrice || 0} TND
+                              {nf2.format(Number(item.quantity || 0))} x {nf3.format(Number(item.price || 0))} TND
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
-                              TVA: {item.tva || 0}%
+                              TVA: {nf2.format(Number(item.tva ?? item.tvaRate ?? 0))}%
                             </Typography>
                           </Box>
                         </ListItem>
@@ -297,43 +422,51 @@ const CommandeDetailsDialog = ({ open, onClose, commandeId, onCommandeUpdated })
                     ))}
                   </List>
                 ) : (
-                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: "center", py: 2 }}>
                     Aucun article dans cette commande
                   </Typography>
                 )}
               </Paper>
             </Grid>
 
-            {/* Section Totaux */}
+            {/* Totaux */}
             <Grid item xs={12}>
               <Paper sx={{ p: 2, mb: 2, borderRadius: 2 }}>
-                <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
+                <Typography
+                  variant="subtitle1"
+                  fontWeight="bold"
+                  sx={{ mb: 1, display: "flex", alignItems: "center" }}
+                >
                   <AttachMoney sx={{ mr: 1 }} /> Totaux
                 </Typography>
                 <Grid container spacing={1}>
                   <Grid item xs={12}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <Typography>Total HT:</Typography>
-                      <Typography fontWeight="bold">{commande.totalHT || '0.000'} TND</Typography>
+                      <Typography fontWeight="bold">
+                        {nf3.format(Number(commande.purchaseAmount ?? 0))} TND
+                      </Typography>
                     </Box>
                   </Grid>
                   <Grid item xs={12}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <Typography>Total TVA:</Typography>
-                      <Typography fontWeight="bold">{commande.totalTVA || '0.000'} TND</Typography>
+                      <Typography fontWeight="bold">{nf3.format(Number(commande.totalTVA ?? 0))} TND</Typography>
                     </Box>
                   </Grid>
                   <Grid item xs={12}>
-                    <Box sx={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between', 
-                      alignItems: 'center',
-                      pt: 1,
-                      borderTop: '2px solid #e0e0e0'
-                    }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        pt: 1,
+                        borderTop: "2px solid #e0e0e0",
+                      }}
+                    >
                       <Typography variant="h6">Total TTC:</Typography>
                       <Typography variant="h6" color="primary">
-                        {commande.totalTTC || '0.000'} TND
+                        {nf3.format(Number(commande.totalAmount ?? commande.totalTTC ?? 0))} TND
                       </Typography>
                     </Box>
                   </Grid>
@@ -343,16 +476,12 @@ const CommandeDetailsDialog = ({ open, onClose, commandeId, onCommandeUpdated })
           </Grid>
         )}
       </DialogContent>
-      
-      <DialogActions sx={{ p: 2, borderTop: '1px solid #e0e0e0' }}>
-        <Button 
-          onClick={onClose}
-          variant="outlined"
-          sx={{ borderRadius: 1 }}
-        >
+
+      <DialogActions sx={{ p: 2, borderTop: "1px solid #e0e0e0" }}>
+        <Button onClick={onClose} variant="outlined" sx={{ borderRadius: 1 }}>
           Fermer
         </Button>
-        <Button 
+        <Button
           startIcon={<PictureAsPdf />}
           onClick={handleDownloadPDF}
           variant="contained"
@@ -361,15 +490,17 @@ const CommandeDetailsDialog = ({ open, onClose, commandeId, onCommandeUpdated })
         >
           Télécharger PDF
         </Button>
-        <Button 
+        <Button
           startIcon={<Edit />}
-          onClick={handleEdit}
+          onClick={() => {
+            onClose?.(); // laisse le parent gérer l'édition
+          }}
           variant="outlined"
           sx={{ borderRadius: 1 }}
         >
           Modifier
         </Button>
-        <Button 
+        <Button
           startIcon={<Delete />}
           onClick={handleDelete}
           variant="outlined"
@@ -381,58 +512,45 @@ const CommandeDetailsDialog = ({ open, onClose, commandeId, onCommandeUpdated })
       </DialogActions>
 
       {/* Dialog de confirmation de suppression */}
-      <Dialog 
-        open={deleteDialogOpen} 
-        onClose={() => setDeleteDialogOpen(false)}
-        PaperProps={{ sx: { borderRadius: 2 } }}
-      >
-        <DialogTitle sx={{ 
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          backgroundColor: '#f5f7fa',
-          borderBottom: '1px solid #e0e0e0'
-        }}>
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} PaperProps={{ sx: { borderRadius: 2 } }}>
+        <DialogTitle
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            backgroundColor: "#f5f7fa",
+            borderBottom: "1px solid #e0e0e0",
+          }}
+        >
           Confirmer la suppression
           <IconButton onClick={() => setDeleteDialogOpen(false)}>
             <Clear />
           </IconButton>
         </DialogTitle>
         <DialogContent sx={{ py: 2 }}>
-          Êtes-vous sûr de vouloir supprimer la commande {commande?.orderNumber} ?
+          Êtes-vous sûr de vouloir supprimer la commande {commande?.orderNumber || commande?.id} ?
         </DialogContent>
-        <DialogActions sx={{ p: 2, borderTop: '1px solid #e0e0e0' }}>
-          <Button 
-            onClick={() => setDeleteDialogOpen(false)}
-            variant="outlined"
-            sx={{ borderRadius: 1 }}
-          >
+        <DialogActions sx={{ p: 2, borderTop: "1px solid #e0e0e0" }}>
+          <Button onClick={() => setDeleteDialogOpen(false)} variant="outlined" sx={{ borderRadius: 1 }}>
             Annuler
           </Button>
-          <Button 
-            onClick={confirmDelete} 
-            color="error"
-            variant="contained"
-            sx={{ borderRadius: 1 }}
-          >
+          <Button onClick={confirmDelete} color="error" variant="contained" sx={{ borderRadius: 1 }}>
             Supprimer
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Dialog de changement de statut */}
-      <Dialog 
-        open={statusDialogOpen} 
-        onClose={() => setStatusDialogOpen(false)}
-        PaperProps={{ sx: { borderRadius: 2 } }}
-      >
-        <DialogTitle sx={{ 
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          backgroundColor: '#f5f7fa',
-          borderBottom: '1px solid #e0e0e0'
-        }}>
+      <Dialog open={statusDialogOpen} onClose={() => setStatusDialogOpen(false)} PaperProps={{ sx: { borderRadius: 2 } }}>
+        <DialogTitle
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            backgroundColor: "#f5f7fa",
+            borderBottom: "1px solid #e0e0e0",
+          }}
+        >
           Changer le statut
           <IconButton onClick={() => setStatusDialogOpen(false)}>
             <Clear />
@@ -444,30 +562,25 @@ const CommandeDetailsDialog = ({ open, onClose, commandeId, onCommandeUpdated })
             fullWidth
             label="Statut"
             value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            onChange={(e) => setStatus(Number(e.target.value))}
             sx={{ mt: 2 }}
           >
-            <MenuItem value="En attente">En attente</MenuItem>
-            <MenuItem value="Confirmée">Confirmée</MenuItem>
-            <MenuItem value="En cours">En cours</MenuItem>
-            <MenuItem value="Livrée">Livrée</MenuItem>
-            <MenuItem value="Annulée">Annulée</MenuItem>
+            <MenuItem value={0}>Brouillon</MenuItem>
+            <MenuItem value={1}>Validée</MenuItem>
+            <MenuItem value={2}>Livrée</MenuItem>
+            <MenuItem value={3}>Facturée</MenuItem>
+            <MenuItem value={4}>Annulée</MenuItem>
+            <MenuItem value={5}>En attente</MenuItem>
+            <MenuItem value={6}>Confirmée</MenuItem>
+            <MenuItem value={7}>Approuvée</MenuItem>
+            <MenuItem value={8}>Rejetée</MenuItem>
           </TextField>
         </DialogContent>
-        <DialogActions sx={{ p: 2, borderTop: '1px solid #e0e0e0' }}>
-          <Button 
-            onClick={() => setStatusDialogOpen(false)}
-            variant="outlined"
-            sx={{ borderRadius: 1 }}
-          >
+        <DialogActions sx={{ p: 2, borderTop: "1px solid #e0e0e0" }}>
+          <Button onClick={() => setStatusDialogOpen(false)} variant="outlined" sx={{ borderRadius: 1 }}>
             Annuler
           </Button>
-          <Button 
-            onClick={confirmStatusChange} 
-            color="primary"
-            variant="contained"
-            sx={{ borderRadius: 1 }}
-          >
+          <Button onClick={confirmStatusChange} color="primary" variant="contained" sx={{ borderRadius: 1 }}>
             Confirmer
           </Button>
         </DialogActions>
@@ -479,8 +592,8 @@ const CommandeDetailsDialog = ({ open, onClose, commandeId, onCommandeUpdated })
 CommandeDetailsDialog.propTypes = {
   open: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
-  commandeId: PropTypes.number.isRequired,
-  onCommandeUpdated: PropTypes.func.isRequired,
+  commandeId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+  onCommandeUpdated: PropTypes.func,
 };
 
 export default CommandeDetailsDialog;
