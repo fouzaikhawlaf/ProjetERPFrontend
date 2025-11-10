@@ -218,7 +218,7 @@ const DevisClient = () => {
             <Button
               variant="contained"
               startIcon={<AddCircle />}
-              onClick={() => window.location.href = "/Vente/DevisProductClient"}
+              onClick={() => window.location.href = "/Vente/Nouveau/Devis"}
               sx={{ mr: 2 }}
             >
               Nouveau Devis
