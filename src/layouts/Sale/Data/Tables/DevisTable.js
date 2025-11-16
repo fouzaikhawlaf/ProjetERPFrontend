@@ -37,6 +37,7 @@ import {
   validateDevis 
 } from "services/DevisClientService";
 import { useSnackbar } from "notistack";
+import ViewDevisDialog from "../components/viewDialogDevisClient";
 
 const statusOptions = [
   { value: "Tous", label: "Tous", color: "default" },
@@ -127,7 +128,8 @@ const DevisClient = () => {
   const [activeFilter, setActiveFilter] = useState("Tous");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-
+   const [viewDialogOpen, setViewDialogOpen] = useState(false); // État pour le dialog
+  const [selectedDevis, setSelectedDevis] = useState(null); // État pour le devis sélectionné
   const handleDotNetResponse = (response) => {
     if (response && response.$values) return response.$values;
     if (Array.isArray(response)) return response;
@@ -176,7 +178,11 @@ const DevisClient = () => {
     }
   };
 
-  const handleView = (id) => window.location.href = `/devis/view/${id}`;
+   // Modifier la fonction handleView pour ouvrir le dialog
+  const handleView = (devisItem) => {
+    setSelectedDevis(devisItem);
+    setViewDialogOpen(true);
+  };
   const handleEdit = (id) => window.location.href = `/devis/edit/${id}`;
 
   const handleDelete = async (id) => {
@@ -492,7 +498,7 @@ const DevisClient = () => {
                             <Tooltip title="Voir">
                               <IconButton 
                                 size="small"
-                                onClick={() => handleView(devis.id)}
+                               onClick={() => handleView(devis)} // Passer l'objet devis complet
                                 sx={{ 
                                   color: '#5c6bc0',
                                   '&:hover': { backgroundColor: '#e8eaf6' }
@@ -563,6 +569,11 @@ const DevisClient = () => {
             </Box>
           </Box>
         )}
+        <ViewDevisDialog
+          open={viewDialogOpen}
+          onClose={() => setViewDialogOpen(false)}
+          devis={selectedDevis}
+        />
       </Box>
     </DashboardLayout>
   );

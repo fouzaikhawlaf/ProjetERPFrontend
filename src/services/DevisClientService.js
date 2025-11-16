@@ -4,20 +4,48 @@ import apiErp from './api';
 export const getDevisById = async (id) => {
   try {
     const response = await apiErp.get(`/devis/${id}`);
-    return response.data;
+    // Normaliser la réponse pour gérer les items
+    const devis = response.data;
+    if (devis && devis.items && !Array.isArray(devis.items) && devis.items.$values) {
+      devis.items = devis.items.$values;
+    }
+    return devis;
   } catch (error) {
     console.error('Error fetching devis:', error);
     throw error;
   }
 };
 
-// In your getAllDevis function (and similar for others)
+// Fonction améliorée pour récupérer tous les devis avec items
 export const getAllDevis = async () => {
   try {
     const response = await apiErp.get('/devis');
-    return response.data.$values || response.data; // Handle both formats
+    let data = response.data.$values || response.data;
+    
+    // Normaliser les items pour chaque devis
+    if (Array.isArray(data)) {
+      data = data.map(devis => {
+        if (devis.items && !Array.isArray(devis.items) && devis.items.$values) {
+          devis.items = devis.items.$values;
+        }
+        return devis;
+      });
+    }
+    
+    return data;
   } catch (error) {
     console.error('Error fetching all devis:', error);
+    throw error;
+  }
+};
+
+// Fonction spéciale pour récupérer les devis avec diagnostic
+export const getAllDevisWithDiagnostic = async () => {
+  try {
+    const response = await apiErp.get('/devis/diagnostic');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching devis diagnostic:', error);
     throw error;
   }
 };
@@ -71,7 +99,7 @@ export const rejectDevis = async (id) => {
 
 export const updateDevisStatus = async (id, newStatus) => {
   try {
-    await apiErp.put(`/devis/${id}/status`, { newStatus });
+    await apiErp.put(`/devis/${id}/status`, newStatus);
   } catch (error) {
     console.error('Error updating devis status:', error);
     throw error;
@@ -82,7 +110,16 @@ export const updateDevisStatus = async (id, newStatus) => {
 export const getArchivedDevis = async () => {
   try {
     const response = await apiErp.get('/devis/archived');
-    return response.data;
+    let data = response.data;
+    if (Array.isArray(data)) {
+      data = data.map(devis => {
+        if (devis.items && !Array.isArray(devis.items) && devis.items.$values) {
+          devis.items = devis.items.$values;
+        }
+        return devis;
+      });
+    }
+    return data;
   } catch (error) {
     console.error('Error fetching archived devis:', error);
     throw error;
@@ -92,7 +129,16 @@ export const getArchivedDevis = async () => {
 export const getDraftDevis = async () => {
   try {
     const response = await apiErp.get('/devis/draft');
-    return response.data;
+    let data = response.data;
+    if (Array.isArray(data)) {
+      data = data.map(devis => {
+        if (devis.items && !Array.isArray(devis.items) && devis.items.$values) {
+          devis.items = devis.items.$values;
+        }
+        return devis;
+      });
+    }
+    return data;
   } catch (error) {
     console.error('Error fetching draft devis:', error);
     throw error;
@@ -102,7 +148,16 @@ export const getDraftDevis = async () => {
 export const getDevisByStatus = async (status) => {
   try {
     const response = await apiErp.get(`/devis/status/${status}`);
-    return response.data;
+    let data = response.data;
+    if (Array.isArray(data)) {
+      data = data.map(devis => {
+        if (devis.items && !Array.isArray(devis.items) && devis.items.$values) {
+          devis.items = devis.items.$values;
+        }
+        return devis;
+      });
+    }
+    return data;
   } catch (error) {
     console.error('Error fetching devis by status:', error);
     throw error;
@@ -112,7 +167,16 @@ export const getDevisByStatus = async (status) => {
 export const searchDevis = async (term) => {
   try {
     const response = await apiErp.get('/devis/search', { params: { term } });
-    return response.data;
+    let data = response.data;
+    if (Array.isArray(data)) {
+      data = data.map(devis => {
+        if (devis.items && !Array.isArray(devis.items) && devis.items.$values) {
+          devis.items = devis.items.$values;
+        }
+        return devis;
+      });
+    }
+    return data;
   } catch (error) {
     console.error('Error searching devis:', error);
     throw error;
@@ -168,56 +232,30 @@ export const convertDevisToOrder = async (id) => {
   }
 };
 
-
-// services/DevisClientService.js
-export const checkIfDevisIsValidated = async (id) => {
+export const getDevisByType = async (type) => {
   try {
-    // Récupère uniquement les devis validés (statut = 2)
-    const response = await getDevisByStatus(2);
-    const validatedDevis = response.$values || response;
-    
-    // Vérifie si le devis actuel est dans la liste des validés
-    return validatedDevis.some(devis => devis.id === id);
+    const response = await apiErp.get(`/devis/by-type/${type}`);
+    let data = response.data;
+    if (Array.isArray(data)) {
+      data = data.map(devis => {
+        if (devis.items && !Array.isArray(devis.items) && devis.items.$values) {
+          devis.items = devis.items.$values;
+        }
+        return devis;
+      });
+    }
+    return data;
   } catch (error) {
-    console.error('Verification error:', error);
-    return false;
+    console.error('Error fetching devis by type:', error);
+    throw error;
   }
 };
-
-// Version améliorée de validateDevis
-export const validateDevisWithFeedback = async (id) => {
-  try {
-    const result = await validateDevis(id);
-    
-    // Vérification supplémentaire
-    const isNowValidated = await checkIfDevisIsValidated(id);
-    
-    return {
-      success: isNowValidated,
-      message: isNowValidated 
-        ? "Devis validé avec succès" 
-        : "La validation a échoué"
-    };
-  } catch (error) {
-    console.error('Validation error:', error);
-    return {
-      success: false,
-      message: "Erreur technique lors de la validation"
-    };
-  }
-};
-
-
-
-
-
-
-
 
 // Default export with all methods as an object
 const DevisClientService = {
   getDevisById,
   getAllDevis,
+  getAllDevisWithDiagnostic,
   createDevis,
   updateDevis,
   deleteDevis,
@@ -232,7 +270,8 @@ const DevisClientService = {
   validateDevis,
   linkDevisToOrder,
   archiveDevis,
-  convertDevisToOrder
+  convertDevisToOrder,
+  getDevisByType
 };
 
 export default DevisClientService;
