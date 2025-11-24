@@ -38,6 +38,8 @@ import {
 } from "services/DevisClientService";
 import { useSnackbar } from "notistack";
 import ViewDevisDialog from "../components/viewDialogDevisClient";
+import EditDevisClientDialog from "../components/EditDevisClientDialog";
+
 
 const statusOptions = [
   { value: "Tous", label: "Tous", color: "default" },
@@ -128,8 +130,10 @@ const DevisClient = () => {
   const [activeFilter, setActiveFilter] = useState("Tous");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-   const [viewDialogOpen, setViewDialogOpen] = useState(false); // État pour le dialog
-  const [selectedDevis, setSelectedDevis] = useState(null); // État pour le devis sélectionné
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedDevis, setSelectedDevis] = useState(null);
+
   const handleDotNetResponse = (response) => {
     if (response && response.$values) return response.$values;
     if (Array.isArray(response)) return response;
@@ -155,7 +159,9 @@ const DevisClient = () => {
     }
   };
 
-  useEffect(() => { fetchDevis(); }, [activeFilter, enqueueSnackbar]);
+  useEffect(() => { 
+    fetchDevis(); 
+  }, [activeFilter, enqueueSnackbar]);
 
   const handleSearch = async (e) => {
     const query = e.target.value;
@@ -178,12 +184,15 @@ const DevisClient = () => {
     }
   };
 
-   // Modifier la fonction handleView pour ouvrir le dialog
   const handleView = (devisItem) => {
     setSelectedDevis(devisItem);
     setViewDialogOpen(true);
   };
-  const handleEdit = (id) => window.location.href = `/devis/edit/${id}`;
+
+  const handleEdit = (devisItem) => {
+    setSelectedDevis(devisItem);
+    setEditDialogOpen(true);
+  };
 
   const handleDelete = async (id) => {
     if (!window.confirm("Confirmer la suppression?")) return;
@@ -205,6 +214,11 @@ const DevisClient = () => {
     setFilteredDevis(prev => prev.map(d => 
       d.id === id ? { ...d, status: 2 } : d
     ));
+  };
+
+  const handleUpdateSuccess = () => {
+    fetchDevis(); // Rafraîchir la liste après modification
+    enqueueSnackbar("Devis modifié avec succès", { variant: "success" });
   };
 
   return (
@@ -380,7 +394,7 @@ const DevisClient = () => {
                     }}>Total TTC</th>
                     
                     <th style={{ 
-                      width: '150px', // Augmenté pour accommoder le nouveau bouton
+                      width: '150px',
                       padding: '0 16px',
                       fontWeight: 600,
                       fontSize: '0.875rem',
@@ -498,7 +512,7 @@ const DevisClient = () => {
                             <Tooltip title="Voir">
                               <IconButton 
                                 size="small"
-                               onClick={() => handleView(devis)} // Passer l'objet devis complet
+                                onClick={() => handleView(devis)}
                                 sx={{ 
                                   color: '#5c6bc0',
                                   '&:hover': { backgroundColor: '#e8eaf6' }
@@ -511,7 +525,7 @@ const DevisClient = () => {
                             <Tooltip title="Modifier">
                               <IconButton 
                                 size="small"
-                                onClick={() => handleEdit(devis.id)}
+                                onClick={() => handleEdit(devis)}
                                 sx={{ 
                                   color: '#26a69a',
                                   '&:hover': { backgroundColor: '#e0f2f1' }
@@ -569,15 +583,26 @@ const DevisClient = () => {
             </Box>
           </Box>
         )}
+
+        {/* Dialog pour visualiser un devis */}
         <ViewDevisDialog
           open={viewDialogOpen}
           onClose={() => setViewDialogOpen(false)}
           devis={selectedDevis}
         />
+
+        {/* Dialog pour modifier un devis */}
+        <EditDevisClientDialog
+          open={editDialogOpen}
+          onClose={() => setEditDialogOpen(false)}
+          devis={selectedDevis}
+          onUpdate={handleUpdateSuccess}
+        />
       </Box>
     </DashboardLayout>
   );
 };
+
 DevisValidationButton.propTypes = {
   devisId: PropTypes.oneOfType([
     PropTypes.string,
@@ -586,4 +611,5 @@ DevisValidationButton.propTypes = {
   currentStatus: PropTypes.number.isRequired,
   onValidateSuccess: PropTypes.func.isRequired
 };
+
 export default DevisClient;

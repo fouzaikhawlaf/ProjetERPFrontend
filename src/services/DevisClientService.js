@@ -251,6 +251,18 @@ export const getDevisByType = async (type) => {
   }
 };
 
+
+
+export const updateDevisClient = async (id, updateData) => {
+  try {
+    const response = await apiErp.put(`/devis/${id}`, updateData);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating devis client:', error);
+    throw error;
+  }
+};
+
 // Default export with all methods as an object
 const DevisClientService = {
   getDevisById,
@@ -271,7 +283,8 @@ const DevisClientService = {
   linkDevisToOrder,
   archiveDevis,
   convertDevisToOrder,
-  getDevisByType
+  getDevisByType, 
+  updateDevisClient
 };
 
 export default DevisClientService;
