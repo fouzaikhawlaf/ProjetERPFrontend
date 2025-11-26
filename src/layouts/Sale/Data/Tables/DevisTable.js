@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import PropTypes from 'prop-types';
+import PropTypes from "prop-types";
 import {
   Paper,
   Button,
@@ -12,34 +12,32 @@ import {
   Alert,
   Chip,
   Grid,
-  InputAdornment,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle
+  InputAdornment
 } from "@mui/material";
-import { 
-  AddCircle, 
-  Edit, 
-  Delete, 
-  Visibility, 
+import {
+  AddCircle,
+  Edit,
+  Delete,
+  Visibility,
   Search,
   Refresh,
   CheckCircle,
-  Pending
+  Cancel
 } from "@mui/icons-material";
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
-import { 
-  getAllDevis, 
-  deleteDevis, 
-  getDevisByStatus, 
+import {
+  getAllDevis,
+  deleteDevis,
+  getDevisByStatus,
   searchDevis,
-  validateDevis 
+  acceptDevis,
+  rejectDevis
 } from "services/DevisClientService";
 import { useSnackbar } from "notistack";
 import ViewDevisDialog from "../components/viewDialogDevisClient";
 import EditDevisClientDialog from "../components/EditDevisClientDialog";
-
+import ConfirmAcceptDevisDialog from "../components/ConfirmAcceptDevisDialog";
+import ConfirmRejectDevisDialog from "../components/ConfirmRejectDevisDialog";
 
 const statusOptions = [
   { value: "Tous", label: "Tous", color: "default" },
@@ -49,32 +47,74 @@ const statusOptions = [
   { value: 3, label: "Annulé", color: "error" }
 ];
 
-const DevisValidationButton = ({ devisId, currentStatus, onValidateSuccess }) => {
+// 🔥 Boutons Accepter / Refuser avec consumption API + dialogs
+const DevisDecisionButtons = ({ devisId, currentStatus, onStatusChange }) => {
   const { enqueueSnackbar } = useSnackbar();
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [notes, setNotes] = useState('');
+  const [loadingAccept, setLoadingAccept] = useState(false);
+  const [loadingReject, setLoadingReject] = useState(false);
+  const [openAcceptDialog, setOpenAcceptDialog] = useState(false);
+  const [openRejectDialog, setOpenRejectDialog] = useState(false);
 
-  const handleValidate = async () => {
-    setLoading(true);
+  const handleAcceptConfirm = async () => {
+    setLoadingAccept(true);
     try {
-      await validateDevis(devisId);
-      onValidateSuccess(devisId);
-      enqueueSnackbar("Devis validé avec succès", { variant: "success" });
-      setOpen(false);
+      // Appel API d’acceptation
+      await acceptDevis(devisId);
+
+      // Mise à jour du statut en local (2 = validé/accepté)
+      onStatusChange(devisId, 2);
+
+      enqueueSnackbar("Devis accepté avec succès", { variant: "success" });
+      setOpenAcceptDialog(false);
     } catch (error) {
-      enqueueSnackbar("Erreur lors de la validation", { variant: "error" });
+      console.error(error);
+      enqueueSnackbar("Erreur lors de l'acceptation du devis", {
+        variant: "error"
+      });
     } finally {
-      setLoading(false);
+      setLoadingAccept(false);
     }
   };
 
+  const handleRejectConfirm = async () => {
+    setLoadingReject(true);
+    try {
+      // Appel API de refus
+      await rejectDevis(devisId);
+
+      // Mise à jour du statut en local (3 = refusé)
+      onStatusChange(devisId, 3);
+
+      enqueueSnackbar("Devis refusé", { variant: "info" });
+      setOpenRejectDialog(false);
+    } catch (error) {
+      console.error(error);
+      enqueueSnackbar("Erreur lors du refus du devis", {
+        variant: "error"
+      });
+    } finally {
+      setLoadingReject(false);
+    }
+  };
+
+  // Si déjà accepté ou refusé, afficher juste un Chip
   if (currentStatus === 2) {
     return (
       <Chip
         icon={<CheckCircle />}
-        label="Validé"
+        label="Accepté"
         color="success"
+        size="small"
+      />
+    );
+  }
+
+  if (currentStatus === 3) {
+    return (
+      <Chip
+        icon={<Cancel />}
+        label="Refusé"
+        color="error"
         size="small"
       />
     );
@@ -82,44 +122,63 @@ const DevisValidationButton = ({ devisId, currentStatus, onValidateSuccess }) =>
 
   return (
     <>
-      <Tooltip title="Valider le devis">
-        <IconButton
-          size="small"
-          onClick={() => setOpen(true)}
-          color="primary"
-        >
-          <Pending />
-        </IconButton>
+      {/* Icône Accepter */}
+      <Tooltip title="Accepter le devis">
+        <span>
+          <IconButton
+            size="small"
+            onClick={() => setOpenAcceptDialog(true)}
+            disabled={loadingAccept || loadingReject}
+            sx={{
+              color: "#2e7d32",
+              "&:hover": { backgroundColor: "#e8f5e9" }
+            }}
+          >
+            <CheckCircle fontSize="small" />
+          </IconButton>
+        </span>
       </Tooltip>
 
-      <Dialog open={open} onClose={() => setOpen(false)}>
-        <DialogTitle>Confirmer la validation</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Notes (optionnel)"
-            fullWidth
-            multiline
-            rows={3}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpen(false)}>Annuler</Button>
-          <Button 
-            onClick={handleValidate}
-            color="primary"
-            disabled={loading}
-            startIcon={<CheckCircle />}
+      {/* Icône Refuser */}
+      <Tooltip title="Refuser le devis">
+        <span>
+          <IconButton
+            size="small"
+            onClick={() => setOpenRejectDialog(true)}
+            disabled={loadingAccept || loadingReject}
+            sx={{
+              color: "#c62828",
+              "&:hover": { backgroundColor: "#ffebee" }
+            }}
           >
-            {loading ? 'Validation...' : 'Confirmer'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+            <Cancel fontSize="small" />
+          </IconButton>
+        </span>
+      </Tooltip>
+
+      {/* Dialog ACCEPTATION */}
+      <ConfirmAcceptDevisDialog
+        open={openAcceptDialog}
+        loading={loadingAccept}
+        onClose={() => setOpenAcceptDialog(false)}
+        onConfirm={handleAcceptConfirm}
+      />
+
+      {/* Dialog REFUS */}
+      <ConfirmRejectDevisDialog
+        open={openRejectDialog}
+        loading={loadingReject}
+        onClose={() => setOpenRejectDialog(false)}
+        onConfirm={handleRejectConfirm}
+      />
     </>
   );
+};
+
+DevisDecisionButtons.propTypes = {
+  devisId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+  currentStatus: PropTypes.number.isRequired,
+  onStatusChange: PropTypes.func.isRequired
 };
 
 const DevisClient = () => {
@@ -144,9 +203,11 @@ const DevisClient = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = activeFilter === "Tous" 
-        ? await getAllDevis() 
-        : await getDevisByStatus(activeFilter);
+      const response =
+        activeFilter === "Tous"
+          ? await getAllDevis()
+          : await getDevisByStatus(activeFilter);
+
       const devisData = handleDotNetResponse(response);
       setDevis(devisData);
       setFilteredDevis(devisData);
@@ -159,14 +220,15 @@ const DevisClient = () => {
     }
   };
 
-  useEffect(() => { 
-    fetchDevis(); 
-  }, [activeFilter, enqueueSnackbar]);
+  useEffect(() => {
+    fetchDevis();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeFilter]);
 
   const handleSearch = async (e) => {
     const query = e.target.value;
     setSearchQuery(query);
-    
+
     if (query.length < 3) {
       setFilteredDevis(devis);
       return;
@@ -198,8 +260,8 @@ const DevisClient = () => {
     if (!window.confirm("Confirmer la suppression?")) return;
     try {
       await deleteDevis(id);
-      setDevis(prev => prev.filter(d => d.id !== id));
-      setFilteredDevis(prev => prev.filter(d => d.id !== id));
+      setDevis((prev) => prev.filter((d) => d.id !== id));
+      setFilteredDevis((prev) => prev.filter((d) => d.id !== id));
       enqueueSnackbar("Devis supprimé", { variant: "success" });
     } catch (error) {
       console.error("Delete error:", error);
@@ -207,17 +269,18 @@ const DevisClient = () => {
     }
   };
 
-  const handleValidateSuccess = (id) => {
-    setDevis(prev => prev.map(d => 
-      d.id === id ? { ...d, status: 2 } : d
-    ));
-    setFilteredDevis(prev => prev.map(d => 
-      d.id === id ? { ...d, status: 2 } : d
-    ));
+  // 🔁 Mise à jour locale du statut après accept/refus
+  const handleStatusChange = (id, newStatus) => {
+    setDevis((prev) =>
+      prev.map((d) => (d.id === id ? { ...d, status: newStatus } : d))
+    );
+    setFilteredDevis((prev) =>
+      prev.map((d) => (d.id === id ? { ...d, status: newStatus } : d))
+    );
   };
 
   const handleUpdateSuccess = () => {
-    fetchDevis(); // Rafraîchir la liste après modification
+    fetchDevis();
     enqueueSnackbar("Devis modifié avec succès", { variant: "success" });
   };
 
@@ -234,11 +297,11 @@ const DevisClient = () => {
               {filteredDevis.length} devis trouvés
             </Typography>
           </Grid>
-          <Grid item xs={12} md={6} sx={{ textAlign: { md: 'right' } }}>
+          <Grid item xs={12} md={6} sx={{ textAlign: { md: "right" } }}>
             <Button
               variant="contained"
               startIcon={<AddCircle />}
-              onClick={() => window.location.href = "/Vente/Nouveau/Devis"}
+              onClick={() => (window.location.href = "/Vente/Nouveau/Devis")}
               sx={{ mr: 2 }}
             >
               Nouveau Devis
@@ -254,13 +317,15 @@ const DevisClient = () => {
         </Grid>
 
         {/* Filters Section */}
-        <Box sx={{ 
-          p: 2, 
-          mb: 3, 
-          bgcolor: 'background.paper', 
-          borderRadius: 1,
-          boxShadow: 1
-        }}>
+        <Box
+          sx={{
+            p: 2,
+            mb: 3,
+            bgcolor: "background.paper",
+            borderRadius: 1,
+            boxShadow: 1
+          }}
+        >
           <Grid container spacing={2} alignItems="center">
             <Grid item xs={12} md={6}>
               <TextField
@@ -274,24 +339,27 @@ const DevisClient = () => {
                     <InputAdornment position="start">
                       <Search color="action" />
                     </InputAdornment>
-                  ),
+                  )
                 }}
               />
             </Grid>
             <Grid item xs={12} md={6}>
-              <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', py: 1 }}>
+              <Box sx={{ display: "flex", gap: 1, overflowX: "auto", py: 1 }}>
                 {statusOptions.map((option) => (
                   <Chip
                     key={option.value}
-                    label={`${option.label} (${devis.filter(d => 
+                    label={`${option.label} (${devis.filter((d) =>
                       option.value === "Tous" ? true : d.status === option.value
                     ).length})`}
                     onClick={() => setActiveFilter(option.value)}
                     color={option.color}
-                    variant={activeFilter === option.value ? "filled" : "outlined"}
-                    sx={{ 
+                    variant={
+                      activeFilter === option.value ? "filled" : "outlined"
+                    }
+                    sx={{
                       minWidth: 100,
-                      fontWeight: activeFilter === option.value ? 'bold' : 'normal'
+                      fontWeight:
+                        activeFilter === option.value ? "bold" : "normal"
                     }}
                   />
                 ))}
@@ -308,246 +376,320 @@ const DevisClient = () => {
         )}
 
         {isLoading ? (
-          <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px">
+          <Box
+            display="flex"
+            justifyContent="center"
+            alignItems="center"
+            minHeight="300px"
+          >
             <CircularProgress size={60} />
           </Box>
         ) : (
-          <Box 
-            component={Paper} 
-            elevation={0} 
-            sx={{ 
-              border: '1px solid', 
-              borderColor: 'divider', 
+          <Box
+            component={Paper}
+            elevation={0}
+            sx={{
+              border: "1px solid",
+              borderColor: "divider",
               borderRadius: 2,
-              overflow: 'hidden'
+              overflow: "hidden"
             }}
           >
-            <Box sx={{ overflowX: 'auto' }}>
-              <table style={{ 
-                width: '100%',
-                borderCollapse: 'collapse',
-                minWidth: '1000px'
-              }}>
+            <Box sx={{ overflowX: "auto" }}>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  minWidth: "1000px"
+                }}
+              >
                 <thead>
-                  <tr style={{ 
-                    backgroundColor: '#f5f7fa',
-                    height: '60px'
-                  }}>
-                    <th style={{ 
-                      width: '50px',
-                      padding: '0 16px',
-                      fontWeight: 600,
-                      fontSize: '0.875rem',
-                      textAlign: 'left',
-                      borderBottom: '2px solid #e0e0e0',
-                      color: '#333'
-                    }}>#</th>
-                    
-                    <th style={{ 
-                      width: '200px',
-                      padding: '0 16px',
-                      fontWeight: 600,
-                      fontSize: '0.875rem',
-                      textAlign: 'left',
-                      borderBottom: '2px solid #e0e0e0',
-                      color: '#333'
-                    }}>Référence</th>
-                    
-                    <th style={{ 
-                      width: '200px',
-                      padding: '0 16px',
-                      fontWeight: 600,
-                      fontSize: '0.875rem',
-                      textAlign: 'left',
-                      borderBottom: '2px solid #e0e0e0',
-                      color: '#333'
-                    }}>Client</th>
-                    
-                    <th style={{ 
-                      width: '150px',
-                      padding: '0 16px',
-                      fontWeight: 600,
-                      fontSize: '0.875rem',
-                      textAlign: 'left',
-                      borderBottom: '2px solid #e0e0e0',
-                      color: '#333'
-                    }}>Date Création</th>
-                    
-                    <th style={{ 
-                      width: '150px',
-                      padding: '0 16px',
-                      fontWeight: 600,
-                      fontSize: '0.875rem',
-                      textAlign: 'left',
-                      borderBottom: '2px solid #e0e0e0',
-                      color: '#333'
-                    }}>Statut</th>
-                    
-                    <th style={{ 
-                      width: '150px',
-                      padding: '0 16px',
-                      fontWeight: 600,
-                      fontSize: '0.875rem',
-                      textAlign: 'right',
-                      borderBottom: '2px solid #e0e0e0',
-                      color: '#333'
-                    }}>Total TTC</th>
-                    
-                    <th style={{ 
-                      width: '150px',
-                      padding: '0 16px',
-                      fontWeight: 600,
-                      fontSize: '0.875rem',
-                      textAlign: 'center',
-                      borderBottom: '2px solid #e0e0e0',
-                      color: '#333'
-                    }}>Actions</th>
+                  <tr
+                    style={{
+                      backgroundColor: "#f5f7fa",
+                      height: "60px"
+                    }}
+                  >
+                    <th
+                      style={{
+                        width: "50px",
+                        padding: "0 16px",
+                        fontWeight: 600,
+                        fontSize: "0.875rem",
+                        textAlign: "left",
+                        borderBottom: "2px solid #e0e0e0",
+                        color: "#333"
+                      }}
+                    >
+                      #
+                    </th>
+
+                    <th
+                      style={{
+                        width: "200px",
+                        padding: "0 16px",
+                        fontWeight: 600,
+                        fontSize: "0.875rem",
+                        textAlign: "left",
+                        borderBottom: "2px solid #e0e0e0",
+                        color: "#333"
+                      }}
+                    >
+                      Référence
+                    </th>
+
+                    <th
+                      style={{
+                        width: "200px",
+                        padding: "0 16px",
+                        fontWeight: 600,
+                        fontSize: "0.875rem",
+                        textAlign: "left",
+                        borderBottom: "2px solid #e0e0e0",
+                        color: "#333"
+                      }}
+                    >
+                      Client
+                    </th>
+
+                    <th
+                      style={{
+                        width: "150px",
+                        padding: "0 16px",
+                        fontWeight: 600,
+                        fontSize: "0.875rem",
+                        textAlign: "left",
+                        borderBottom: "2px solid #e0e0e0",
+                        color: "#333"
+                      }}
+                    >
+                      Date Création
+                    </th>
+
+                    <th
+                      style={{
+                        width: "150px",
+                        padding: "0 16px",
+                        fontWeight: 600,
+                        fontSize: "0.875rem",
+                        textAlign: "left",
+                        borderBottom: "2px solid #e0e0e0",
+                        color: "#333"
+                      }}
+                    >
+                      Statut
+                    </th>
+
+                    <th
+                      style={{
+                        width: "150px",
+                        padding: "0 16px",
+                        fontWeight: 600,
+                        fontSize: "0.875rem",
+                        textAlign: "right",
+                        borderBottom: "2px solid #e0e0e0",
+                        color: "#333"
+                      }}
+                    >
+                      Total TTC
+                    </th>
+
+                    <th
+                      style={{
+                        width: "200px",
+                        padding: "0 16px",
+                        fontWeight: 600,
+                        fontSize: "0.875rem",
+                        textAlign: "center",
+                        borderBottom: "2px solid #e0e0e0",
+                        color: "#333"
+                      }}
+                    >
+                      Actions
+                    </th>
                   </tr>
                 </thead>
 
                 <tbody>
                   {filteredDevis.length > 0 ? (
-                    filteredDevis.map((devis, index) => (
-                      <tr 
-                        key={devis.id}
-                        style={{ 
-                          borderBottom: '1px solid #eee',
-                          '&:hover': { backgroundColor: '#f9fafc' }
+                    filteredDevis.map((devisItem, index) => (
+                      <tr
+                        key={devisItem.id}
+                        style={{
+                          borderBottom: "1px solid #eee"
                         }}
                       >
-                        <td style={{ 
-                          padding: '12px 16px',
-                          color: '#555',
-                          fontSize: '0.875rem',
-                          verticalAlign: 'middle'
-                        }}>{index + 1}</td>
-                        
-                        <td style={{ 
-                          padding: '12px 16px',
-                          color: '#333',
-                          fontSize: '0.875rem',
-                          verticalAlign: 'middle'
-                        }}>
-                          <Box 
-                            component="span" 
+                        <td
+                          style={{
+                            padding: "12px 16px",
+                            color: "#555",
+                            fontSize: "0.875rem",
+                            verticalAlign: "middle"
+                          }}
+                        >
+                          {index + 1}
+                        </td>
+
+                        <td
+                          style={{
+                            padding: "12px 16px",
+                            color: "#333",
+                            fontSize: "0.875rem",
+                            verticalAlign: "middle"
+                          }}
+                        >
+                          <Box
+                            component="span"
                             sx={{
                               fontWeight: 500,
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              display: 'block',
-                              maxWidth: '180px',
-                              color: '#1976d2'
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              display: "block",
+                              maxWidth: "180px",
+                              color: "#1976d2"
                             }}
                           >
-                            {devis.reference || 'N/A'}
+                            {devisItem.reference || "N/A"}
                           </Box>
                         </td>
-                        
-                        <td style={{ 
-                          padding: '12px 16px',
-                          color: '#555',
-                          fontSize: '0.875rem',
-                          verticalAlign: 'middle'
-                        }}>{devis.clientName || 'N/A'}</td>
-                        
-                        <td style={{ 
-                          padding: '12px 16px',
-                          color: '#555',
-                          fontSize: '0.875rem',
-                          verticalAlign: 'middle'
-                        }}>
-                          {devis.creationDate ? 
-                            new Date(devis.creationDate).toLocaleDateString('fr-FR') : 
-                            'N/A'}
+
+                        <td
+                          style={{
+                            padding: "12px 16px",
+                            color: "#555",
+                            fontSize: "0.875rem",
+                            verticalAlign: "middle"
+                          }}
+                        >
+                          {devisItem.clientName || "N/A"}
                         </td>
-                        
-                        <td style={{ 
-                          padding: '12px 16px',
-                          verticalAlign: 'middle'
-                        }}>
+
+                        <td
+                          style={{
+                            padding: "12px 16px",
+                            color: "#555",
+                            fontSize: "0.875rem",
+                            verticalAlign: "middle"
+                          }}
+                        >
+                          {devisItem.creationDate
+                            ? new Date(
+                                devisItem.creationDate
+                              ).toLocaleDateString("fr-FR")
+                            : "N/A"}
+                        </td>
+
+                        <td
+                          style={{
+                            padding: "12px 16px",
+                            verticalAlign: "middle"
+                          }}
+                        >
                           <Chip
                             label={
-                              devis.status === 0 ? 'Brouillon' :
-                              devis.status === 1 ? 'Envoyé' :
-                              devis.status === 2 ? 'Validé' : 'Annulé'
+                              devisItem.status === 0
+                                ? "Brouillon"
+                                : devisItem.status === 1
+                                ? "Envoyé"
+                                : devisItem.status === 2
+                                ? "Validé"
+                                : "Annulé"
                             }
                             size="small"
                             sx={{
-                              fontSize: '0.75rem',
+                              fontSize: "0.75rem",
                               fontWeight: 500,
-                              backgroundColor: 
-                                devis.status === 0 ? '#e3f2fd' :
-                                devis.status === 1 ? '#fff8e1' :
-                                devis.status === 2 ? '#e8f5e9' : '#ffebee',
-                              color: 
-                                devis.status === 0 ? '#1565c0' :
-                                devis.status === 1 ? '#ff8f00' :
-                                devis.status === 2 ? '#2e7d32' : '#c62828'
+                              backgroundColor:
+                                devisItem.status === 0
+                                  ? "#e3f2fd"
+                                  : devisItem.status === 1
+                                  ? "#fff8e1"
+                                  : devisItem.status === 2
+                                  ? "#e8f5e9"
+                                  : "#ffebee",
+                              color:
+                                devisItem.status === 0
+                                  ? "#1565c0"
+                                  : devisItem.status === 1
+                                  ? "#ff8f00"
+                                  : devisItem.status === 2
+                                  ? "#2e7d32"
+                                  : "#c62828"
                             }}
                           />
                         </td>
-                        
-                        <td style={{ 
-                          padding: '12px 16px',
-                          color: '#333',
-                          fontSize: '0.875rem',
-                          fontWeight: 500,
-                          textAlign: 'right',
-                          verticalAlign: 'middle'
-                        }}>
-                          {devis.totalTTC ? `${devis.totalTTC.toFixed(2)} TND` : '0.00 TND'}
+
+                        <td
+                          style={{
+                            padding: "12px 16px",
+                            color: "#333",
+                            fontSize: "0.875rem",
+                            fontWeight: 500,
+                            textAlign: "right",
+                            verticalAlign: "middle"
+                          }}
+                        >
+                          {devisItem.totalTTC
+                            ? `${devisItem.totalTTC.toFixed(2)} TND`
+                            : "0.00 TND"}
                         </td>
-                        
-                        <td style={{ 
-                          padding: '12px 16px',
-                          textAlign: 'center',
-                          verticalAlign: 'middle'
-                        }}>
-                          <Box sx={{ 
-                            display: 'flex', 
-                            justifyContent: 'center',
-                            gap: '6px'
-                          }}>
+
+                        <td
+                          style={{
+                            padding: "12px 16px",
+                            textAlign: "center",
+                            verticalAlign: "middle"
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              display: "flex",
+                              justifyContent: "center",
+                              gap: "6px",
+                              flexWrap: "wrap"
+                            }}
+                          >
                             <Tooltip title="Voir">
-                              <IconButton 
+                              <IconButton
                                 size="small"
-                                onClick={() => handleView(devis)}
-                                sx={{ 
-                                  color: '#5c6bc0',
-                                  '&:hover': { backgroundColor: '#e8eaf6' }
+                                onClick={() => handleView(devisItem)}
+                                sx={{
+                                  color: "#5c6bc0",
+                                  "&:hover": { backgroundColor: "#e8eaf6" }
                                 }}
                               >
                                 <Visibility fontSize="small" />
                               </IconButton>
                             </Tooltip>
-                            
+
                             <Tooltip title="Modifier">
-                              <IconButton 
+                              <IconButton
                                 size="small"
-                                onClick={() => handleEdit(devis)}
-                                sx={{ 
-                                  color: '#26a69a',
-                                  '&:hover': { backgroundColor: '#e0f2f1' }
+                                onClick={() => handleEdit(devisItem)}
+                                sx={{
+                                  color: "#26a69a",
+                                  "&:hover": { backgroundColor: "#e0f2f1" }
                                 }}
                               >
                                 <Edit fontSize="small" />
                               </IconButton>
                             </Tooltip>
-                            
-                            <DevisValidationButton 
-                              devisId={devis.id}
-                              currentStatus={devis.status}
-                              onValidateSuccess={handleValidateSuccess}
+
+                            {/* ✅ Acceptation / Refus avec dialogs + API */}
+                            <DevisDecisionButtons
+                              devisId={devisItem.id}
+                              currentStatus={devisItem.status}
+                              onStatusChange={handleStatusChange}
                             />
-                            
+
                             <Tooltip title="Supprimer">
-                              <IconButton 
+                              <IconButton
                                 size="small"
-                                onClick={() => handleDelete(devis.id)}
-                                sx={{ 
-                                  color: '#ef5350',
-                                  '&:hover': { backgroundColor: '#ffebee' }
+                                onClick={() => handleDelete(devisItem.id)}
+                                sx={{
+                                  color: "#ef5350",
+                                  "&:hover": { backgroundColor: "#ffebee" }
                                 }}
                               >
                                 <Delete fontSize="small" />
@@ -559,15 +701,15 @@ const DevisClient = () => {
                     ))
                   ) : (
                     <tr>
-                      <td 
-                        colSpan="7" 
-                        style={{ 
-                          padding: '24px', 
-                          textAlign: 'center',
-                          color: '#666'
+                      <td
+                        colSpan="7"
+                        style={{
+                          padding: "24px",
+                          textAlign: "center",
+                          color: "#666"
                         }}
                       >
-                        <Box sx={{ textAlign: 'center' }}>
+                        <Box sx={{ textAlign: "center" }}>
                           <Typography variant="body1">
                             Aucun devis trouvé
                           </Typography>
@@ -601,15 +743,6 @@ const DevisClient = () => {
       </Box>
     </DashboardLayout>
   );
-};
-
-DevisValidationButton.propTypes = {
-  devisId: PropTypes.oneOfType([
-    PropTypes.string,
-    PropTypes.number
-  ]).isRequired,
-  currentStatus: PropTypes.number.isRequired,
-  onValidateSuccess: PropTypes.func.isRequired
 };
 
 export default DevisClient;
