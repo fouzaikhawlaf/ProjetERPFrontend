@@ -47,30 +47,46 @@ const statusOptions = [
   { value: 3, label: "Annulé", color: "error" }
 ];
 
-// 🔥 Boutons Accepter / Refuser avec consumption API + dialogs
-const DevisDecisionButtons = ({ devisId, currentStatus, onStatusChange }) => {
+// 🔥 Boutons Accepter / Refuser avec gestion expiration + API + dialogs
+const DevisDecisionButtons = ({
+  devisId,
+  currentStatus,
+  expirationDate,
+  onStatusChange
+}) => {
   const { enqueueSnackbar } = useSnackbar();
   const [loadingAccept, setLoadingAccept] = useState(false);
   const [loadingReject, setLoadingReject] = useState(false);
   const [openAcceptDialog, setOpenAcceptDialog] = useState(false);
   const [openRejectDialog, setOpenRejectDialog] = useState(false);
 
+  // 👉 Vérifier si le devis est expiré côté front
+  const isExpired =
+    expirationDate && new Date(expirationDate) < new Date();
+
   const handleAcceptConfirm = async () => {
     setLoadingAccept(true);
     try {
-      // Appel API d’acceptation
       await acceptDevis(devisId);
 
-      // Mise à jour du statut en local (2 = validé/accepté)
       onStatusChange(devisId, 2);
-
       enqueueSnackbar("Devis accepté avec succès", { variant: "success" });
       setOpenAcceptDialog(false);
     } catch (error) {
       console.error(error);
-      enqueueSnackbar("Erreur lors de l'acceptation du devis", {
-        variant: "error"
-      });
+
+      if (error.response?.status === 400) {
+        // Le back renvoie un message métier, on l'utilise si dispo
+        const apiMessage =
+          typeof error.response.data === "string"
+            ? error.response.data
+            : "Impossible d'accepter ce devis (probablement expiré ou statut invalide).";
+        enqueueSnackbar(apiMessage, { variant: "warning" });
+      } else {
+        enqueueSnackbar("Erreur lors de l'acceptation du devis", {
+          variant: "error"
+        });
+      }
     } finally {
       setLoadingAccept(false);
     }
@@ -79,12 +95,9 @@ const DevisDecisionButtons = ({ devisId, currentStatus, onStatusChange }) => {
   const handleRejectConfirm = async () => {
     setLoadingReject(true);
     try {
-      // Appel API de refus
       await rejectDevis(devisId);
 
-      // Mise à jour du statut en local (3 = refusé)
       onStatusChange(devisId, 3);
-
       enqueueSnackbar("Devis refusé", { variant: "info" });
       setOpenRejectDialog(false);
     } catch (error) {
@@ -97,7 +110,7 @@ const DevisDecisionButtons = ({ devisId, currentStatus, onStatusChange }) => {
     }
   };
 
-  // Si déjà accepté ou refusé, afficher juste un Chip
+  // 💡 Si déjà accepté ou refusé : afficher juste un chip
   if (currentStatus === 2) {
     return (
       <Chip
@@ -116,6 +129,19 @@ const DevisDecisionButtons = ({ devisId, currentStatus, onStatusChange }) => {
         label="Refusé"
         color="error"
         size="small"
+      />
+    );
+  }
+
+  // 💡 Si devis expiré : on n'affiche plus les boutons mais un chip "Expiré"
+  if (isExpired) {
+    return (
+      <Chip
+        icon={<Cancel />}
+        label="Expiré"
+        color="error"
+        size="small"
+        variant="outlined"
       />
     );
   }
@@ -178,6 +204,7 @@ const DevisDecisionButtons = ({ devisId, currentStatus, onStatusChange }) => {
 DevisDecisionButtons.propTypes = {
   devisId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
   currentStatus: PropTypes.number.isRequired,
+  expirationDate: PropTypes.string, // peut être null
   onStatusChange: PropTypes.func.isRequired
 };
 
@@ -676,10 +703,11 @@ const DevisClient = () => {
                               </IconButton>
                             </Tooltip>
 
-                            {/* ✅ Acceptation / Refus avec dialogs + API */}
+                            {/* ✅ Acceptation / Refus avec gestion expiration */}
                             <DevisDecisionButtons
                               devisId={devisItem.id}
                               currentStatus={devisItem.status}
+                              expirationDate={devisItem.expirationDate}
                               onStatusChange={handleStatusChange}
                             />
 
