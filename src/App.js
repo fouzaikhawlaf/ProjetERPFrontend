@@ -344,6 +344,7 @@ export default function App() {
           path="/commande-fournisseur/edit/:commandeId"
           element={<EditCommandeFournisseurDialog />}
         />
+          <Route path="/client-orders/new" element={<CreateClientOrder />} />
       </Routes>
     </ThemeProvider>
   );

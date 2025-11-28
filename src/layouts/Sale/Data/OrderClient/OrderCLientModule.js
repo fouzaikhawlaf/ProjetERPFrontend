@@ -11,19 +11,19 @@ const OrderClientModule = () => {
       title: "Service",
       description: "Gérez les commandes de services.",
       icon: "fa-clipboard-list", // More appropriate icon for orders
-      link: "/Vente/OrderCLientService",
+      link: "/client-orders/new",
     },
     {
       title: "Produit",
       description: "Gérez les commandes de produits.",
       icon: "fa-dolly", // Icon representing product delivery
-      link: "/Vente/OrderProductClient",
+      link: "/client-orders/new",
     },
     {
       title: "Projet",
       description: "Gérez les commandes liées aux projets.",
       icon: "fa-tasks", // Icon representing project tasks
-      link: "/Order/project",
+      link: "/client-orders/new",
     },
   ];
 
