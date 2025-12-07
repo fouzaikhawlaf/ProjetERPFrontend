@@ -23,7 +23,7 @@ const VenteModule = () => {
       title: "Commandes",
       description: "Gérez vos commandes clients efficacement.",
       icon: "fa-box",
-      link: "/Vente/OrderCLient",
+      link: "/orders",
     },
     {
       title: "Livraisons",

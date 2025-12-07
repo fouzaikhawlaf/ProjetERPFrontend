@@ -136,6 +136,7 @@ import CommandeSupplierService from 'layouts/Achat/componants/OrderSupplier/Tabl
 import CommandeDetails from 'layouts/Achat/componants/OrderSupplier/Componants/CommandeDetails';
 import CommandeDetailsDialog from 'layouts/Achat/componants/OrderSupplier/Componants/CommandeDetails';
 import EditCommandeFournisseurDialog from 'layouts/Achat/componants/OrderSupplier/Componants/EditCommandeFournisseurDialog';
+import CommandeClientService from 'layouts/Sale/Data/OrderClient/tables/CommandeClientService';
 
 
 
@@ -296,7 +297,7 @@ export default function App() {
         <Route path = "/SupplierForm" element ={<SupplierFormStepsDb/>}/>
         <Route path="/success" element={<SuccessPage/>} />
         <Route path="/products" element={<ProductsTable />} />
-        <Route path="/orders" element={<OrdersTable />} />
+        <Route path="/orders" element={<CommandeClientService />} />
         <Route path="/devis" element={<DevisTable />} />
         <Route path="/deliveries" element={<DeliveriesTable />} />
         <Route path="/factures" element={<InvoiceTable />} />

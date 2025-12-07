@@ -1,5 +1,6 @@
+// layouts/Sale/Data/OrderClient/OrderClientCreate.jsx
 import React, { useState, useEffect } from "react";
-import { PDFDownloadLink, PDFViewer } from "@react-pdf/renderer";
+import { PDFViewer } from "@react-pdf/renderer";
 import OrderPDF from "../pdf/OrderPDF";
 import { createOrder } from "services/orderClientService";
 import {
@@ -26,6 +27,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
 import { useNavigate } from "react-router-dom";
 import DevisClientService from "services/DevisClientService";
+import { useSnackbar } from "notistack";
 
 // 🔹 Helper pour normaliser les items (.NET / $values)
 const normalizeItems = (itemsData) => {
@@ -49,17 +51,38 @@ function getISOPlusDays(days) {
   return d.toISOString().slice(0, 10);
 }
 
+// 🔹 (optionnel) mapping string → enum backend PaymentTerms
+// A ADAPTER selon ton enum côté C#
+const mapPaymentTermsToEnum = (value) => {
+  switch (value) {
+    case "30j":
+      return 0;
+    case "45j":
+      return 1;
+    case "60j":
+      return 2;
+    case "comptant":
+      return 3;
+    case "acompte":
+      return 4;
+    default:
+      return 0;
+  }
+};
+
 const CreateClientOrder = () => {
   const navigate = useNavigate();
+  const { enqueueSnackbar } = useSnackbar();
 
   const [acceptedQuotations, setAcceptedQuotations] = useState([]);
   const [selectedQuotationId, setSelectedQuotationId] = useState("");
+  const [selectedDevis, setSelectedDevis] = useState(null); // 🔹 pour récupérer clientId, etc.
+
   const [clientName, setClientName] = useState("");
   const [orderNumber, setOrderNumber] = useState("CMD-CLIENT-");
   const [deliveryDate, setDeliveryDate] = useState(getISOPlusDays(7));
   const [paymentTerms, setPaymentTerms] = useState("30j");
   const [orderDate] = useState(getTodayISO());
-  const [pdfGenerated, setPdfGenerated] = useState(false);
   const [showPDFPreview, setShowPDFPreview] = useState(false);
   const [notes, setNotes] = useState("");
   const [orderClientItems, setOrderClientItems] = useState([]);
@@ -88,6 +111,9 @@ const CreateClientOrder = () => {
       console.error(err);
       setError("Échec du chargement des devis acceptés");
       setAcceptedQuotations([]);
+      enqueueSnackbar("Échec du chargement des devis acceptés", {
+        variant: "error",
+      });
     } finally {
       setLoading((prev) => ({ ...prev, quotations: false }));
     }
@@ -100,26 +126,41 @@ const CreateClientOrder = () => {
   // 🔹 Quand tu sélectionnes un devis → recharge le devis complet par ID
   const handleQuotationSelect = async (quotationId) => {
     setSelectedQuotationId(quotationId);
-    setOrderClientItems([]); // reset temporaire
-    setClientName(""); // reset client name
+    setOrderClientItems([]);
+    setClientName("");
+    setSelectedDevis(null);
 
     if (!quotationId) return;
 
     try {
       const fullDevis = await DevisClientService.getDevisById(quotationId);
       console.log("Devis complet chargé :", fullDevis);
+      setSelectedDevis(fullDevis);
 
-      setOrderNumber(`CMD-CLIENT-${fullDevis.reference || quotationId}`);
-      
-      // 🔹 Récupérer le nom du client depuis le devis
-      setClientName(fullDevis.clientName || fullDevis.client?.name || "Client non spécifié");
+     // Numéro de commande basé sur l'ID du devis
+      setOrderNumber(`CMD-CLIENT-${fullDevis.id || quotationId}`);
+
+
+      // Nom client pour l'affichage/PDF
+      setClientName(
+        fullDevis.clientName ||
+          fullDevis.client?.name ||
+          "Client non spécifié"
+      );
 
       const itemsArray = normalizeItems(fullDevis.items);
       console.log("Items du devis complet :", itemsArray);
 
+      // 🔹 On garde bien les 3 IDs séparés pour le backend
       const mappedItems = itemsArray.map((item) => ({
-        productId: item.productId || item.serviceId || item.projectId || null,
-        productName: item.designation || "Ligne devis",
+        productId: item.productId ?? null,
+        serviceId: item.serviceId ?? null,
+        projectId: item.projectId ?? null,
+        productName:
+          item.designation ||
+          item.productName ||
+          item.serviceName ||
+          "Ligne devis",
         quantity: item.quantity || 1,
         unitPrice: item.price || 0,
         discount: 0,
@@ -129,6 +170,9 @@ const CreateClientOrder = () => {
     } catch (err) {
       console.error("Erreur lors du chargement du devis complet :", err);
       setError("Impossible de charger les détails du devis sélectionné.");
+      enqueueSnackbar("Impossible de charger le devis sélectionné", {
+        variant: "error",
+      });
     }
   };
 
@@ -140,7 +184,9 @@ const CreateClientOrder = () => {
     setOrderClientItems((prev) => [
       ...prev,
       {
-        productId: "",
+        productId: null,
+        serviceId: null,
+        projectId: null,
         productName: "",
         quantity: 1,
         unitPrice: 0,
@@ -175,10 +221,10 @@ const CreateClientOrder = () => {
   // 🔹 Calcul de la TVA (19% par défaut)
   const calculateTVA = () => {
     const ht = parseFloat(calculateHT());
-    return (ht * 0.19).toFixed(2); // 19% de TVA
+    return (ht * 0.19).toFixed(2);
   };
 
-  // 🔹 Calcul du montant TTC (Toutes Taxes Comprises)
+  // 🔹 Calcul du montant TTC
   const calculateTTC = () => {
     const ht = parseFloat(calculateHT());
     const tva = parseFloat(calculateTVA());
@@ -191,42 +237,95 @@ const CreateClientOrder = () => {
 
     try {
       if (!selectedQuotationId) {
-        setError("Veuillez sélectionner un devis accepté.");
+        const msg = "Veuillez sélectionner un devis accepté.";
+        setError(msg);
+        enqueueSnackbar(msg, { variant: "warning" });
+        setLoading((prev) => ({ ...prev, submission: false }));
+        return;
+      }
+
+      // 🔹 Récupérer le clientId depuis le devis
+      const clientId =
+        selectedDevis?.clientId ??
+        selectedDevis?.clientID ??
+        selectedDevis?.client?.id;
+
+      if (!clientId) {
+        const msg =
+          "Impossible de déterminer le client à partir du devis sélectionné.";
+        setError(msg);
+        enqueueSnackbar(msg, { variant: "error" });
         setLoading((prev) => ({ ...prev, submission: false }));
         return;
       }
 
       if (orderClientItems.length === 0) {
-        setError("La commande doit contenir au moins un produit.");
+        const msg = "La commande doit contenir au moins un produit.";
+        setError(msg);
+        enqueueSnackbar(msg, { variant: "warning" });
         setLoading((prev) => ({ ...prev, submission: false }));
         return;
       }
 
+      // 🔹 Items à envoyer au backend :
+      // - On garde seulement ceux qui ont AU MOINS un ID
+      // - Et on ne lui envoie que les champs dont il a besoin
+      const backendItems = orderClientItems
+        .filter(
+          (item) =>
+            item.productId != null ||
+            item.serviceId != null ||
+            item.projectId != null
+        )
+        .map((item) => ({
+          productId: item.productId,
+          serviceId: item.serviceId,
+          projectId: item.projectId,
+          designation: item.productName || "",
+          quantity: item.quantity,
+          price: 0, // sera surchargé côté backend
+          tvaRate: 0, // sera surchargé côté backend
+          tva: 0, // sera calculé côté backend
+        }));
+
+      if (backendItems.length === 0) {
+        const msg =
+          "Chaque ligne doit être liée à un produit, un service ou un projet.";
+        setError(msg);
+        enqueueSnackbar(msg, { variant: "warning" });
+        setLoading((prev) => ({ ...prev, submission: false }));
+        return;
+      }
+
+      // 🔹 DTO aligné avec CreateOrderClientDto du backend
       const orderDto = {
+        devisId: selectedQuotationId,
+        clientId,
         orderNumber,
-        orderDate,
-        deliveryDate,
-        paymentTerms,
-        notes,
-        clientName,
-        quotationId: selectedQuotationId,
-        orderClientItems,
-        ht: parseFloat(calculateHT()),
-        tva: parseFloat(calculateTVA()),
-        ttc: parseFloat(calculateTTC()),
+        discountAmount: 0, // à adapter si tu gères les remises globales
+        expectedDeliveryDate: `${deliveryDate}T00:00:00`,
+        paymentTerms: mapPaymentTermsToEnum(paymentTerms),
+        orderDate: `${orderDate}T00:00:00`,
+        orderClientItems: backendItems,
       };
+
+      console.log("Payload envoyé à l'API /OrderClient :", orderDto);
 
       const createdOrder = await createOrder(orderDto);
 
       if (createdOrder) {
+        enqueueSnackbar("Commande client créée avec succès ✅", {
+          variant: "success",
+        });
         setSuccessModalOpen(true);
-        setTimeout(() => navigate("/client-orders"), 3000);
+        setTimeout(() => navigate("/orders"), 3000);
       }
     } catch (err) {
       console.error(err);
-      setError(
-        err.response?.data?.message || "Échec de la création de la commande"
-      );
+      const msg =
+        err.response?.data?.message || "Échec de la création de la commande";
+      setError(msg);
+      enqueueSnackbar(msg, { variant: "error" });
     } finally {
       setLoading((prev) => ({ ...prev, submission: false }));
     }
@@ -289,7 +388,7 @@ const CreateClientOrder = () => {
               </FormControl>
             </Grid>
 
-            {/* 🔹 Nouveau champ pour le nom du client */}
+            {/* Client (affichage seulement) */}
             <Grid item xs={12} md={6}>
               <TextField
                 label="Client"
@@ -300,6 +399,7 @@ const CreateClientOrder = () => {
               />
             </Grid>
 
+            {/* Numéro de commande */}
             <Grid item xs={12} md={6}>
               <TextField
                 label="Numéro de commande"
@@ -309,6 +409,7 @@ const CreateClientOrder = () => {
               />
             </Grid>
 
+            {/* Date de livraison */}
             <Grid item xs={12} md={6}>
               <TextField
                 label="Date de livraison"
@@ -321,6 +422,7 @@ const CreateClientOrder = () => {
               />
             </Grid>
 
+            {/* Conditions de paiement */}
             <Grid item xs={12} md={6}>
               <FormControl fullWidth>
                 <InputLabel>Conditions de paiement</InputLabel>
@@ -338,7 +440,7 @@ const CreateClientOrder = () => {
               </FormControl>
             </Grid>
 
-            {/* 🧾 Tableau custom <table>/<th>/<td> */}
+            {/* Tableau items */}
             <Grid item xs={12}>
               <Box
                 component={Paper}
@@ -515,6 +617,7 @@ const CreateClientOrder = () => {
               </Button>
             </Grid>
 
+            {/* Notes (pour PDF / affichage seulement) */}
             <Grid item xs={12}>
               <TextField
                 label="Notes"
@@ -527,28 +630,41 @@ const CreateClientOrder = () => {
               />
             </Grid>
 
-            {/* 🔹 NOUVEAU : Section des totaux HT, TVA, TTC */}
+            {/* Totaux */}
             <Grid item xs={12}>
               <Divider sx={{ my: 2 }} />
               <Grid container spacing={2} justifyContent="flex-end">
                 <Grid item xs={12} md={3}>
-                  <Typography variant="h6" align="right" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                  <Typography
+                    variant="h6"
+                    align="right"
+                    sx={{ fontWeight: "bold", color: "primary.main" }}
+                  >
                     Total HT: {calculateHT()} TND
                   </Typography>
                 </Grid>
                 <Grid item xs={12} md={3}>
-                  <Typography variant="h6" align="right" sx={{ fontWeight: 'bold', color: 'secondary.main' }}>
+                  <Typography
+                    variant="h6"
+                    align="right"
+                    sx={{ fontWeight: "bold", color: "secondary.main" }}
+                  >
                     TVA (19%): {calculateTVA()} TND
                   </Typography>
                 </Grid>
                 <Grid item xs={12} md={3}>
-                  <Typography variant="h5" align="right" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+                  <Typography
+                    variant="h5"
+                    align="right"
+                    sx={{ fontWeight: "bold", color: "success.main" }}
+                  >
                     Total TTC: {calculateTTC()} TND
                   </Typography>
                 </Grid>
               </Grid>
             </Grid>
 
+            {/* Boutons */}
             <Grid item xs={12} sx={{ textAlign: "right", mt: 3 }}>
               <Button
                 variant="contained"
