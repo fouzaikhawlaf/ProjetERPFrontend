@@ -13,8 +13,6 @@ import {
   Chip,
   Grid,
   InputAdornment,
-  Switch,
-  FormControlLabel,
 } from "@mui/material";
 import {
   AddCircle,
@@ -27,14 +25,13 @@ import {
   Cancel,
   PictureAsPdf,
   Inventory,
-  BugReport,
   ContentCopy,
 } from "@mui/icons-material";
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
 import { useSnackbar } from "notistack";
 import { Link } from "react-router-dom";
 
-// ✅ IMPORT CORRIGÉ : exports nommés
+// ✅ IMPORT : exports nommés
 import {
   getAllOrders,
   updateOrder,
@@ -43,7 +40,6 @@ import {
 import DeleteCommandeClientDialog from "../components/DeleteCommandeClientDialog";
 import EditCommandeClientDialog from "../components/EditCommandeClientDialog";
 import CommandeClientDetailsDialog from "../components/CommandeClientDetailsDialog";
-
 
 // Mapping complet de l'énum backend OrderState
 // 0 Draft | 1 Validated | 2 Delivered | 3 Invoiced | 4 Cancelled | 5 Pending | 6 Confirmed | 7 Approved | 8 Rejected
@@ -60,49 +56,74 @@ const ORDER_STATUS = {
 
   getLabel: (s) => {
     switch (s) {
-      case 0: return "Brouillon";
-      case 1: return "Validée";
-      case 2: return "Livrée";
-      case 3: return "Facturée";
-      case 4: return "Annulée";
-      case 5: return "En attente";
-      case 6: return "Confirmée";
-      case 7: return "Approuvée";
-      case 8: return "Rejetée";
-      default: return `Statut ${s}`;
+      case 0:
+        return "Brouillon";
+      case 1:
+        return "Validée";
+      case 2:
+        return "Livrée";
+      case 3:
+        return "Facturée";
+      case 4:
+        return "Annulée";
+      case 5:
+        return "En attente";
+      case 6:
+        return "Confirmée";
+      case 7:
+        return "Approuvée";
+      case 8:
+        return "Rejetée";
+      default:
+        return `Statut ${s}`;
     }
   },
 
   getColor: (s) => {
     switch (s) {
-      case 0: return "default";   // Brouillon
-      case 1: return "info";      // Validée
-      case 2: return "info";      // Livrée
-      case 3: return "primary";   // Facturée
-      case 4: return "default";   // Annulée
-      case 5: return "warning";   // En attente
-      case 6: return "info";      // Confirmée
-      case 7: return "success";   // Approuvée
-      case 8: return "error";     // Rejetée
-      default: return "default";
+      case 0:
+        return "default"; // Brouillon
+      case 1:
+        return "info"; // Validée
+      case 2:
+        return "info"; // Livrée
+      case 3:
+        return "primary"; // Facturée
+      case 4:
+        return "default"; // Annulée
+      case 5:
+        return "warning"; // En attente
+      case 6:
+        return "info"; // Confirmée
+      case 7:
+        return "success"; // Approuvée
+      case 8:
+        return "error"; // Rejetée
+      default:
+        return "default";
     }
   },
 };
 
 const statusOptions = [
   { value: "Tous", label: "Tous", color: "default" },
-  { value: ORDER_STATUS.DRAFT,     label: "Brouillon",  color: "default" },
-  { value: ORDER_STATUS.VALIDATED, label: "Validée",    color: "info" },
-  { value: ORDER_STATUS.DELIVERED, label: "Livrée",     color: "info" },
-  { value: ORDER_STATUS.INVOICED,  label: "Facturée",   color: "primary" },
-  { value: ORDER_STATUS.CANCELLED, label: "Annulée",    color: "default" },
-  { value: ORDER_STATUS.PENDING,   label: "En attente", color: "warning" },
-  { value: ORDER_STATUS.CONFIRMED, label: "Confirmée",  color: "info" },
-  { value: ORDER_STATUS.APPROVED,  label: "Approuvée",  color: "success" },
-  { value: ORDER_STATUS.REJECTED,  label: "Rejetée",    color: "error" },
+  { value: ORDER_STATUS.DRAFT, label: "Brouillon", color: "default" },
+  { value: ORDER_STATUS.VALIDATED, label: "Validée", color: "info" },
+  { value: ORDER_STATUS.DELIVERED, label: "Livrée", color: "info" },
+  { value: ORDER_STATUS.INVOICED, label: "Facturée", color: "primary" },
+  { value: ORDER_STATUS.CANCELLED, label: "Annulée", color: "default" },
+  { value: ORDER_STATUS.PENDING, label: "En attente", color: "warning" },
+  { value: ORDER_STATUS.CONFIRMED, label: "Confirmée", color: "info" },
+  { value: ORDER_STATUS.APPROVED, label: "Approuvée", color: "success" },
+  { value: ORDER_STATUS.REJECTED, label: "Rejetée", color: "error" },
 ];
 
-const CommandeStatusButton = ({ commandeId, currentStatus, onApprove, onReject }) => {
+const CommandeStatusButton = ({
+  commandeId,
+  currentStatus,
+  onApprove,
+  onReject,
+}) => {
   const [loading, setLoading] = useState(false);
 
   if (currentStatus === ORDER_STATUS.APPROVED) {
@@ -149,12 +170,22 @@ const CommandeStatusButton = ({ commandeId, currentStatus, onApprove, onReject }
   return (
     <Box sx={{ display: "flex", gap: "6px" }}>
       <Tooltip title="Approuver la commande">
-        <IconButton size="small" onClick={handleApproveClick} color="success" disabled={loading}>
+        <IconButton
+          size="small"
+          onClick={handleApproveClick}
+          color="success"
+          disabled={loading}
+        >
           <CheckCircle fontSize="small" />
         </IconButton>
       </Tooltip>
       <Tooltip title="Rejeter la commande">
-        <IconButton size="small" onClick={handleRejectClick} color="error" disabled={loading}>
+        <IconButton
+          size="small"
+          onClick={handleRejectClick}
+          color="error"
+          disabled={loading}
+        >
           <Cancel fontSize="small" />
         </IconButton>
       </Tooltip>
@@ -163,7 +194,8 @@ const CommandeStatusButton = ({ commandeId, currentStatus, onApprove, onReject }
 };
 
 CommandeStatusButton.propTypes = {
-  commandeId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+  commandeId: PropTypes.oneOfType([PropTypes.string, PropTypes.number])
+    .isRequired,
   currentStatus: PropTypes.number.isRequired,
   onApprove: PropTypes.func.isRequired,
   onReject: PropTypes.func.isRequired,
@@ -185,7 +217,7 @@ const CommandeClientService = () => {
   const [commandeToEdit, setCommandeToEdit] = useState(null);
 
   // Debug / console-like
-  const [debugOpen, setDebugOpen] = useState(false);
+  const [debugOpen] = useState(false);
   const [lastRawResponse, setLastRawResponse] = useState(null);
 
   const formatCurrency = (amount) => {
@@ -205,7 +237,9 @@ const CommandeClientService = () => {
   const copyToClipboard = async (obj) => {
     try {
       await navigator.clipboard.writeText(JSON.stringify(obj, null, 2));
-      enqueueSnackbar("JSON copié dans le presse-papiers", { variant: "success" });
+      enqueueSnackbar("JSON copié dans le presse-papiers", {
+        variant: "success",
+      });
     } catch (_) {
       enqueueSnackbar("Impossible de copier le JSON", { variant: "error" });
     }
@@ -215,7 +249,6 @@ const CommandeClientService = () => {
     setIsLoading(true);
     setError(null);
     try {
-      // ✅ utilisation de getAllOrders (export nommé)
       const response = await getAllOrders();
       setLastRawResponse(response);
 
@@ -259,8 +292,12 @@ const CommandeClientService = () => {
   };
 
   const handleStatusChange = (id, newStatus) => {
-    setCommandes((prev) => prev.map((c) => (c.id === id ? { ...c, status: newStatus } : c)));
-    setFilteredCommandes((prev) => prev.map((c) => (c.id === id ? { ...c, status: newStatus } : c)));
+    setCommandes((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, status: newStatus } : c))
+    );
+    setFilteredCommandes((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, status: newStatus } : c))
+    );
   };
 
   const handleViewDetails = (commande) => {
@@ -301,7 +338,9 @@ const CommandeClientService = () => {
       const payload = { ...current, status: ORDER_STATUS.APPROVED };
       await updateOrder(commandeId, payload);
       handleStatusChange(commandeId, ORDER_STATUS.APPROVED);
-      enqueueSnackbar("Commande client approuvée avec succès", { variant: "success" });
+      enqueueSnackbar("Commande client approuvée avec succès", {
+        variant: "success",
+      });
     } catch (error) {
       console.error("Approve error:", error);
       enqueueSnackbar("Erreur lors de l'approbation", { variant: "error" });
@@ -322,7 +361,9 @@ const CommandeClientService = () => {
       const payload = { ...current, status: ORDER_STATUS.REJECTED };
       await updateOrder(commandeId, payload);
       handleStatusChange(commandeId, ORDER_STATUS.REJECTED);
-      enqueueSnackbar("Commande client rejetée avec succès", { variant: "success" });
+      enqueueSnackbar("Commande client rejetée avec succès", {
+        variant: "success",
+      });
     } catch (error) {
       console.error("Reject error:", error);
       enqueueSnackbar("Erreur lors du rejet", { variant: "error" });
@@ -338,7 +379,9 @@ const CommandeClientService = () => {
       enqueueSnackbar("PDF généré avec succès", { variant: "success" });
     } catch (error) {
       console.error("PDF generation error:", error);
-      enqueueSnackbar("Erreur lors de la génération du PDF", { variant: "error" });
+      enqueueSnackbar("Erreur lors de la génération du PDF", {
+        variant: "error",
+      });
     }
   };
 
@@ -364,11 +407,12 @@ const CommandeClientService = () => {
       return;
     }
     try {
-      // On génère un PDF par commande filtrée
       for (const c of filteredCommandes) {
         await generateOrderPdf(c.id);
       }
-      enqueueSnackbar("PDF générés pour les commandes filtrées", { variant: "success" });
+      enqueueSnackbar("PDF générés pour les commandes filtrées", {
+        variant: "success",
+      });
     } catch (error) {
       console.error("PDF export error:", error);
       enqueueSnackbar("Erreur lors de l'export PDF", { variant: "error" });
@@ -385,35 +429,20 @@ const CommandeClientService = () => {
               Gestion des Commandes Clients
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {filteredCommandes.length} commandes trouvées sur {commandes.length} total
+              {filteredCommandes.length} commandes trouvées sur{" "}
+              {commandes.length} total
             </Typography>
           </Grid>
+
           <Grid
             item
             xs={12}
             md={6}
-            sx={{
-              textAlign: { md: "right" },
-              display: "flex",
-              gap: 1,
-              justifyContent: { xs: "flex-start", md: "flex-end" },
-              alignItems: "center",
-            }}
+            sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}
           >
-            <FormControlLabel
-              control={
-                <Switch checked={debugOpen} onChange={() => setDebugOpen((v) => !v)} />
-              }
-              label={
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                  <BugReport fontSize="small" /> Console API
-                </Box>
-              }
-            />
-            {/* Route à adapter si besoin */}
             <Button
               component={Link}
-              to="/client-orders/new" 
+              to="/client-orders/new"
               variant="contained"
               startIcon={<AddCircle />}
               sx={{ mr: 1 }}
@@ -429,7 +458,11 @@ const CommandeClientService = () => {
             >
               Exporter PDF
             </Button>
-            <Button variant="outlined" startIcon={<Refresh />} onClick={fetchCommandes}>
+            <Button
+              variant="outlined"
+              startIcon={<Refresh />}
+              onClick={fetchCommandes}
+            >
               Actualiser
             </Button>
           </Grid>
@@ -469,15 +502,20 @@ const CommandeClientService = () => {
                     key={option.value}
                     label={`${option.label} (${
                       commandes.filter((c) =>
-                        option.value === "Tous" ? true : c.status === option.value
+                        option.value === "Tous"
+                          ? true
+                          : c.status === option.value
                       ).length
                     })`}
                     onClick={() => handleFilterClick(option.value)}
                     color={option.color}
-                    variant={activeFilter === option.value ? "filled" : "outlined"}
+                    variant={
+                      activeFilter === option.value ? "filled" : "outlined"
+                    }
                     sx={{
                       minWidth: 100,
-                      fontWeight: activeFilter === option.value ? "bold" : "normal",
+                      fontWeight:
+                        activeFilter === option.value ? "bold" : "normal",
                     }}
                   />
                 ))}
@@ -494,7 +532,12 @@ const CommandeClientService = () => {
         )}
 
         {isLoading ? (
-          <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px">
+          <Box
+            display="flex"
+            justifyContent="center"
+            alignItems="center"
+            minHeight="300px"
+          >
             <CircularProgress size={60} />
           </Box>
         ) : (
@@ -517,17 +560,27 @@ const CommandeClientService = () => {
                 }}
               >
                 <thead>
-                  <tr style={{ backgroundColor: "#f5f7fa", height: "60px" }}>
+                  <tr
+                    style={{ backgroundColor: "#f5f7fa", height: "60px" }}
+                  >
                     <th style={thStyle}>#</th>
                     <th style={thStyle}>Numéro Commande</th>
                     <th style={thStyle}>Client</th>
                     <th style={thStyle}>Date Commande</th>
                     <th style={thStyle}>Date Livraison</th>
                     <th style={thStyle}>Statut</th>
-                    <th style={{ ...thStyle, textAlign: "right" }}>Total HT</th>
-                    <th style={{ ...thStyle, textAlign: "right" }}>Total TVA</th>
-                    <th style={{ ...thStyle, textAlign: "right" }}>Total TTC</th>
-                    <th style={{ ...thStyle, textAlign: "center" }}>Actions</th>
+                    <th style={{ ...thStyle, textAlign: "right" }}>
+                      Total HT
+                    </th>
+                    <th style={{ ...thStyle, textAlign: "right" }}>
+                      Total TVA
+                    </th>
+                    <th style={{ ...thStyle, textAlign: "right" }}>
+                      Total TTC
+                    </th>
+                    <th style={{ ...thStyle, textAlign: "center" }}>
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -537,7 +590,8 @@ const CommandeClientService = () => {
                         key={commande.id}
                         style={{
                           borderBottom: "1px solid #eee",
-                          backgroundColor: index % 2 === 0 ? "#ffffff" : "#fafafa",
+                          backgroundColor:
+                            index % 2 === 0 ? "#ffffff" : "#fafafa",
                           transition: "background-color 0.2s",
                         }}
                         onMouseEnter={(e) => {
@@ -562,7 +616,9 @@ const CommandeClientService = () => {
                               color: "#1976d2",
                             }}
                           >
-                            {commande.orderNumber || commande.OrderNumber || "N/A"}
+                            {commande.orderNumber ||
+                              commande.OrderNumber ||
+                              "N/A"}
                           </Box>
                         </td>
                         <td style={tdStyle}>
@@ -572,8 +628,12 @@ const CommandeClientService = () => {
                             commande.clientId ||
                             "N/A"}
                         </td>
-                        <td style={tdStyle}>{formatDate(commande.orderDate)}</td>
-                        <td style={tdStyle}>{formatDate(commande.expectedDeliveryDate)}</td>
+                        <td style={tdStyle}>
+                          {formatDate(commande.orderDate)}
+                        </td>
+                        <td style={tdStyle}>
+                          {formatDate(commande.expectedDeliveryDate)}
+                        </td>
                         <td style={tdStyle}>
                           <Chip
                             label={getStatusLabel(commande.status)}
@@ -582,46 +642,58 @@ const CommandeClientService = () => {
                             sx={{ fontSize: "0.75rem", fontWeight: 500 }}
                           />
                         </td>
-                        {/* Total HT (ex: salesAmount / totalHT) */}
-                        <td
-                          style={{
-                            ...tdStyle,
-                            textAlign: "right",
-                            fontWeight: 500,
-                          }}
-                        >
-                          {commande.salesAmount !== undefined
-                            ? `${formatCurrency(commande.salesAmount)} TND`
-                            : commande.totalHT !== undefined
-                              ? `${formatCurrency(commande.totalHT)} TND`
-                              : "0.000 TND"}
-                        </td>
-                        {/* Total TVA */}
-                        <td
-                          style={{
-                            ...tdStyle,
-                            textAlign: "right",
-                            fontWeight: 500,
-                          }}
-                        >
-                          {commande.totalTVA !== undefined
-                            ? `${formatCurrency(commande.totalTVA)} TND`
-                            : "0.000 TND"}
-                        </td>
-                        {/* Total TTC (totalTTC ou totalAmount) */}
-                        <td
-                          style={{
-                            ...tdStyle,
-                            textAlign: "right",
-                            fontWeight: 500,
-                          }}
-                        >
-                          {commande.totalTTC !== undefined
-                            ? `${formatCurrency(commande.totalTTC)} TND`
-                            : commande.totalAmount !== undefined
-                              ? `${formatCurrency(commande.totalAmount)} TND`
-                              : "0.000 TND"}
-                        </td>
+                       <td
+  style={{
+    ...tdStyle,
+    textAlign: "right",
+    fontWeight: 500,
+  }}
+>
+  {commande.saleAmount !== undefined && commande.saleAmount !== null
+    ? `${formatCurrency(commande.saleAmount)} TND`
+    : commande.SaleAmount !== undefined && commande.SaleAmount !== null
+    ? `${formatCurrency(commande.SaleAmount)} TND`
+    : commande.totalHT !== undefined && commande.totalHT !== null
+    ? `${formatCurrency(commande.totalHT)} TND`
+    : commande.purchaseAmount !== undefined &&
+      commande.purchaseAmount !== null
+    ? `${formatCurrency(commande.purchaseAmount)} TND`
+    : "0.000 TND"}
+</td>
+
+{/* ✅ Total TVA */}
+<td
+  style={{
+    ...tdStyle,
+    textAlign: "right",
+    fontWeight: 500,
+  }}
+>
+  {commande.totalTVA !== undefined && commande.totalTVA !== null
+    ? `${formatCurrency(commande.totalTVA)} TND`
+    : commande.TotalTVA !== undefined && commande.TotalTVA !== null
+    ? `${formatCurrency(commande.TotalTVA)} TND`
+    : "0.000 TND"}
+</td>
+
+{/* ✅ Total TTC (totalTTC ou totalAmount / TotalAmount) */}
+<td
+  style={{
+    ...tdStyle,
+    textAlign: "right",
+    fontWeight: 500,
+  }}
+>
+  {commande.totalTTC !== undefined && commande.totalTTC !== null
+    ? `${formatCurrency(commande.totalTTC)} TND`
+    : commande.totalAmount !== undefined &&
+      commande.totalAmount !== null
+    ? `${formatCurrency(commande.totalAmount)} TND`
+    : commande.TotalAmount !== undefined &&
+      commande.TotalAmount !== null
+    ? `${formatCurrency(commande.TotalAmount)} TND`
+    : "0.000 TND"}
+</td>
                         <td
                           style={{
                             ...tdStyle,
@@ -713,7 +785,9 @@ const CommandeClientService = () => {
                         }}
                       >
                         <Box sx={{ textAlign: "center" }}>
-                          <Inventory sx={{ fontSize: 60, color: "#e0e0e0", mb: 2 }} />
+                          <Inventory
+                            sx={{ fontSize: 60, color: "#e0e0e0", mb: 2 }}
+                          />
                           <Typography variant="body1">
                             Aucune commande client trouvée
                           </Typography>
@@ -770,7 +844,15 @@ const CommandeClientService = () => {
 
         {/* Panneau debug */}
         {debugOpen && (
-          <Box sx={{ mt: 3, p: 2, bgcolor: "#f9f9f9", borderRadius: 1, fontSize: 12 }}>
+          <Box
+            sx={{
+              mt: 3,
+              p: 2,
+              bgcolor: "#f9f9f9",
+              borderRadius: 1,
+              fontSize: 12,
+            }}
+          >
             <Typography variant="subtitle2" gutterBottom>
               Réponse API brute (clients)
             </Typography>
@@ -785,7 +867,7 @@ const CommandeClientService = () => {
 };
 
 const thStyle = {
-  width: "120px",
+  // width: "120px", // laissé commenté pour que la colonne # reste fine
   padding: "0 16px",
   fontWeight: 600,
   fontSize: "0.875rem",

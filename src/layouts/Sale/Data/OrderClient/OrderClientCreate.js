@@ -1,4 +1,3 @@
-// layouts/Sale/Data/OrderClient/OrderClientCreate.jsx
 import React, { useState, useEffect } from "react";
 import { PDFViewer } from "@react-pdf/renderer";
 import OrderPDF from "../pdf/OrderPDF";
@@ -51,8 +50,7 @@ function getISOPlusDays(days) {
   return d.toISOString().slice(0, 10);
 }
 
-// 🔹 (optionnel) mapping string → enum backend PaymentTerms
-// A ADAPTER selon ton enum côté C#
+// 🔹 mapping string → enum backend PaymentTerms
 const mapPaymentTermsToEnum = (value) => {
   switch (value) {
     case "30j":
@@ -70,13 +68,80 @@ const mapPaymentTermsToEnum = (value) => {
   }
 };
 
+/* =====================  TVA HELPERS ROBUSTES  ===================== */
+
+// Extrait une valeur TVA "brute" (nombre) à partir de n'importe quel format
+const extractTvaRawValue = (tvaRaw) => {
+  if (tvaRaw === undefined || tvaRaw === null) return 0;
+
+  // Si c'est déjà un nombre
+  if (typeof tvaRaw === "number") return tvaRaw;
+
+  // Si c'est une chaîne (ex: "TVA19", "tva7", "19", "7%")
+  if (typeof tvaRaw === "string") {
+    const upper = tvaRaw.toUpperCase();
+
+    // cas connus par nom
+    if (upper.includes("TVA5")) return 5;
+    if (upper.includes("TVA7")) return 7;
+    if (upper.includes("TVA19")) return 19;
+
+    // sinon, on essaie d'extraire les chiffres
+    const match = upper.match(/(\d+(\.\d+)?)/);
+    if (match) {
+      return parseFloat(match[1]); // "19%" -> 19
+    }
+    return 0;
+  }
+
+  // Si c'est un objet bizarre (par sécurité)
+  if (typeof tvaRaw === "object") {
+    if (tvaRaw.value !== undefined) return extractTvaRawValue(tvaRaw.value);
+    if (tvaRaw.code !== undefined) return extractTvaRawValue(tvaRaw.code);
+  }
+
+  return 0;
+};
+
+// Pourcentage en décimal (0.19, 0.07, etc.)
+const getTvaPercentage = (tvaRaw) => {
+  const raw = extractTvaRawValue(tvaRaw);
+  if (!raw || raw <= 0) return 0;
+
+  // Si backend renvoie enum 1/2/3
+  if (raw <= 3) {
+    if (raw === 1) return 0.05;
+    if (raw === 2) return 0.07;
+    if (raw === 3) return 0.19;
+    return 0;
+  }
+
+  // Sinon, c'est un pourcentage direct (7, 13, 19 → 0.07, 0.13, 0.19)
+  return raw / 100;
+};
+
+// Label humain pour l'affichage ("19%", "7%", etc.)
+const getTvaLabel = (tvaRaw) => {
+  const raw = extractTvaRawValue(tvaRaw);
+  if (!raw || raw <= 0) return "0%";
+
+  // Enum 1/2/3
+  if (raw === 1) return "5%";
+  if (raw === 2) return "7%";
+  if (raw === 3) return "19%";
+
+  return `${raw}%`;
+};
+
+/* ============================================================= */
+
 const CreateClientOrder = () => {
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
 
   const [acceptedQuotations, setAcceptedQuotations] = useState([]);
   const [selectedQuotationId, setSelectedQuotationId] = useState("");
-  const [selectedDevis, setSelectedDevis] = useState(null); // 🔹 pour récupérer clientId, etc.
+  const [selectedDevis, setSelectedDevis] = useState(null);
 
   const [clientName, setClientName] = useState("");
   const [orderNumber, setOrderNumber] = useState("CMD-CLIENT-");
@@ -97,7 +162,6 @@ const CreateClientOrder = () => {
   const fetchAcceptedQuotations = async () => {
     try {
       const data = await DevisClientService.getDevisByStatus(2);
-
       const list = Array.isArray(data) ? data : data?.$values || [];
 
       const normalized = list.map((d) => ({
@@ -137,9 +201,8 @@ const CreateClientOrder = () => {
       console.log("Devis complet chargé :", fullDevis);
       setSelectedDevis(fullDevis);
 
-     // Numéro de commande basé sur l'ID du devis
+      // Numéro de commande basé sur l'ID du devis
       setOrderNumber(`CMD-CLIENT-${fullDevis.id || quotationId}`);
-
 
       // Nom client pour l'affichage/PDF
       setClientName(
@@ -151,20 +214,29 @@ const CreateClientOrder = () => {
       const itemsArray = normalizeItems(fullDevis.items);
       console.log("Items du devis complet :", itemsArray);
 
-      // 🔹 On garde bien les 3 IDs séparés pour le backend
-      const mappedItems = itemsArray.map((item) => ({
-        productId: item.productId ?? null,
-        serviceId: item.serviceId ?? null,
-        projectId: item.projectId ?? null,
-        productName:
-          item.designation ||
-          item.productName ||
-          item.serviceName ||
-          "Ligne devis",
-        quantity: item.quantity || 1,
-        unitPrice: item.price || 0,
-        discount: 0,
-      }));
+      const mappedItems = itemsArray.map((item) => {
+        const tvaRaw =
+          item.tvaRate ??
+          item.TVARate ??
+          item.TVA ??
+          item.tva ??
+          0;
+
+        return {
+          productId: item.productId ?? null,
+          serviceId: item.serviceId ?? null,
+          projectId: item.projectId ?? null,
+          productName:
+            item.designation ||
+            item.productName ||
+            item.serviceName ||
+            "Ligne devis",
+          quantity: item.quantity || 1,
+          unitPrice: item.price || 0,
+          discount: 0,     // tu peux reprendre la remise du devis si tu en as une
+          tvaRate: tvaRaw, // pour l'affichage et le calcul
+        };
+      });
 
       setOrderClientItems(mappedItems);
     } catch (err) {
@@ -191,6 +263,7 @@ const CreateClientOrder = () => {
         quantity: 1,
         unitPrice: 0,
         discount: 0,
+        tvaRate: 0,
       },
     ]);
   };
@@ -205,23 +278,32 @@ const CreateClientOrder = () => {
     setOrderClientItems(newItems);
   };
 
-  // 🔹 Calcul du montant HT (Hors Taxes)
-  const calculateHT = () =>
-    orderClientItems
-      .reduce(
-        (total, item) =>
-          total +
-          item.quantity *
-            item.unitPrice *
-            (1 - (item.discount || 0) / 100),
-        0
-      )
-      .toFixed(2);
+  // 🔹 Calcul du montant HT (Hors Taxes) après remise
+  const calculateHT = () => {
+    const total = orderClientItems.reduce((total, item) => {
+      const base =
+        item.quantity *
+        item.unitPrice *
+        (1 - (item.discount || 0) / 100);
+      return total + base;
+    }, 0);
 
-  // 🔹 Calcul de la TVA (19% par défaut)
+    return total.toFixed(2);
+  };
+
+  // 🔹 Calcul de la TVA ligne par ligne avec tvaRate
   const calculateTVA = () => {
-    const ht = parseFloat(calculateHT());
-    return (ht * 0.19).toFixed(2);
+    const totalTVA = orderClientItems.reduce((total, item) => {
+      const base =
+        item.quantity *
+        item.unitPrice *
+        (1 - (item.discount || 0) / 100);
+
+      const rate = getTvaPercentage(item.tvaRate);
+      return total + base * rate;
+    }, 0);
+
+    return totalTVA.toFixed(2);
   };
 
   // 🔹 Calcul du montant TTC
@@ -244,7 +326,6 @@ const CreateClientOrder = () => {
         return;
       }
 
-      // 🔹 Récupérer le clientId depuis le devis
       const clientId =
         selectedDevis?.clientId ??
         selectedDevis?.clientID ??
@@ -267,9 +348,7 @@ const CreateClientOrder = () => {
         return;
       }
 
-      // 🔹 Items à envoyer au backend :
-      // - On garde seulement ceux qui ont AU MOINS un ID
-      // - Et on ne lui envoie que les champs dont il a besoin
+      // 🔹 Items à envoyer au backend : on envoie bien la remise
       const backendItems = orderClientItems
         .filter(
           (item) =>
@@ -283,9 +362,7 @@ const CreateClientOrder = () => {
           projectId: item.projectId,
           designation: item.productName || "",
           quantity: item.quantity,
-          price: 0, // sera surchargé côté backend
-          tvaRate: 0, // sera surchargé côté backend
-          tva: 0, // sera calculé côté backend
+          discount: item.discount || 0, // Price / TVA seront déterminés côté backend
         }));
 
       if (backendItems.length === 0) {
@@ -297,12 +374,11 @@ const CreateClientOrder = () => {
         return;
       }
 
-      // 🔹 DTO aligné avec CreateOrderClientDto du backend
       const orderDto = {
         devisId: selectedQuotationId,
         clientId,
         orderNumber,
-        discountAmount: 0, // à adapter si tu gères les remises globales
+        discountAmount: 0,
         expectedDeliveryDate: `${deliveryDate}T00:00:00`,
         paymentTerms: mapPaymentTermsToEnum(paymentTerms),
         orderDate: `${orderDate}T00:00:00`,
@@ -472,6 +548,7 @@ const CreateClientOrder = () => {
                         <th style={thStyle}>Quantité</th>
                         <th style={thStyle}>Prix Unitaire</th>
                         <th style={thStyle}>Remise (%)</th>
+                        <th style={thStyle}>TVA</th>
                         <th style={thStyle}>Total HT</th>
                         <th style={{ ...thStyle, textAlign: "center" }}>
                           Actions
@@ -551,6 +628,12 @@ const CreateClientOrder = () => {
                                 inputProps={{ min: 0, max: 100 }}
                               />
                             </td>
+
+                            {/* TVA par ligne (affichage label) */}
+                            <td style={tdStyle}>
+                              {getTvaLabel(item.tvaRate)}
+                            </td>
+
                             <td
                               style={{
                                 ...tdStyle,
@@ -589,7 +672,7 @@ const CreateClientOrder = () => {
                       ) : (
                         <tr>
                           <td
-                            colSpan={6}
+                            colSpan={7}
                             style={{
                               padding: "20px",
                               textAlign: "center",
@@ -617,7 +700,7 @@ const CreateClientOrder = () => {
               </Button>
             </Grid>
 
-            {/* Notes (pour PDF / affichage seulement) */}
+            {/* Notes */}
             <Grid item xs={12}>
               <TextField
                 label="Notes"
@@ -649,7 +732,7 @@ const CreateClientOrder = () => {
                     align="right"
                     sx={{ fontWeight: "bold", color: "secondary.main" }}
                   >
-                    TVA (19%): {calculateTVA()} TND
+                    TVA: {calculateTVA()} TND
                   </Typography>
                 </Grid>
                 <Grid item xs={12} md={3}>
@@ -692,7 +775,7 @@ const CreateClientOrder = () => {
           </Grid>
         )}
 
-        {/* Modal de prévisualisation PDF */}
+        {/* Modal PDF */}
         <Modal
           open={showPDFPreview}
           onClose={() => setShowPDFPreview(false)}
@@ -728,7 +811,7 @@ const CreateClientOrder = () => {
           </Box>
         </Modal>
 
-        {/* Modal de confirmation de succès */}
+        {/* Modal succès */}
         <Modal
           open={successModalOpen}
           onClose={() => setSuccessModalOpen(false)}

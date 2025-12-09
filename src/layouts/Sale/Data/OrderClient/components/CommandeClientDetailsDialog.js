@@ -17,7 +17,6 @@ import {
   CircularProgress,
   List,
   ListItem,
-  ListItemText,
 } from "@mui/material";
 import {
   Clear,
@@ -28,7 +27,10 @@ import {
   Inventory,
   PictureAsPdf,
 } from "@mui/icons-material";
-import { getOrderById } from "services/orderClientService"; // ✅ Changé
+import {
+  getOrderById,
+  generateOrderPdf, // ✅ important
+} from "services/orderClientService";
 
 const ORDER_STATUS = {
   0: { label: "Brouillon", color: "default" },
@@ -42,10 +44,13 @@ const ORDER_STATUS = {
   8: { label: "Rejetée", color: "error" },
 };
 
+// 🔹 Normalisation générique des items (.NET / $values)
 const normalizeItems = (itemsData) => {
   if (!itemsData) return [];
   if (Array.isArray(itemsData)) return itemsData;
-  if (itemsData.$values) return itemsData.$values;
+  if (itemsData.$values && Array.isArray(itemsData.$values)) {
+    return itemsData.$values;
+  }
   if (typeof itemsData === "object") return [itemsData];
   return [];
 };
@@ -60,6 +65,7 @@ const CommandeClientDetailsDialog = ({ open, onClose, commandeId }) => {
       setLoading(true);
       try {
         const data = await getOrderById(commandeId);
+        console.log("Détails commande client :", data);
         setCommande(data);
       } catch (e) {
         console.error("Erreur chargement commande client :", e);
@@ -81,14 +87,51 @@ const CommandeClientDetailsDialog = ({ open, onClose, commandeId }) => {
   };
 
   const statusInfo = commande
-    ? ORDER_STATUS[commande.status] || { label: `Statut ${commande.status}`, color: "default" }
+    ? ORDER_STATUS[commande.status] || {
+        label: `Statut ${commande.status}`,
+        color: "default",
+      }
     : null;
 
-  const items = normalizeItems(commande?.items);
+  // ✅ Utiliser orderClientItems / OrderClientItems / items
+  const items = normalizeItems(
+    commande?.orderClientItems ||
+      commande?.OrderClientItems ||
+      commande?.items
+  );
 
-  const totalHT = commande?.totalHT ?? commande?.purchaseAmount ?? 0;
-  const totalTVA = commande?.totalTVA ?? 0;
-  const totalTTC = commande?.totalTTC ?? commande?.totalAmount ?? 0;
+  // 🔹 NOUVEAUX ATTRIBUTS BACKEND
+  // SaleAmount = HT net, DiscountAmount = total remise, TotalTVA, TotalAmount = TTC
+  const totalHT =
+    commande?.saleAmount ??
+    commande?.SaleAmount ??
+    commande?.totalHT ??
+    commande?.purchaseAmount ??
+    0;
+
+  const totalRemise =
+    commande?.discountAmount ??
+    commande?.DiscountAmount ??
+    0;
+
+  const totalTVA =
+    commande?.totalTVA ??
+    commande?.TotalTVA ??
+    0;
+
+  const totalTTC =
+    commande?.totalTTC ??
+    commande?.TotalAmount ??
+    commande?.totalAmount ??
+    0;
+
+  const formatAmount = (value) =>
+    Number(value || 0).toFixed(3) + " TND";
+
+  const formatDate = (dateString) =>
+    dateString
+      ? new Date(dateString).toLocaleDateString("fr-FR")
+      : "N/A";
 
   return (
     <Dialog
@@ -113,7 +156,10 @@ const CommandeClientDetailsDialog = ({ open, onClose, commandeId }) => {
           </Avatar>
           <Box>
             <Typography variant="h6" fontWeight="bold">
-              Commande Client {commande?.orderNumber || commande?.OrderNumber || commandeId}
+              Commande Client{" "}
+              {commande?.orderNumber ||
+                commande?.OrderNumber ||
+                commandeId}
             </Typography>
             {statusInfo && (
               <Chip
@@ -171,27 +217,36 @@ const CommandeClientDetailsDialog = ({ open, onClose, commandeId }) => {
                   <Grid item xs={12} md={6}>
                     <Typography>
                       <strong>Numéro :</strong>{" "}
-                      {commande.orderNumber || commande.OrderNumber || commande.id}
+                      {commande.orderNumber ||
+                        commande.OrderNumber ||
+                        commande.id}
                     </Typography>
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <Typography>
                       <CalendarToday fontSize="small" sx={{ mr: 0.5 }} />
                       <strong>Date commande :</strong>{" "}
-                      {commande.orderDate
-                        ? new Date(commande.orderDate).toLocaleDateString("fr-FR")
-                        : "N/A"}
+                      {formatDate(commande.orderDate)}
                     </Typography>
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <Typography>
                       <CalendarToday fontSize="small" sx={{ mr: 0.5 }} />
                       <strong>Date livraison :</strong>{" "}
-                      {commande.expectedDeliveryDate
-                        ? new Date(commande.expectedDeliveryDate).toLocaleDateString("fr-FR")
-                        : "N/A"}
+                      {formatDate(
+                        commande.expectedDeliveryDate ||
+                          commande.deliveryDate
+                      )}
                     </Typography>
                   </Grid>
+                  {commande.paymentTerms && (
+                    <Grid item xs={12} md={6}>
+                      <Typography>
+                        <strong>Conditions de paiement :</strong>{" "}
+                        {commande.paymentTerms}
+                      </Typography>
+                    </Grid>
+                  )}
                 </Grid>
               </Paper>
             </Grid>
@@ -212,43 +267,73 @@ const CommandeClientDetailsDialog = ({ open, onClose, commandeId }) => {
                   </Typography>
                 ) : (
                   <List dense>
-                    {items.map((item, idx) => (
-                      <React.Fragment key={idx}>
-                        <ListItem sx={{ flexDirection: "column", alignItems: "flex-start" }}>
-                          <Box
+                    {items.map((item, idx) => {
+                      const quantity = item.quantity ?? 0;
+                      const unitPrice =
+                        item.unitPrice ?? item.price ?? 0;
+                      const discount = item.discount ?? 0; // %
+                      const lineTotal =
+                        quantity *
+                        unitPrice *
+                        (1 - discount / 100);
+
+                      return (
+                        <React.Fragment key={idx}>
+                          <ListItem
                             sx={{
-                              width: "100%",
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
+                              flexDirection: "column",
+                              alignItems: "flex-start",
+                              py: 1,
                             }}
                           >
-                            <Typography fontWeight="medium">
-                              {item.designation || item.productName || `Ligne ${idx + 1}`}
-                            </Typography>
-                            <Typography fontWeight="bold">
-                              {((item.quantity || 0) * (item.price || 0)).toFixed(3)} TND
-                            </Typography>
-                          </Box>
-                          <Box
-                            sx={{
-                              width: "100%",
-                              display: "flex",
-                              justifyContent: "space-between",
-                              mt: 0.5,
-                            }}
-                          >
-                            <Typography variant="body2" color="text.secondary">
-                              {item.quantity || 0} x {(item.price || 0).toFixed(3)} TND
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              TVA : {item.tvaRate ?? 0}%
-                            </Typography>
-                          </Box>
-                        </ListItem>
-                        {idx < items.length - 1 && <Divider />}
-                      </React.Fragment>
-                    ))}
+                            <Box
+                              sx={{
+                                width: "100%",
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                              }}
+                            >
+                              <Typography fontWeight="medium">
+                                {item.designation ||
+                                  item.productName ||
+                                  `Ligne ${idx + 1}`}
+                              </Typography>
+                              <Typography fontWeight="bold">
+                                {lineTotal.toFixed(3)} TND
+                              </Typography>
+                            </Box>
+                            <Box
+                              sx={{
+                                width: "100%",
+                                display: "flex",
+                                justifyContent: "space-between",
+                                mt: 0.5,
+                              }}
+                            >
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                              >
+                                {quantity} x {unitPrice.toFixed(3)} TND
+                                {discount > 0 &&
+                                  ` (-${discount}% remise)`}
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                              >
+                                TVA :{" "}
+                                {item.tvaRate !== undefined
+                                  ? `${item.tvaRate}%`
+                                  : "0%"}
+                              </Typography>
+                            </Box>
+                          </ListItem>
+                          {idx < items.length - 1 && <Divider />}
+                        </React.Fragment>
+                      );
+                    })}
                   </List>
                 )}
               </Paper>
@@ -264,25 +349,76 @@ const CommandeClientDetailsDialog = ({ open, onClose, commandeId }) => {
                 >
                   <AttachMoney sx={{ mr: 1 }} /> Récapitulatif financier
                 </Typography>
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 0.5,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                    }}
+                  >
                     <Typography>Total HT :</Typography>
-                    <Typography>{Number(totalHT).toFixed(3)} TND</Typography>
+                    <Typography>{formatAmount(totalHT)}</Typography>
                   </Box>
-                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+
+                  {/* 🔹 Nouvelle ligne : Remise totale */}
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <Typography>Remise totale :</Typography>
+                    <Typography>- {formatAmount(totalRemise)}</Typography>
+                  </Box>
+
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                    }}
+                  >
                     <Typography>Total TVA :</Typography>
-                    <Typography>{Number(totalTVA).toFixed(3)} TND</Typography>
+                    <Typography>{formatAmount(totalTVA)}</Typography>
                   </Box>
                   <Divider sx={{ my: 1 }} />
-                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                    }}
+                  >
                     <Typography variant="h6">Total TTC :</Typography>
                     <Typography variant="h6" color="primary">
-                      {Number(totalTTC).toFixed(3)} TND
+                      {formatAmount(totalTTC)}
                     </Typography>
                   </Box>
                 </Box>
               </Paper>
             </Grid>
+
+            {/* Notes éventuelles */}
+            {commande.notes && (
+              <Grid item xs={12}>
+                <Paper sx={{ p: 2 }}>
+                  <Typography
+                    variant="subtitle1"
+                    fontWeight="bold"
+                    sx={{ mb: 1 }}
+                  >
+                    Notes
+                  </Typography>
+                  <Typography variant="body2">
+                    {commande.notes}
+                  </Typography>
+                </Paper>
+              </Grid>
+            )}
           </Grid>
         )}
       </DialogContent>
