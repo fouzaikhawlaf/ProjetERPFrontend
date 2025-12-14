@@ -1,3 +1,4 @@
+// src/services/orderClientService.js
 import apiErp from "./api"; // Import de l'instance Axios configurée
 
 // 🔹 Helper pour déballer une liste .NET (avec $values)
@@ -8,7 +9,7 @@ const unwrapDotNetList = (data) => {
   return [];
 };
 
-// 🔹 Normaliser une commande : s'assurer que OrderClientItems est un vrai array
+// 🔹 Normaliser une commande : s'assurer que orderClientItems est un vrai array
 const normalizeOrder = (order) => {
   if (!order) return order;
 
@@ -31,9 +32,7 @@ const normalizeOrder = (order) => {
 // 🔹 Récupérer toutes les commandes (AVEC items)
 const getAllOrders = async () => {
   try {
-    // 👉 On cible bien l'endpoint qui renvoie les commandes avec items
-    // Si ton [HttpGet] principal renvoie déjà les items, tu peux remplacer
-    // "/OrderClient/with-items" par juste "/OrderClient"
+    // Si ton [HttpGet] principal renvoie déjà les items, tu peux mettre "/OrderClient"
     const response = await apiErp.get("/OrderClient/with-items");
 
     const rawList = unwrapDotNetList(response.data);
@@ -82,8 +81,13 @@ const createOrder = async (orderData) => {
 // 🔹 Mettre à jour une commande
 const updateOrder = async (id, updateData) => {
   try {
+    // Backend renvoie NoContent (204), donc pas de body
     const response = await apiErp.put(`/OrderClient/${id}`, updateData);
-    const updated = normalizeOrder(response.data);
+    const updated =
+      response.data && Object.keys(response.data).length
+        ? normalizeOrder(response.data)
+        : { id, ...updateData }; // fallback local
+
     console.log("Commande mise à jour:", updated);
     return updated;
   } catch (error) {
@@ -106,16 +110,53 @@ const deleteOrder = async (id) => {
   }
 };
 
-// 🔹 Archiver une commande
+// 🔹 Archiver une commande (PATCH /OrderClient/{id}/archive) → 204 NoContent
 const archiveOrder = async (id) => {
   try {
     const response = await apiErp.patch(`/OrderClient/${id}/archive`);
-    const archived = normalizeOrder(response.data);
-    console.log(`Commande ${id} archivée`);
-    return archived;
+    console.log(`Commande ${id} archivée, status code:`, response.status);
+    // pas de body : on retourne juste l'id
+    return id;
   } catch (error) {
     console.error(
       `Erreur lors de l'archivage de la commande ${id}:`,
+      error
+    );
+    throw error;
+  }
+};
+
+// 🔹 Valider / livrer une commande (PATCH /OrderClient/{id}/validate)
+const validateOrder = async (id) => {
+  try {
+    const response = await apiErp.patch(`/OrderClient/${id}/validate`);
+    // Ici ton backend retourne un OrderClientDto (validatedOrder)
+    const order = normalizeOrder(response.data);
+    console.log("Commande validée / livrée :", order);
+    return order;
+  } catch (error) {
+    console.error(
+      `Erreur lors de la validation / livraison de la commande ${id}:`,
+      error
+    );
+    throw error;
+  }
+};
+
+// 🔹 Confirmer / facturer une commande (PATCH /OrderClient/{id}/confirm)
+const confirmOrder = async (id) => {
+  try {
+    // Backend : return NoContent()
+    const response = await apiErp.patch(`/OrderClient/${id}/confirm`);
+    console.log(
+      `Commande ${id} confirmée / facturée, status code:`,
+      response.status
+    );
+    // pas de body → on retourne juste l'id
+    return id;
+  } catch (error) {
+    console.error(
+      `Erreur lors de la confirmation / facturation de la commande ${id}:`,
       error
     );
     throw error;
@@ -138,7 +179,7 @@ const searchOrders = async (keyword) => {
   }
 };
 
-// 🔹 Générer le PDF d'une commande
+// 🔹 Générer le PDF d'une commande (backend)
 const generateOrderPdf = async (orderId) => {
   try {
     const response = await apiErp.get(`/OrderClient/${orderId}/pdf`, {
@@ -164,7 +205,7 @@ const generateOrderPdf = async (orderId) => {
   }
 };
 
-// 🔹 Récupérer les commandes par client (avec items si renvoyés par l'API)
+// 🔹 Récupérer les commandes par client
 const getOrdersByClientId = async (clientId) => {
   try {
     const response = await apiErp.get(`/OrderClient/client/${clientId}`);
@@ -188,6 +229,8 @@ export {
   updateOrder,
   deleteOrder,
   archiveOrder,
+  validateOrder,   // ✅ pour livrer / valider
+  confirmOrder,    // ✅ pour confirmer / facturer
   searchOrders,
   generateOrderPdf,
   getOrdersByClientId,

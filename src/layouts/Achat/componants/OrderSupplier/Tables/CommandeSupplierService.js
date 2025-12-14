@@ -39,6 +39,7 @@ import orderSupplierService from "services/orderSupplierService";
 import EditCommandeFournisseurDialog from "../Componants/EditCommandeFournisseurDialog";
 import DeleteCommandeDialog from "../Componants/DeleteCommandeDialog";
 
+
 // Mapping complet de l'énum backend OrderState
 // 0 Draft | 1 Validated | 2 Delivered | 3 Invoiced | 4 Cancelled | 5 Pending | 6 Confirmed | 7 Approved | 8 Rejected
 const ORDER_STATUS = {
@@ -297,24 +298,62 @@ const CommandeSupplierService = () => {
     }
   };
 
-  const handleGeneratePDF = async (commandeId) => {
-    try {
-      const pdfBlob = await orderSupplierService.generateOrderPdf([commandeId]);
-      const url = window.URL.createObjectURL(pdfBlob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `commande_${commandeId}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      enqueueSnackbar("PDF généré avec succès", { variant: "success" });
-    } catch (error) {
-      console.error("PDF generation error:", error);
-      enqueueSnackbar("Erreur lors de la génération du PDF", { variant: "error" });
-    }
-  };
+  const handleGeneratePDF = async (commande) => {
+  try {
+    const totalHT =
+      commande.saleAmount ??
+      commande.SaleAmount ??
+      commande.totalHT ??
+      commande.purchaseAmount ??
+      0;
 
+    const totalTVA =
+      commande.totalTVA ?? commande.TotalTVA ?? 0;
+
+    const totalTTC =
+      commande.totalTTC ??
+      commande.totalAmount ??
+      commande.TotalAmount ??
+      0;
+
+    await downloadOrderClientPdf(
+      {
+        orderNumber:
+          commande.orderNumber ||
+          commande.OrderNumber ||
+          commande.id,
+        clientName:
+          commande.clientName ||
+          commande.customerName ||
+          "Client non spécifié",
+        orderDate: commande.orderDate,
+        deliveryDate:
+          commande.expectedDeliveryDate ||
+          commande.deliveryDate,
+        paymentTerms: commande.paymentTerms,
+        items:
+          commande.orderClientItems ||
+          commande.OrderClientItems ||
+          commande.items ||
+          [],
+        totalHT,
+        totalTVA,
+        totalTTC,
+        logoUrl: logoShamash, // 🔥 ici on passe l'image importée
+      },
+      `commande-${commande.orderNumber || commande.id}.pdf`
+    );
+
+    enqueueSnackbar("PDF généré avec succès", {
+      variant: "success",
+    });
+  } catch (error) {
+    console.error("Erreur génération PDF :", error);
+    enqueueSnackbar("Erreur lors de la génération du PDF", {
+      variant: "error",
+    });
+  }
+};
   const handleFilterClick = (filter) => {
     setActiveFilter(filter);
     if (filter === "Tous") return setFilteredCommandes(commandes);
@@ -477,11 +516,18 @@ const CommandeSupplierService = () => {
                                 <Edit fontSize="small" />
                               </IconButton>
                             </Tooltip>
-                            <Tooltip title="Générer PDF">
-                              <IconButton size="small" onClick={() => handleGeneratePDF(commande.id)} sx={{ color: "#d32f2f", "&:hover": { backgroundColor: "#ffebee" } }}>
-                                <PictureAsPdf fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
+                           <Tooltip title="Générer PDF">
+  <IconButton
+    size="small"
+    onClick={() => handleGeneratePDF(commande)}
+    sx={{
+      color: "#d32f2f",
+      "&:hover": { backgroundColor: "#ffebee" },
+    }}
+  >
+    <PictureAsPdf fontSize="small" />
+  </IconButton>
+</Tooltip>
                             <CommandeStatusButton
                               commandeId={commande.id}
                               currentStatus={commande.status}

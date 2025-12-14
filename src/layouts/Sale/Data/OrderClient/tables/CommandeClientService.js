@@ -21,25 +21,30 @@ import {
   Visibility,
   Search,
   Refresh,
-  CheckCircle,
-  Cancel,
   PictureAsPdf,
   Inventory,
   ContentCopy,
+  LocalShipping,
+  ReceiptLong,
 } from "@mui/icons-material";
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
 import { useSnackbar } from "notistack";
 import { Link } from "react-router-dom";
 
-// ✅ IMPORT : exports nommés
-import {
-  getAllOrders,
-  updateOrder,
-  generateOrderPdf,
-} from "services/orderClientService";
+// ✅ services backend
+import { getAllOrders } from "services/orderClientService";
+
+// ✅ Template PDF (jsPDF) pour commande client
+import { downloadOrderClientPdf } from "../components/orderClientPdf";
+
+// Dialogs existants
 import DeleteCommandeClientDialog from "../components/DeleteCommandeClientDialog";
 import EditCommandeClientDialog from "../components/EditCommandeClientDialog";
 import CommandeClientDetailsDialog from "../components/CommandeClientDetailsDialog";
+
+// ✅ Nouveaux dialogs
+import ConfirmDeliverCommandeClientDialog from "../components/ConfirmDeliverCommandeClientDialog";
+import ConfirmInvoiceCommandeClientDialog from "../components/ConfirmInvoiceCommandeClientDialog";
 
 // Mapping complet de l'énum backend OrderState
 // 0 Draft | 1 Validated | 2 Delivered | 3 Invoiced | 4 Cancelled | 5 Pending | 6 Confirmed | 7 Approved | 8 Rejected
@@ -118,87 +123,68 @@ const statusOptions = [
   { value: ORDER_STATUS.REJECTED, label: "Rejetée", color: "error" },
 ];
 
+// 🔹 Boutons Livrer / Facturer → ouvrent les dialogs
 const CommandeStatusButton = ({
-  commandeId,
-  currentStatus,
-  onApprove,
-  onReject,
+  commande,
+  onOpenDeliverDialog,
+  onOpenInvoiceDialog,
 }) => {
   const [loading, setLoading] = useState(false);
 
-  if (currentStatus === ORDER_STATUS.APPROVED) {
-    return (
-      <Chip
-        icon={<CheckCircle />}
-        label={ORDER_STATUS.getLabel(currentStatus)}
-        color={ORDER_STATUS.getColor(currentStatus)}
-        size="small"
-      />
-    );
-  }
-  if (currentStatus === ORDER_STATUS.REJECTED) {
-    return (
-      <Chip
-        icon={<Cancel />}
-        label={ORDER_STATUS.getLabel(currentStatus)}
-        color={ORDER_STATUS.getColor(currentStatus)}
-        size="small"
-      />
-    );
-  }
+  const currentStatus = commande.status;
+  const isDelivered =
+    currentStatus === ORDER_STATUS.DELIVERED ||
+    currentStatus === ORDER_STATUS.INVOICED;
+  const isInvoiced = currentStatus === ORDER_STATUS.INVOICED;
 
-  const handleApproveClick = async () => {
-    if (loading) return;
+  const handleDeliverClick = () => {
+    if (loading || isDelivered) return;
     setLoading(true);
-    try {
-      await onApprove(commandeId);
-    } finally {
-      setLoading(false);
-    }
+    onOpenDeliverDialog(commande);
+    setLoading(false);
   };
 
-  const handleRejectClick = async () => {
-    if (loading) return;
+  const handleInvoiceClick = () => {
+    if (loading || !isDelivered || isInvoiced) return;
     setLoading(true);
-    try {
-      await onReject(commandeId);
-    } finally {
-      setLoading(false);
-    }
+    onOpenInvoiceDialog(commande);
+    setLoading(false);
   };
 
   return (
     <Box sx={{ display: "flex", gap: "6px" }}>
-      <Tooltip title="Approuver la commande">
-        <IconButton
-          size="small"
-          onClick={handleApproveClick}
-          color="success"
-          disabled={loading}
-        >
-          <CheckCircle fontSize="small" />
-        </IconButton>
+      <Tooltip title="Marquer comme livrée">
+        <span>
+          <IconButton
+            size="small"
+            onClick={handleDeliverClick}
+            color="primary"
+            disabled={loading || isDelivered}
+          >
+            <LocalShipping fontSize="small" />
+          </IconButton>
+        </span>
       </Tooltip>
-      <Tooltip title="Rejeter la commande">
-        <IconButton
-          size="small"
-          onClick={handleRejectClick}
-          color="error"
-          disabled={loading}
-        >
-          <Cancel fontSize="small" />
-        </IconButton>
+      <Tooltip title="Facturer la commande">
+        <span>
+          <IconButton
+            size="small"
+            onClick={handleInvoiceClick}
+            color="success"
+            disabled={loading || !isDelivered || isInvoiced}
+          >
+            <ReceiptLong fontSize="small" />
+          </IconButton>
+        </span>
       </Tooltip>
     </Box>
   );
 };
 
 CommandeStatusButton.propTypes = {
-  commandeId: PropTypes.oneOfType([PropTypes.string, PropTypes.number])
-    .isRequired,
-  currentStatus: PropTypes.number.isRequired,
-  onApprove: PropTypes.func.isRequired,
-  onReject: PropTypes.func.isRequired,
+  commande: PropTypes.object.isRequired,
+  onOpenDeliverDialog: PropTypes.func.isRequired,
+  onOpenInvoiceDialog: PropTypes.func.isRequired,
 };
 
 const CommandeClientService = () => {
@@ -216,6 +202,12 @@ const CommandeClientService = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [commandeToEdit, setCommandeToEdit] = useState(null);
 
+  // 👉 nouveaux états pour les dialogs de livraison / facturation
+  const [deliverDialogOpen, setDeliverDialogOpen] = useState(false);
+  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
+  const [commandeToDeliver, setCommandeToDeliver] = useState(null);
+  const [commandeToInvoice, setCommandeToInvoice] = useState(null);
+
   // Debug / console-like
   const [debugOpen] = useState(false);
   const [lastRawResponse, setLastRawResponse] = useState(null);
@@ -225,13 +217,6 @@ const CommandeClientService = () => {
       minimumFractionDigits: 3,
       maximumFractionDigits: 3,
     }).format(amount || 0);
-  };
-
-  // Unwrap des listes .NET ($values)
-  const handleDotNetResponse = (response) => {
-    if (response && response.$values) return response.$values;
-    if (Array.isArray(response)) return response;
-    return [];
   };
 
   const copyToClipboard = async (obj) => {
@@ -249,18 +234,14 @@ const CommandeClientService = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await getAllOrders();
-      setLastRawResponse(response);
+      // getAllOrders() renvoie déjà un tableau normalisé
+      const commandesData = await getAllOrders();
+      setLastRawResponse(commandesData);
 
       console.groupCollapsed("📦 Réponse API getAllOrders() (clients)");
-      console.log("Brut:", response);
-      const commandesData = handleDotNetResponse(response);
-      console.log(`Items: ${commandesData.length}`);
+      console.log("Items:", commandesData.length);
       if (commandesData[0]) console.table(commandesData[0]);
       console.groupEnd();
-
-      const bad = commandesData.filter((c) => typeof c.status !== "number");
-      if (bad.length) console.warn("Commandes sans status numérique:", bad);
 
       setCommandes(commandesData);
       setFilteredCommandes(commandesData);
@@ -326,59 +307,80 @@ const CommandeClientService = () => {
     setDeleteDialogOpen(true);
   };
 
-  // ✅ Approve = updateOrder avec status APPROVED
-  const handleApprove = async (commandeId) => {
-    try {
-      setIsLoading(true);
-      const current = commandes.find((c) => c.id === commandeId);
-      if (!current) {
-        throw new Error("Commande introuvable");
-      }
+  // 👉 Ouverture des dialogs
+  const openDeliverDialog = (commande) => {
+    setCommandeToDeliver(commande);
+    setDeliverDialogOpen(true);
+  };
 
-      const payload = { ...current, status: ORDER_STATUS.APPROVED };
-      await updateOrder(commandeId, payload);
-      handleStatusChange(commandeId, ORDER_STATUS.APPROVED);
-      enqueueSnackbar("Commande client approuvée avec succès", {
+  const openInvoiceDialog = (commande) => {
+    setCommandeToInvoice(commande);
+    setInvoiceDialogOpen(true);
+  };
+
+  // 🔹 Helper : construire les paramètres pour le PDF à partir d'une commande
+  const buildPdfParamsFromCommande = (commande) => {
+    // Normalisation des items
+    let items = [];
+    if (Array.isArray(commande.orderClientItems)) {
+      items = commande.orderClientItems;
+    } else if (
+      commande.orderClientItems &&
+      Array.isArray(commande.orderClientItems.$values)
+    ) {
+      items = commande.orderClientItems.$values;
+    } else if (Array.isArray(commande.items)) {
+      items = commande.items;
+    } else if (commande.items && Array.isArray(commande.items.$values)) {
+      items = commande.items.$values;
+    }
+
+    return {
+      orderNumber:
+        commande.orderNumber || commande.OrderNumber || commande.id,
+      clientName:
+        commande.clientName ||
+        commande.customerName ||
+        `Client ${commande.clientId || commande.customerId || ""}`,
+      orderDate: commande.orderDate,
+      deliveryDate: commande.expectedDeliveryDate || commande.deliveryDate,
+      paymentTerms: commande.paymentTerms,
+      items: items.map((it) => ({
+        productName:
+          it.designation || it.productName || it.serviceName || "Article",
+        quantity: it.quantity ?? 0,
+        unitPrice: it.unitPrice ?? it.price ?? 0,
+        discount: it.discount ?? 0,
+        tvaRate: it.tvaRate ?? it.TVARate ?? it.TVA ?? 0,
+      })),
+      totalHT:
+        commande.saleAmount ??
+        commande.SaleAmount ??
+        commande.totalHT ??
+        commande.purchaseAmount ??
+        0,
+      totalTVA: commande.totalTVA ?? commande.TotalTVA ?? 0,
+      totalTTC:
+        commande.totalTTC ??
+        commande.totalAmount ??
+        commande.TotalAmount ??
+        0,
+    };
+  };
+
+  // ✅ Générer 1 PDF pour une commande (jsPDF côté front)
+  const handleGeneratePDF = (commande) => {
+    try {
+      const pdfParams = buildPdfParamsFromCommande(commande);
+      downloadOrderClientPdf(
+        pdfParams,
+        `Commande-${pdfParams.orderNumber || commande.id}.pdf`
+      );
+      enqueueSnackbar("PDF commande client généré avec succès", {
         variant: "success",
       });
     } catch (error) {
-      console.error("Approve error:", error);
-      enqueueSnackbar("Erreur lors de l'approbation", { variant: "error" });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // ✅ Reject = updateOrder avec status REJECTED
-  const handleReject = async (commandeId) => {
-    try {
-      setIsLoading(true);
-      const current = commandes.find((c) => c.id === commandeId);
-      if (!current) {
-        throw new Error("Commande introuvable");
-      }
-
-      const payload = { ...current, status: ORDER_STATUS.REJECTED };
-      await updateOrder(commandeId, payload);
-      handleStatusChange(commandeId, ORDER_STATUS.REJECTED);
-      enqueueSnackbar("Commande client rejetée avec succès", {
-        variant: "success",
-      });
-    } catch (error) {
-      console.error("Reject error:", error);
-      enqueueSnackbar("Erreur lors du rejet", { variant: "error" });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // ✅ generateOrderPdf côté service fait déjà le téléchargement
-  const handleGeneratePDF = async (commandeId) => {
-    try {
-      await generateOrderPdf(commandeId);
-      enqueueSnackbar("PDF généré avec succès", { variant: "success" });
-    } catch (error) {
-      console.error("PDF generation error:", error);
+      console.error("Erreur génération PDF :", error);
       enqueueSnackbar("Erreur lors de la génération du PDF", {
         variant: "error",
       });
@@ -401,15 +403,20 @@ const CommandeClientService = () => {
     return new Date(dateString).toLocaleDateString("fr-FR");
   };
 
-  const handleExportPDF = async () => {
+  // ✅ Export PDF pour toutes les commandes filtrées
+  const handleExportPDF = () => {
     if (filteredCommandes.length === 0) {
       enqueueSnackbar("Aucune commande à exporter", { variant: "warning" });
       return;
     }
     try {
-      for (const c of filteredCommandes) {
-        await generateOrderPdf(c.id);
-      }
+      filteredCommandes.forEach((commande) => {
+        const pdfParams = buildPdfParamsFromCommande(commande);
+        downloadOrderClientPdf(
+          pdfParams,
+          `Commande-${pdfParams.orderNumber || commande.id}.pdf`
+        );
+      });
       enqueueSnackbar("PDF générés pour les commandes filtrées", {
         variant: "success",
       });
@@ -642,58 +649,67 @@ const CommandeClientService = () => {
                             sx={{ fontSize: "0.75rem", fontWeight: 500 }}
                           />
                         </td>
-                       <td
-  style={{
-    ...tdStyle,
-    textAlign: "right",
-    fontWeight: 500,
-  }}
->
-  {commande.saleAmount !== undefined && commande.saleAmount !== null
-    ? `${formatCurrency(commande.saleAmount)} TND`
-    : commande.SaleAmount !== undefined && commande.SaleAmount !== null
-    ? `${formatCurrency(commande.SaleAmount)} TND`
-    : commande.totalHT !== undefined && commande.totalHT !== null
-    ? `${formatCurrency(commande.totalHT)} TND`
-    : commande.purchaseAmount !== undefined &&
-      commande.purchaseAmount !== null
-    ? `${formatCurrency(commande.purchaseAmount)} TND`
-    : "0.000 TND"}
-</td>
 
-{/* ✅ Total TVA */}
-<td
-  style={{
-    ...tdStyle,
-    textAlign: "right",
-    fontWeight: 500,
-  }}
->
-  {commande.totalTVA !== undefined && commande.totalTVA !== null
-    ? `${formatCurrency(commande.totalTVA)} TND`
-    : commande.TotalTVA !== undefined && commande.TotalTVA !== null
-    ? `${formatCurrency(commande.TotalTVA)} TND`
-    : "0.000 TND"}
-</td>
+                        {/* Total HT */}
+                        <td
+                          style={{
+                            ...tdStyle,
+                            textAlign: "right",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {commande.saleAmount !== undefined &&
+                          commande.saleAmount !== null
+                            ? `${formatCurrency(commande.saleAmount)} TND`
+                            : commande.SaleAmount !== undefined &&
+                              commande.SaleAmount !== null
+                            ? `${formatCurrency(commande.SaleAmount)} TND`
+                            : commande.totalHT !== undefined &&
+                              commande.totalHT !== null
+                            ? `${formatCurrency(commande.totalHT)} TND`
+                            : commande.purchaseAmount !== undefined &&
+                              commande.purchaseAmount !== null
+                            ? `${formatCurrency(commande.purchaseAmount)} TND`
+                            : "0.000 TND"}
+                        </td>
 
-{/* ✅ Total TTC (totalTTC ou totalAmount / TotalAmount) */}
-<td
-  style={{
-    ...tdStyle,
-    textAlign: "right",
-    fontWeight: 500,
-  }}
->
-  {commande.totalTTC !== undefined && commande.totalTTC !== null
-    ? `${formatCurrency(commande.totalTTC)} TND`
-    : commande.totalAmount !== undefined &&
-      commande.totalAmount !== null
-    ? `${formatCurrency(commande.totalAmount)} TND`
-    : commande.TotalAmount !== undefined &&
-      commande.TotalAmount !== null
-    ? `${formatCurrency(commande.TotalAmount)} TND`
-    : "0.000 TND"}
-</td>
+                        {/* Total TVA */}
+                        <td
+                          style={{
+                            ...tdStyle,
+                            textAlign: "right",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {commande.totalTVA !== undefined &&
+                          commande.totalTVA !== null
+                            ? `${formatCurrency(commande.totalTVA)} TND`
+                            : commande.TotalTVA !== undefined &&
+                              commande.TotalTVA !== null
+                            ? `${formatCurrency(commande.TotalTVA)} TND`
+                            : "0.000 TND"}
+                        </td>
+
+                        {/* Total TTC */}
+                        <td
+                          style={{
+                            ...tdStyle,
+                            textAlign: "right",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {commande.totalTTC !== undefined &&
+                          commande.totalTTC !== null
+                            ? `${formatCurrency(commande.totalTTC)} TND`
+                            : commande.totalAmount !== undefined &&
+                              commande.totalAmount !== null
+                            ? `${formatCurrency(commande.totalAmount)} TND`
+                            : commande.TotalAmount !== undefined &&
+                              commande.TotalAmount !== null
+                            ? `${formatCurrency(commande.TotalAmount)} TND`
+                            : "0.000 TND"}
+                        </td>
+
                         <td
                           style={{
                             ...tdStyle,
@@ -735,7 +751,7 @@ const CommandeClientService = () => {
                             <Tooltip title="Générer PDF">
                               <IconButton
                                 size="small"
-                                onClick={() => handleGeneratePDF(commande.id)}
+                                onClick={() => handleGeneratePDF(commande)}
                                 sx={{
                                   color: "#d32f2f",
                                   "&:hover": { backgroundColor: "#ffebee" },
@@ -744,12 +760,15 @@ const CommandeClientService = () => {
                                 <PictureAsPdf fontSize="small" />
                               </IconButton>
                             </Tooltip>
+
+                            {/* Boutons Livrer / Facturer */}
                             <CommandeStatusButton
-                              commandeId={commande.id}
-                              currentStatus={commande.status}
-                              onApprove={handleApprove}
-                              onReject={handleReject}
+                              commande={commande}
+                              onOpenDeliverDialog={openDeliverDialog}
+                              onOpenInvoiceDialog={openInvoiceDialog}
                             />
+
+                            {/* Optionnel : bouton copier JSON */}
                             <Tooltip title="Copier JSON de la ligne">
                               <IconButton
                                 size="small"
@@ -758,6 +777,7 @@ const CommandeClientService = () => {
                                 <ContentCopy fontSize="small" />
                               </IconButton>
                             </Tooltip>
+
                             <Tooltip title="Supprimer">
                               <IconButton
                                 size="small"
@@ -842,6 +862,32 @@ const CommandeClientService = () => {
           commandeId={selectedCommande?.id}
         />
 
+        {/* Dialog LIVRAISON */}
+        <ConfirmDeliverCommandeClientDialog
+          open={deliverDialogOpen}
+          onClose={() => {
+            setDeliverDialogOpen(false);
+            setCommandeToDeliver(null);
+          }}
+          commande={commandeToDeliver}
+          onDeliver={(id) => {
+            handleStatusChange(id, ORDER_STATUS.DELIVERED);
+          }}
+        />
+
+        {/* Dialog FACTURATION */}
+        <ConfirmInvoiceCommandeClientDialog
+          open={invoiceDialogOpen}
+          onClose={() => {
+            setInvoiceDialogOpen(false);
+            setCommandeToInvoice(null);
+          }}
+          commande={commandeToInvoice}
+          onInvoice={(id) => {
+            handleStatusChange(id, ORDER_STATUS.INVOICED);
+          }}
+        />
+
         {/* Panneau debug */}
         {debugOpen && (
           <Box
@@ -867,7 +913,6 @@ const CommandeClientService = () => {
 };
 
 const thStyle = {
-  // width: "120px", // laissé commenté pour que la colonne # reste fine
   padding: "0 16px",
   fontWeight: 600,
   fontSize: "0.875rem",
