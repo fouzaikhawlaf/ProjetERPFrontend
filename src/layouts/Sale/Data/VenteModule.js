@@ -29,7 +29,7 @@ const VenteModule = () => {
       title: "Livraisons",
       description: "Suivez vos livraisons et gérez leur statut.",
       icon: "fa-truck",
-      link: "/ventes/livraisons",
+      link: "/client-delivery-notes",
     },
     {
       title: "Factures",

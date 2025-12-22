@@ -17,20 +17,30 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "App";
-import { ChakraProvider } from '@chakra-ui/react';
-// Soft UI Dashboard React Context Provider
-import { SoftUIControllerProvider } from "context";
-import 'bootstrap/dist/css/bootstrap.min.css';
-import '@fortawesome/fontawesome-free/css/all.min.css';
+
+import { SnackbarProvider } from "notistack";           // 👈 pour les notifications
+import { SoftUIControllerProvider } from "context";     // Soft UI
+
+import "bootstrap/dist/css/bootstrap.min.css";
+import "@fortawesome/fontawesome-free/css/all.min.css";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(
 
-  <BrowserRouter>
-    <SoftUIControllerProvider>
-      
-      <App />
-    </SoftUIControllerProvider>
-  </BrowserRouter>
- 
+root.render(
+  <React.StrictMode>
+    <BrowserRouter>
+      <SoftUIControllerProvider>
+        <SnackbarProvider
+          maxSnack={3}
+          autoHideDuration={4000}
+          anchorOrigin={{
+            vertical: "top",      // top ou bottom
+            horizontal: "center", // left | center | right
+          }}
+        >
+          <App />
+        </SnackbarProvider>
+      </SoftUIControllerProvider>
+    </BrowserRouter>
+  </React.StrictMode>
 );
