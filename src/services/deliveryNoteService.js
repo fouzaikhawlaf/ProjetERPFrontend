@@ -9,93 +9,112 @@ const unwrapDotNetList = (data) => {
   return [];
 };
 
+const normalizeDeliveryItem = (it) => {
+  if (!it) return it;
+
+  return {
+    id: it.id ?? it.Id ?? 0,
+    productId: it.productId ?? it.ProductId ?? null,
+    productName: it.productName ?? it.ProductName ?? "",
+    quantity: Number(it.quantity ?? it.Quantity ?? 0),
+
+    // backend DTO: UnitPrice / Price parfois
+    unitPrice: Number(it.unitPrice ?? it.UnitPrice ?? it.price ?? it.Price ?? 0),
+
+    discount: Number(it.discount ?? it.Discount ?? 0),
+    tvaRate: Number(it.tvaRate ?? it.TvaRate ?? it.TVARate ?? 0),
+
+    lineTotalHT: Number(it.lineTotalHT ?? it.LineTotalHT ?? 0),
+    lineTotalTVA: Number(it.lineTotalTVA ?? it.LineTotalTVA ?? 0),
+    lineTotalTTC: Number(it.lineTotalTTC ?? it.LineTotalTTC ?? 0),
+  };
+};
+
 const normalizeDeliveryNote = (note) => {
   if (!note) return note;
-  // Ici tu peux normaliser les noms de props si besoin
-  return note;
+
+  const rawItems =
+    note.items ??
+    note.Items ??
+    note.deliveryNoteItems ??
+    note.DeliveryNoteItems ??
+    note.deliveryNoteItemsDto ??
+    note.DeliveryNoteItemsDto;
+
+  const items = unwrapDotNetList(rawItems).map(normalizeDeliveryItem);
+
+  return {
+    id: note.id ?? note.Id,
+    orderClientId: note.orderClientId ?? note.OrderClientId,
+    deliveryDate: note.deliveryDate ?? note.DeliveryDate,
+
+    // ✅ IMPORTANT: DeliveryNumber backend -> deliveryNumber frontend
+    deliveryNumber: note.deliveryNumber ?? note.DeliveryNumber ?? "",
+
+    // si tu utilises deliveryMode côté front, mappe selon ton backend
+    deliveryMode: note.deliveryMode ?? note.DeliveryMode ?? note.deliveryDetails ?? note.DeliveryDetails ?? "",
+
+    isDelivered: note.isDelivered ?? note.IsDelivered ?? false,
+    isArchived: note.isArchived ?? note.IsArchived ?? false,
+    status: note.status ?? note.Status ?? "",
+
+    totalHT: Number(note.totalHT ?? note.TotalHT ?? 0),
+    totalTVA: Number(note.totalTVA ?? note.TotalTVA ?? 0),
+    totalTTC: Number(note.totalTTC ?? note.TotalTTC ?? 0),
+
+    clientName: note.clientName ?? note.ClientName ?? "",
+    items, // ✅ maintenant toujours un tableau
+  };
 };
 
-// 🔹 GET: tous les bons de livraison
+// 🔹 GET: tous les bons de livraison (avec items chez toi)
 export const getAllDeliveryNotes = async () => {
   const res = await apiErp.get("/DeliveryNote");
-  const list = unwrapDotNetList(res.data).map(normalizeDeliveryNote);
-  console.log("Delivery notes:", list);
-  return list;
+  return unwrapDotNetList(res.data).map(normalizeDeliveryNote);
 };
 
-// 🔹 GET: un bon de livraison par id
+// 🔹 GET: un bon de livraison par id (avec items)
 export const getDeliveryNoteById = async (id) => {
   const res = await apiErp.get(`/DeliveryNote/${id}`);
   return normalizeDeliveryNote(res.data);
 };
 
-// 🔹 POST: créer un BL à partir d'une commande
-export async function createDeliveryNoteFromOrder(orderClientId, deliveryDate) {
-  try {
-    console.log(
-      "[deliveryNoteService] createDeliveryNoteFromOrder...",
-      { orderClientId, deliveryDate }
-    );
+// 🔹 POST: créer un BL à partir d'une commande (envoie deliveryNumber optionnel)
+export async function createDeliveryNoteFromOrder(orderClientId, deliveryDate, deliveryMode, deliveryNumber) {
+  const res = await apiErp.post(`/DeliveryNote/createfromorder/${orderClientId}`, {
+    deliveryDate,
+    deliveryMode,
+    deliveryNumber, // optionnel
+  });
 
-    // ⚠️ baseURL = https://localhost:7298/api
-    // donc on N'AJOUTE PAS /api ici :
-    const response = await apiErp.post(
-      `/DeliveryNote/createfromorder/${orderClientId}`,
-      { deliveryDate } // 👈 JSON body
-    );
-
-    console.log(
-      "[deliveryNoteService] Réponse API createFromOrder :",
-      response.data
-    );
-
-    return normalizeDeliveryNote(response.data);
-  } catch (error) {
-    console.error(
-      `Erreur lors de la création du BL pour la commande ${orderClientId}:`,
-      error.response?.data || error.message
-    );
-    throw error;
-  }
+  // ✅ Retour normalisé: deliveryNumber vient du backend
+  return normalizeDeliveryNote(res.data);
 }
 
-// 🔹 PUT: marquer une commande comme livrée (via DeliveryNoteController)
+// 🔹 PUT: update (si tu en as besoin)
+export const updateDeliveryNote = async (id, payload) => {
+  const res = await apiErp.put(`/DeliveryNote/${id}`, payload);
+  return res.data;
+};
+
+// 🔹 PUT: livrée
 export const markOrderAsDelivered = async (orderClientId) => {
   await apiErp.put(`/DeliveryNote/markasdelivered/${orderClientId}`);
 };
 
-// 🔹 DELETE: supprimer un BL
+// 🔹 DELETE
 export const deleteDeliveryNote = async (id) => {
   await apiErp.delete(`/DeliveryNote/${id}`);
 };
 
-// 🔹 GET: recherche des bons de livraison
-export const searchDeliveryNotes = async ({ orderClientId, deliveryDate }) => {
-  const params = {};
-  if (orderClientId) params.orderClientId = orderClientId;
-  if (deliveryDate) params.deliveryDate = deliveryDate;
-
-  const res = await apiErp.get("/DeliveryNote/search", { params });
-  return unwrapDotNetList(res.data).map(normalizeDeliveryNote);
-};
-
-// 🔹 GET: bons de livraison archivés
-export const getArchivedDeliveryNotes = async () => {
-  const res = await apiErp.get("/DeliveryNote/archived");
-  return unwrapDotNetList(res.data).map(normalizeDeliveryNote);
-};
-
-// 🔹 PUT: marquer un BL comme archivé
+// 🔹 PUT: archiver
 export const markDeliveryNoteAsArchived = async (id) => {
   await apiErp.put(`/DeliveryNote/markasarchived/${id}`);
 };
 
-// 🔹 GET: télécharger le PDF du BL
+// 🔹 PDF backend
 export const downloadDeliveryNotePdf = async (id) => {
-  const res = await apiErp.get(`/DeliveryNote/pdf/${id}`, {
-    responseType: "blob",
-  });
-
+  const res = await apiErp.get(`/DeliveryNote/pdf/${id}`, { responseType: "blob" });
   const blob = new Blob([res.data], { type: "application/pdf" });
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement("a");

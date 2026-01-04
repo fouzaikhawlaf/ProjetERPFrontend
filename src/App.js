@@ -139,6 +139,7 @@ import EditCommandeFournisseurDialog from 'layouts/Achat/componants/OrderSupplie
 import CommandeClientService from 'layouts/Sale/Data/OrderClient/tables/CommandeClientService';
 import DeliveryNotesPage from 'layouts/Sale/Data/DeliveryNotes/pages/DeliveryNotesPage';
 import CreateDeliveryNoteFromOrderDialog from 'layouts/Sale/Data/DeliveryNotes/components/CreateDeliveryNoteFromOrderDialog';
+import EditDeliveryNoteDialog from 'layouts/Sale/Data/DeliveryNotes/components/EditDeliveryNoteDialog';
 
 
 
@@ -350,6 +351,7 @@ export default function App() {
           <Route path="/client-orders/new" element={<CreateClientOrder />} />
           <Route path="/client-delivery-notes/new" element={<CreateDeliveryNoteFromOrderDialog />} />  
             <Route path="/client-delivery-notes" element={< DeliveryNotesPage/>} />
+               <Route path="/delivery-notes/update/:id" element={< EditDeliveryNoteDialog/>} />
       </Routes>
     </ThemeProvider>
   );
